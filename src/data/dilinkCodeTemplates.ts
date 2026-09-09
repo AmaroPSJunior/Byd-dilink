@@ -374,7 +374,7 @@ export const SETTINGS_GRADLE = SETTINGS_GRADLE_KTS;
 
 export const GRADLE_WRAPPER_PROPERTIES = `distributionBase=GRADLE_USER_HOME
 distributionPath=wrapper/dists
-distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip
+distributionUrl=https\\://services.gradle.org/distributions/gradle-8.5-bin.zip
 zipStoreBase=GRADLE_USER_HOME
 zipStorePath=wrapper/dists
 `;
@@ -415,8 +415,10 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      - name: Setup Gradle
+      - name: Setup Gradle 8.5
         uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.5'
 
       - name: Grant Execute Permission for Gradlew
         run: chmod +x gradlew || true
@@ -425,11 +427,7 @@ jobs:
         run: |
           BUILD_NUM=\${{ github.run_number }}
           echo "Building APK version code \$BUILD_NUM..."
-          if [ -f "./gradlew" ]; then
-            ./gradlew assembleDebug -PbuildNumber=\$BUILD_NUM --no-daemon
-          else
-            gradle assembleDebug -PbuildNumber=\$BUILD_NUM --no-daemon
-          fi
+          gradle assembleDebug -PbuildNumber=\$BUILD_NUM --no-daemon
 
       - name: Prepare APK Artifact Name
         run: |

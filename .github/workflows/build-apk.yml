@@ -25,8 +25,10 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      - name: Setup Gradle
+      - name: Setup Gradle 8.5
         uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.5'
 
       - name: Grant Execute Permission for Gradlew
         run: chmod +x gradlew || true
@@ -35,11 +37,7 @@ jobs:
         run: |
           BUILD_NUM=${{ github.run_number }}
           echo "Building APK version code $BUILD_NUM..."
-          if [ -f "./gradlew" ]; then
-            ./gradlew assembleDebug -PbuildNumber=$BUILD_NUM --no-daemon
-          else
-            gradle assembleDebug -PbuildNumber=$BUILD_NUM --no-daemon
-          fi
+          gradle assembleDebug -PbuildNumber=$BUILD_NUM --no-daemon
 
       - name: Prepare APK Artifact Name
         run: |
