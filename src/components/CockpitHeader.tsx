@@ -12,7 +12,8 @@ import {
   Cpu,
   Lock,
   Compass,
-  Layers
+  Layers,
+  Wrench
 } from 'lucide-react';
 import { AppTab, VehicleTelemetry } from '../types';
 
@@ -100,6 +101,22 @@ export const CockpitHeader: React.FC<CockpitHeaderProps> = ({
                 {unbuckledCount}
               </span>
             )}
+          </button>
+
+          <button
+            id="tab-byd-comm-lab"
+            onClick={() => setActiveTab('byd_comm_lab')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+              activeTab === 'byd_comm_lab'
+                ? 'bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md shadow-red-900/40 border border-amber-400/40'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+          >
+            <Wrench className="w-4 h-4 text-amber-400 animate-pulse" />
+            <span>Lab Comunicação BYD</span>
+            <span className="px-1.5 py-0.2 rounded bg-red-950 text-red-300 border border-red-700/60 text-[9px] font-mono font-bold">
+              18 MÓDULOS
+            </span>
           </button>
 
           <button

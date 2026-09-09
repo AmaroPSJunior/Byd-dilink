@@ -101,5 +101,29 @@ export interface VehicleFeature {
   lastTestedAt?: string;
 }
 
-export type AppTab = 'cockpit' | 'vehicle_features' | 'vehicle_doors_windows' | 'dilink_inspector' | 'apk_export' | 'ai_assistant';
+export type AppTab = 'cockpit' | 'byd_comm_lab' | 'vehicle_features' | 'vehicle_doors_windows' | 'dilink_inspector' | 'apk_export' | 'ai_assistant';
+
+export type TransportState =
+  | 'AVAILABLE'
+  | 'UNAVAILABLE'
+  | 'PERMISSION_DENIED'
+  | 'SECURITY_EXCEPTION'
+  | 'SERVICE_NOT_FOUND'
+  | 'METHOD_NOT_FOUND'
+  | 'EXECUTION_FAILED'
+  | 'EXECUTED_NO_CONFIRMATION'
+  | 'CONFIRMED';
+
+export interface TransportDiscoveryItem {
+  id: string;
+  name: string;
+  category: string;
+  state: TransportState;
+  details: string;
+  classNameOrEndpoint?: string;
+  methodsDetected: string[];
+  permissionsRequired: string[];
+  pingTimeMs: number;
+}
+
 

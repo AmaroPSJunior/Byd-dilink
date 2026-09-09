@@ -7,6 +7,7 @@ import { DiLinkSdkInspector } from './components/DiLinkSdkInspector';
 import { AndroidExporterModal } from './components/AndroidExporterModal';
 import { GeminiCarAssistant } from './components/GeminiCarAssistant';
 import { VehicleFeaturesExplorer } from './components/VehicleFeaturesExplorer';
+import { BYDCommunicationLab } from './components/BYDCommunicationLab';
 import {
   AppTab,
   DoorPosition,
@@ -318,6 +319,12 @@ export default function App() {
               setChimeEnabled={setChimeEnabled}
               onLogDiLinkAction={addLog}
             />
+          </div>
+        )}
+
+        {activeTab === 'byd_comm_lab' && (
+          <div className="animate-fadeIn">
+            <BYDCommunicationLab />
           </div>
         )}
 

@@ -2,76 +2,67 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0b1329"
+    android:background="#070d1e"
     android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp"
+        android:padding="16dp"
         android:gravity="center_horizontal">
 
-        <!-- Header App -->
+        <!-- Header: BYD Communication Lab -->
         <TextView
-            android:id="@+id/txtAppTitle"
+            android:id="@+id/txtHeaderTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="BYD Dolphin Plus - DiLink Controller"
-            android:textSize="22sp"
+            android:text="🔬 BYD COMMUNICATION LAB"
+            android:textSize="20sp"
             android:textStyle="bold"
-            android:textColor="#00d2ff"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="4dp" />
+            android:textColor="#00e5ff"
+            android:letterSpacing="0.05"
+            android:layout_marginTop="4dp" />
 
         <TextView
+            android:id="@+id/txtVehicleInfo"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Controle de Luzes, CanBus e Serviços DiLink 4.0/5.0"
-            android:textSize="12sp"
+            android:text="BYD Dolphin Plus • Carregando Firmware..."
+            android:textSize="11sp"
+            android:fontFamily="monospace"
             android:textColor="#94a3b8"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="12dp" />
 
-        <!-- Status Cintos & Portas -->
+        <!-- Card de Transporte Ativo e Modo de Teste -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:background="#151e3f"
-            android:padding="14dp"
-            android:layout_marginBottom="16dp">
+            android:background="#0f172a"
+            android:padding="12dp"
+            android:layout_marginBottom="12dp">
 
             <TextView
-                android:id="@+id/txtSeatbeltStatus"
+                android:id="@+id/txtActiveTransport"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Status Cintos: Carregando..."
-                android:textColor="#f8fafc"
-                android:textSize="14sp"
-                android:layout_marginBottom="6dp" />
+                android:text="Transporte Ativo: HAL Reflection"
+                android:textColor="#38bdf8"
+                android:textStyle="bold"
+                android:textSize="13sp" />
 
             <TextView
-                android:id="@+id/txtDoorsStatus"
+                android:id="@+id/txtTestMode"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Status Portas: Carregando..."
-                android:textColor="#f8fafc"
-                android:textSize="14sp" />
+                android:text="Modo: SAFE READ ONLY (Seguro)"
+                android:textColor="#facc15"
+                android:textSize="11sp"
+                android:layout_marginTop="2dp" />
         </LinearLayout>
 
-        <!-- Botão Principal: FORÇAR APAGAR TODAS AS LUZES -->
-        <Button
-            android:id="@+id/btnMasterTurnOffLights"
-            android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:text="⚡ FORÇAR APAGAR TODAS AS LUZES"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            android:textColor="#ffffff"
-            android:backgroundTint="#dc2626"
-            android:layout_marginBottom="10dp" />
-
-        <!-- Fileira com Botões Secundários -->
+        <!-- Botões de Ação Principal do Laboratório -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -79,79 +70,104 @@
             android:layout_marginBottom="10dp">
 
             <Button
-                android:id="@+id/btnTurnOnLights"
+                android:id="@+id/btnRunDiscovery"
                 android:layout_width="0dp"
-                android:layout_height="52dp"
+                android:layout_height="50dp"
                 android:layout_weight="1"
-                android:text="💡 Ligar Luzes"
-                android:textSize="13sp"
+                android:text="🔍 Varredura Completa"
+                android:textSize="12sp"
+                android:textStyle="bold"
                 android:textColor="#ffffff"
-                android:backgroundTint="#1e293b"
-                android:layout_marginEnd="6dp" />
+                android:backgroundTint="#0284c7"
+                android:layout_marginEnd="4dp" />
 
             <Button
-                android:id="@+id/btnTotalBlackout"
+                android:id="@+id/btnTestBenchLight"
                 android:layout_width="0dp"
-                android:layout_height="52dp"
+                android:layout_height="50dp"
                 android:layout_weight="1"
-                android:text="🌙 Blackout Tela"
-                android:textSize="13sp"
-                android:textColor="#00d2ff"
-                android:backgroundTint="#0f172a"
-                android:layout_marginStart="6dp" />
+                android:text="⚡ Test Bench Luz"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#ffffff"
+                android:backgroundTint="#dc2626"
+                android:layout_marginStart="4dp" />
         </LinearLayout>
 
-        <!-- Botões de Diagnóstico e Permissão -->
+        <!-- Fileira Secundária de Ferramentas -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="16dp">
+            android:layout_marginBottom="12dp">
 
             <Button
-                android:id="@+id/btnRunDiagnostics"
+                android:id="@+id/btnExportJson"
                 android:layout_width="0dp"
-                android:layout_height="48dp"
+                android:layout_height="44dp"
                 android:layout_weight="1"
-                android:text="🔍 Teste DiLink"
-                android:textSize="12sp"
-                android:textColor="#38bdf8"
-                android:backgroundTint="#0369a1"
-                android:layout_marginEnd="6dp" />
+                android:text="📋 Exportar JSON"
+                android:textSize="11sp"
+                android:textColor="#a7f3d0"
+                android:backgroundTint="#065f46"
+                android:layout_marginEnd="4dp" />
 
             <Button
-                android:id="@+id/btnGrantPermission"
+                android:id="@+id/btnSettingsPermission"
                 android:layout_width="0dp"
-                android:layout_height="48dp"
+                android:layout_height="44dp"
                 android:layout_weight="1"
                 android:text="⚙️ Permissão System"
-                android:textSize="12sp"
-                android:textColor="#facc15"
+                android:textSize="11sp"
+                android:textColor="#fef08a"
                 android:backgroundTint="#854d0e"
-                android:layout_marginStart="6dp" />
+                android:layout_marginStart="4dp" />
         </LinearLayout>
 
-        <!-- Log de Execução em Tempo Real -->
+        <!-- Matriz de Descoberta de Transportes -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="DIAGNÓSTICO E RETORNO EM TEMPO REAL:"
+            android:text="MATRIZ DE COMUNICAÇÃO (12 TRANSPORTES):"
             android:textSize="11sp"
             android:textStyle="bold"
             android:textColor="#64748b"
-            android:layout_marginBottom="6dp" />
+            android:layout_marginBottom="4dp" />
 
         <TextView
-            android:id="@+id/txtExecutionDetails"
+            android:id="@+id/txtDiscoveryMatrixView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#070c1a"
-            android:padding="12dp"
-            android:text="Pronto para envio. Toque em 'FORÇAR APAGAR TODAS AS LUZES' para disparar os 5 canais redundantes."
-            android:textColor="#34d399"
-            android:textSize="12sp"
+            android:background="#030712"
+            android:padding="10dp"
+            android:text="Carregando matriz de transportes..."
+            android:textColor="#38bdf8"
+            android:textSize="11sp"
             android:fontFamily="monospace"
-            android:lineSpacingExtra="3dp" />
+            android:lineSpacingExtra="2dp"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Log de Comunicação em Tempo Real -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="LOG DE BAIXO NÍVEL (SEM SUPRESSÃO DE EXCEÇÕES):"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="#64748b"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/txtLiveLogs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#030712"
+            android:padding="10dp"
+            android:text="Aguardando comandos..."
+            android:textColor="#34d399"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:lineSpacingExtra="2dp" />
 
     </LinearLayout>
 </ScrollView>
