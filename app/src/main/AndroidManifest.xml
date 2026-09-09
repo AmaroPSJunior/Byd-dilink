@@ -4,9 +4,15 @@
     <!-- Permissões de Telemetria e Barramento BYD DiLink -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
     <uses-permission android:name="com.byd.permission.CAR_LIGHT_CONTROL" />
     <uses-permission android:name="com.byd.permission.CAR_DOOR_CONTROL" />
     <uses-permission android:name="com.byd.permission.CAR_WINDOW_CONTROL" />
+    <uses-permission android:name="com.byd.permission.BYD_AUTO_CONTROL" />
+    <uses-permission android:name="android.car.permission.CONTROL_CAR_INTERIOR_LIGHTS" />
+    <uses-permission android:name="android.car.permission.CAR_EXTERIOR_LIGHTS" />
+    <uses-permission android:name="android.car.permission.CAR_CONTROL" />
 
     <application
         android:allowBackup="true"

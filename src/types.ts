@@ -33,6 +33,8 @@ export interface InternalLightState {
   rearReadingLight: boolean;
   footwellLight: boolean;
   ambientLight: boolean;
+  domeLight?: boolean;
+  screenOff?: boolean;
   ambientColor: string;
   brightnessPercentage: number; // 0 - 100
   autoOffOnDrive: boolean;

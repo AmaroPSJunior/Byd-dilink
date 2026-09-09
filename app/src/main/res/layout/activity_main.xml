@@ -1,41 +1,119 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="24dp"
-    android:gravity="center">
+    android:background="#0b1329"
+    android:fillViewport="true">
 
-    <TextView
-        android:id="@+id/txtAppTitle"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/app_name"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:textColor="#000000"
-        android:layout_marginBottom="16dp" />
+        android:orientation="vertical"
+        android:padding="20dp"
+        android:gravity="center_horizontal">
 
-    <TextView
-        android:id="@+id/txtSeatbeltStatus"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Status Cintos: Carregando..."
-        android:textSize="16sp"
-        android:layout_marginBottom="8dp" />
+        <!-- App Header -->
+        <TextView
+            android:id="@+id/txtAppTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="BYD DiLink Controller"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="#00d2ff"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="4dp" />
 
-    <TextView
-        android:id="@+id/txtDoorsStatus"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Status Portas: Carregando..."
-        android:textSize="16sp"
-        android:layout_marginBottom="24dp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Módulo de Corte Elétrico e Telemetria CAN Bus"
+            android:textSize="12sp"
+            android:textColor="#94a3b8"
+            android:layout_marginBottom="18dp" />
 
-    <Button
-        android:id="@+id/btnMasterTurnOffLights"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Apagar Todas as Luzes" />
+        <!-- Status Cintos & Portas -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#151e3f"
+            android:padding="14dp"
+            android:layout_marginBottom="20dp">
 
-</LinearLayout>
+            <TextView
+                android:id="@+id/txtSeatbeltStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Status Cintos: Carregando..."
+                android:textColor="#f8fafc"
+                android:textSize="14sp"
+                android:layout_marginBottom="6dp" />
+
+            <TextView
+                android:id="@+id/txtDoorsStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Status Portas: Carregando..."
+                android:textColor="#f8fafc"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <!-- Botão Principal: FORÇAR APAGAR TODAS AS LUZES -->
+        <Button
+            android:id="@+id/btnMasterTurnOffLights"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:text="⚡ FORÇAR APAGAR TODAS AS LUZES"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:textColor="#ffffff"
+            android:backgroundTint="#dc2626"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Botão Secundário: Ligar Luzes -->
+        <Button
+            android:id="@+id/btnTurnOnLights"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="💡 Ligar Luzes de Cabine"
+            android:textSize="14sp"
+            android:textColor="#ffffff"
+            android:backgroundTint="#1e293b"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Botão Blackout Total -->
+        <Button
+            android:id="@+id/btnTotalBlackout"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="🌙 Blackout Total (Luzes + Apagar Tela)"
+            android:textSize="14sp"
+            android:textColor="#00d2ff"
+            android:backgroundTint="#0f172a"
+            android:layout_marginBottom="20dp" />
+
+        <!-- Log de Execução em Tempo Real -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="DIAGNÓSTICO DE CANAIS DE TRANSMISSÃO:"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="#64748b"
+            android:layout_marginBottom="6dp" />
+
+        <TextView
+            android:id="@+id/txtExecutionDetails"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#070c1a"
+            android:padding="12dp"
+            android:text="Pronto para envio. Toque no botão acima para acionar os 5 canais redundantes."
+            android:textColor="#34d399"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:lineSpacingExtra="3dp" />
+
+    </LinearLayout>
+</ScrollView>

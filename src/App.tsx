@@ -124,22 +124,38 @@ export default function App() {
       rearReadingLight: !turnOffAll,
       footwellLight: !turnOffAll,
       ambientLight: !turnOffAll,
+      domeLight: !turnOffAll,
       brightnessPercentage: turnOffAll ? 0 : 80
     }));
 
     addLog(
-      turnOffAll ? 'APAGAR_TODAS_LUZES_INTERNAS' : 'LIGAR_LUZES_INTERNAS',
+      turnOffAll ? 'FORCAR_APAGAR_TODAS_LUZES_INTERNAS' : 'LIGAR_LUZES_INTERNAS',
       turnOffAll
-        ? 'BYDAutoLightBus.getInstance(context).setReadingLightState(0, 0); BYDAutoLightBus.getInstance(context).setAmbientLightState(0);'
-        : 'BYDAutoLightBus.getInstance(context).setReadingLightState(0, 1); BYDAutoLightBus.getInstance(context).setAmbientLightState(1);',
-      'com.byd.action.LIGHT_CONTROL',
-      { command: turnOffAll ? 'MASTER_OFF' : 'MASTER_ON', target: 'ALL_INTERNAL_LIGHTS' },
+        ? 'BYDAutoLightDevice.getInstance(context).setReadingLight(0, 0); Settings.System.putInt(context.contentResolver, "auto_dome_light", 0); CarPropertyManager.setIntProperty(CABIN_LIGHTS_SWITCH, 0, 1);'
+        : 'BYDAutoLightDevice.getInstance(context).setReadingLight(0, 1); Settings.System.putInt(context.contentResolver, "auto_dome_light", 1); CarPropertyManager.setIntProperty(CABIN_LIGHTS_SWITCH, 0, 0);',
+      turnOffAll ? 'com.byd.action.CONTROL_LIGHTS' : 'com.byd.action.LIGHT_CONTROL',
+      { command: turnOffAll ? 'MASTER_OFF' : 'MASTER_ON', target: 'ALL_INTERNAL_LIGHTS', value: turnOffAll ? 0 : 1 },
       'LIGHT'
     );
   };
 
   const handleUpdateLightSubState = (updates: Partial<InternalLightState>) => {
-    setLightsState((prev) => ({ ...prev, ...updates }));
+    setLightsState((prev) => {
+      const merged = { ...prev, ...updates };
+      // If any light is on, masterState is true, otherwise if all off, masterState is false
+      const anyLightOn = Boolean(
+        merged.driverReadingLight ||
+        merged.passengerReadingLight ||
+        merged.rearReadingLight ||
+        merged.footwellLight ||
+        merged.ambientLight ||
+        merged.domeLight
+      );
+      return {
+        ...merged,
+        masterState: anyLightOn
+      };
+    });
   };
 
   // Seatbelts Handlers
