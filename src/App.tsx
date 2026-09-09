@@ -6,6 +6,7 @@ import { DoorsAndWindowsGrid } from './components/DoorsAndWindowsGrid';
 import { DiLinkSdkInspector } from './components/DiLinkSdkInspector';
 import { AndroidExporterModal } from './components/AndroidExporterModal';
 import { GeminiCarAssistant } from './components/GeminiCarAssistant';
+import { VehicleFeaturesExplorer } from './components/VehicleFeaturesExplorer';
 import {
   AppTab,
   DoorPosition,
@@ -301,6 +302,12 @@ export default function App() {
               setChimeEnabled={setChimeEnabled}
               onLogDiLinkAction={addLog}
             />
+          </div>
+        )}
+
+        {activeTab === 'vehicle_features' && (
+          <div className="animate-fadeIn">
+            <VehicleFeaturesExplorer onLogDiLinkAction={addLog} />
           </div>
         )}
 

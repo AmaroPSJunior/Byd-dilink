@@ -62,4 +62,42 @@ export interface DiLinkLogEntry {
   status: 'SUCCESS' | 'MOCK' | 'HARDWARE_ACK' | 'ERROR';
 }
 
-export type AppTab = 'cockpit' | 'vehicle_doors_windows' | 'dilink_inspector' | 'apk_export' | 'ai_assistant';
+export type FeatureCategory =
+  | 'LIGHTING'
+  | 'SEATBELT'
+  | 'DOORS_LOCKS'
+  | 'WINDOWS_ROOF'
+  | 'CLIMATE_HVAC'
+  | 'BATTERY_EV'
+  | 'DRIVE_MODE'
+  | 'TPMS'
+  | 'MIRRORS_WIPERS'
+  | 'AUDIO_DILINK'
+  | 'SAFETY_DIAG';
+
+export type CompatibilityStatus = 'COMPATIBLE_ENABLED' | 'NATIVE_DILINK_API' | 'OPTIONAL_EQUIPPED' | 'NOT_EQUIPPED';
+
+export type FeatureControlType = 'toggle' | 'range' | 'select' | 'action_button' | 'read_only';
+
+export interface VehicleFeature {
+  id: string;
+  category: FeatureCategory;
+  name: string;
+  description: string;
+  isCompatible: boolean;
+  compatibilityLabel: CompatibilityStatus;
+  isControllable: boolean;
+  currentValue: any;
+  valueUnit?: string;
+  controlType: FeatureControlType;
+  options?: { label: string; value: any }[];
+  rangeMin?: number;
+  rangeMax?: number;
+  rangeStep?: number;
+  sdkMethod: string;
+  intentAction: string;
+  lastTestedAt?: string;
+}
+
+export type AppTab = 'cockpit' | 'vehicle_features' | 'vehicle_doors_windows' | 'dilink_inspector' | 'apk_export' | 'ai_assistant';
+

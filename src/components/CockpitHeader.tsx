@@ -11,7 +11,8 @@ import {
   Wifi,
   Cpu,
   Lock,
-  Compass
+  Compass,
+  Layers
 } from 'lucide-react';
 import { AppTab, VehicleTelemetry } from '../types';
 
@@ -102,6 +103,19 @@ export const CockpitHeader: React.FC<CockpitHeaderProps> = ({
           </button>
 
           <button
+            id="tab-vehicle-features"
+            onClick={() => setActiveTab('vehicle_features')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+              activeTab === 'vehicle_features'
+                ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md shadow-cyan-900/40 border border-cyan-400/40'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+          >
+            <Layers className="w-4 h-4 text-amber-400" />
+            <span>Catálogo de Recursos</span>
+          </button>
+
+          <button
             id="tab-doors-windows"
             onClick={() => setActiveTab('vehicle_doors_windows')}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
@@ -158,3 +172,4 @@ export const CockpitHeader: React.FC<CockpitHeaderProps> = ({
     </header>
   );
 };
+
