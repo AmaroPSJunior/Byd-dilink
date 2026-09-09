@@ -1,0 +1,6 @@
+{
+  "name": "BYD DiLink Car Control",
+  "description": "Controlador de recursos automotivos BYD DiLink: apagar luzes internas, monitorar cintos de segurança, portas e vidros.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
