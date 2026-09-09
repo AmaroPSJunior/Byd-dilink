@@ -23,6 +23,9 @@ class BYDCarStateReceiver : BroadcastReceiver() {
                     val isOpen = intent.getBooleanExtra("is_open", false)
                     Log.i("BYDCarReceiver", "Porta $doorId alterada: isOpen=$isOpen")
                 }
+                else -> {
+                    Log.d("BYDCarReceiver", "Outra ação recebida: $action")
+                }
             }
         }
     }
