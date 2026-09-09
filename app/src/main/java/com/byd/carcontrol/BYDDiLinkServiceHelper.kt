@@ -2,28 +2,43 @@ package com.byd.carcontrol
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import java.lang.reflect.Method
 
 /**
  * Helper avançado em Kotlin para integração com todos os serviços do ecossistema BYD DiLink.
- * Implementa 5 canais redundantes de acionamento para garantir compatibilidade com
- * qualquer versão de firmware (DiLink 3.0, 4.0, 5.0, Android Automotive / Dolphin, Song, Seal, Yuan).
+ * Otimizado especificamente para BYD Dolphin, Dolphin Plus, Song Plus, Seal, Yuan Plus e Han.
+ * Implementa 5 canais redundantes de acionamento com transmissão explícita para os pacotes do sistema DiLink.
  */
 class BYDDiLinkServiceHelper(private val context: Context) {
 
     companion object {
         private const val TAG = "BYDDiLinkHelper"
 
-        // Lista de classes candidatas para controle de luzes em firmwares BYD
+        // Lista estendida de classes candidatas de iluminação no DiLink OS (Android 10/12)
         private val LIGHT_SERVICE_CLASSES = listOf(
-            "android.hardware.bydauto.light.BYDAutoLightDevice",
             "com.byd.auto.light.BYDAutoLightDevice",
+            "android.hardware.bydauto.light.BYDAutoLightDevice",
+            "com.byd.auto.BYDAutoLightDevice",
             "com.byd.service.BYDAutoLightBus",
-            "android.hardware.bydauto.BYDAuto",
+            "com.byd.auto.BYDAutoLightManager",
             "com.byd.auto.BYDAutoDeviceManager",
-            "com.byd.auto.light.BYDLight"
+            "com.byd.auto.light.BYDLight",
+            "com.byd.auto.light.BYDLightManager"
+        )
+
+        // Pacotes do sistema BYD que contêm BroadcastReceivers para controle veicular
+        private val BYD_TARGET_PACKAGES = listOf(
+            "com.byd.auto",
+            "com.byd.carsettings",
+            "com.byd.autorun.service",
+            "com.byd.service",
+            "com.byd.autoui",
+            "com.byd.systemui",
+            "com.byd.car.settings"
         )
     }
 
@@ -51,15 +66,24 @@ class BYDDiLinkServiceHelper(private val context: Context) {
             }
         }
 
-        bydDoorBusInstance = getServiceInstance("android.hardware.bydauto.door.BYDAutoDoorDevice")
+        bydDoorBusInstance = getServiceInstance("com.byd.auto.door.BYDAutoDoorDevice")
+            ?: getServiceInstance("android.hardware.bydauto.door.BYDAutoDoorDevice")
             ?: getServiceInstance("com.byd.service.BYDAutoDoorBus")
-        bydWindowBusInstance = getServiceInstance("android.hardware.bydauto.window.BYDAutoWindowDevice")
+
+        bydWindowBusInstance = getServiceInstance("com.byd.auto.window.BYDAutoWindowDevice")
+            ?: getServiceInstance("android.hardware.bydauto.window.BYDAutoWindowDevice")
             ?: getServiceInstance("com.byd.service.BYDAutoWindowBus")
-        bydHvacBusInstance = getServiceInstance("android.hardware.bydauto.aircondition.BYDAutoAirConditionDevice")
+
+        bydHvacBusInstance = getServiceInstance("com.byd.auto.aircondition.BYDAutoAirConditionDevice")
+            ?: getServiceInstance("android.hardware.bydauto.aircondition.BYDAutoAirConditionDevice")
             ?: getServiceInstance("com.byd.service.BYDAutoHVACBus")
-        bydBatteryBusInstance = getServiceInstance("android.hardware.bydauto.power.BYDAutoPowerDevice")
+
+        bydBatteryBusInstance = getServiceInstance("com.byd.auto.power.BYDAutoPowerDevice")
+            ?: getServiceInstance("android.hardware.bydauto.power.BYDAutoPowerDevice")
             ?: getServiceInstance("com.byd.service.BYDAutoBatteryBus")
-        bydScreenBusInstance = getServiceInstance("android.hardware.bydauto.screen.BYDAutoScreenDevice")
+
+        bydScreenBusInstance = getServiceInstance("com.byd.auto.screen.BYDAutoScreenDevice")
+            ?: getServiceInstance("android.hardware.bydauto.screen.BYDAutoScreenDevice")
             ?: getServiceInstance("com.byd.service.BYDAutoScreenBus")
     }
 
@@ -85,6 +109,28 @@ class BYDDiLinkServiceHelper(private val context: Context) {
         }
     }
 
+    /**
+     * Verifica se o aplicativo possui permissão para modificar as configurações do sistema.
+     */
+    fun hasWriteSettingsPermission(): Boolean {
+        return Settings.System.canWrite(context)
+    }
+
+    /**
+     * Abre a tela de configurações para o usuário conceder permissão WRITE_SETTINGS.
+     */
+    fun requestWriteSettingsPermission() {
+        try {
+            val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
+                data = Uri.parse("package:${context.packageName}")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Erro ao abrir configurações WRITE_SETTINGS: ${e.message}")
+        }
+    }
+
     data class LightControlResult(
         val success: Boolean,
         val message: String,
@@ -92,35 +138,61 @@ class BYDDiLinkServiceHelper(private val context: Context) {
     )
 
     /**
+     * Dispara um Intent tanto de forma implícita quanto explicitamente para todos os pacotes BYD.
+     */
+    private fun sendTargetedBYDBroadcasts(baseIntent: Intent): Int {
+        var count = 0
+        // Broadcast implícito geral
+        try {
+            context.sendBroadcast(baseIntent)
+            count++
+        } catch (_: Exception) {}
+
+        // Broadcasts explícitos para pacotes BYD do DiLink
+        for (pkg in BYD_TARGET_PACKAGES) {
+            try {
+                val targetedIntent = Intent(baseIntent).apply {
+                    setPackage(pkg)
+                }
+                context.sendBroadcast(targetedIntent)
+                count++
+            } catch (_: Exception) {}
+        }
+        return count
+    }
+
+    /**
      * Força o desligamento incondicional de todas as luzes internas da cabine
-     * utilizando 5 canais redundantes (HAL, Settings, Broadcasts, CarProperty, Shell).
+     * utilizando 5 canais redundantes (HAL, Settings, Broadcasts Explícitos, CarProperty, Shell).
      */
     fun turnOffAllInteriorLights(): LightControlResult {
         val channels = mutableListOf<String>()
         var halExecuted = false
 
-        // CANAL 1: Invocação direta via HAL nativo BYD
+        // CANAL 1: Invocação direta via HAL nativo BYD (com varredura de métodos)
         bydLightBusInstance?.let { instance ->
-            val methodsToTry = listOf(
-                Pair("setReadingLight", arrayOf(0, 0)),
-                Pair("setReadingLightState", arrayOf(0, 0)),
-                Pair("setReadingLightSwitch", arrayOf(0)),
-                Pair("setAmbientLightSwitch", arrayOf(0)),
-                Pair("setAmbientLightState", arrayOf(0)),
-                Pair("setTopLightState", arrayOf(0)),
-                Pair("setCeilingLightState", arrayOf(0)),
-                Pair("setFootwellLight", arrayOf(0)),
-                Pair("setDomeLightState", arrayOf(0))
-            )
+            val zones = listOf(0, 1, 2, 3) // 0=All, 1=Driver, 2=Passenger, 3=Rear
+            for (zone in zones) {
+                val methodsToTry = listOf(
+                    Pair("setReadingLight", arrayOf(zone, 0)),
+                    Pair("setReadingLightState", arrayOf(zone, 0)),
+                    Pair("setReadingLightSwitch", arrayOf(zone, 0)),
+                    Pair("setAmbientLightSwitch", arrayOf(0)),
+                    Pair("setAmbientLightState", arrayOf(0)),
+                    Pair("setTopLightState", arrayOf(0)),
+                    Pair("setCeilingLightState", arrayOf(0)),
+                    Pair("setFootwellLight", arrayOf(0)),
+                    Pair("setDomeLightState", arrayOf(0)),
+                    Pair("setInteriorLight", arrayOf(0))
+                )
 
-            for ((methodName, args) in methodsToTry) {
-                try {
-                    val paramTypes = args.map { it.javaClass.getField("TYPE").get(null) as Class<*> }.toTypedArray()
-                    val method: Method = instance.javaClass.getMethod(methodName, *paramTypes)
-                    method.invoke(instance, *args)
-                    halExecuted = true
-                } catch (e: Exception) {
-                    // Método não presente nessa revisão de firmware
+                for ((methodName, args) in methodsToTry) {
+                    try {
+                        val paramTypes = args.map { it.javaClass.getField("TYPE").get(null) as Class<*> }.toTypedArray()
+                        val method: Method = instance.javaClass.getMethod(methodName, *paramTypes)
+                        method.invoke(instance, *args)
+                        halExecuted = true
+                    } catch (_: Exception) {}
                 }
             }
             if (halExecuted) {
@@ -130,31 +202,35 @@ class BYDDiLinkServiceHelper(private val context: Context) {
 
         // CANAL 2: Provedor de Configurações Android (Settings.System) do DiLink
         try {
-            val cr = context.contentResolver
-            val keys = listOf(
-                "auto_dome_light",
-                "byd_auto_dome_light",
-                "byd_dome_light",
-                "byd_reading_light",
-                "byd_reading_light_fl",
-                "byd_reading_light_fr",
-                "byd_reading_light_rear",
-                "byd_ambient_light",
-                "byd_ambient_light_switch",
-                "byd_atmosphere_light_switch",
-                "byd_atmosphere_light_brightness"
-            )
-            for (key in keys) {
-                try {
-                    Settings.System.putInt(cr, key, 0)
-                } catch (_: Exception) {}
+            if (hasWriteSettingsPermission()) {
+                val cr = context.contentResolver
+                val keys = listOf(
+                    "auto_dome_light",
+                    "byd_auto_dome_light",
+                    "byd_dome_light",
+                    "byd_reading_light",
+                    "byd_reading_light_fl",
+                    "byd_reading_light_fr",
+                    "byd_reading_light_rear",
+                    "byd_ambient_light",
+                    "byd_ambient_light_switch",
+                    "byd_atmosphere_light_switch",
+                    "byd_atmosphere_light_brightness"
+                )
+                for (key in keys) {
+                    try {
+                        Settings.System.putInt(cr, key, 0)
+                    } catch (_: Exception) {}
+                }
+                channels.add("Settings.System (Auto Dome / Ambient = 0)")
+            } else {
+                channels.add("Settings.System (Aguardando permissão WRITE_SETTINGS)")
             }
-            channels.add("Settings.System (Auto Dome / Ambient = 0)")
         } catch (e: Exception) {
             Log.w(TAG, "Acesso a Settings.System restrito: ${e.message}")
         }
 
-        // CANAL 3: Disparo de Multi-Intents DiLink
+        // CANAL 3: Disparo de Multi-Intents Explícitos para Pacotes BYD
         val intentsToSend = listOf(
             Intent("com.byd.action.CONTROL_LIGHTS").apply {
                 putExtra("light_type", "ALL_INTERIOR")
@@ -180,12 +256,11 @@ class BYDDiLinkServiceHelper(private val context: Context) {
             }
         )
 
+        var totalBroadcastsFired = 0
         for (intent in intentsToSend) {
-            try {
-                context.sendBroadcast(intent)
-            } catch (_: Exception) {}
+            totalBroadcastsFired += sendTargetedBYDBroadcasts(intent)
         }
-        channels.add("Broadcasts DiLink (6 Intents)")
+        channels.add("Broadcasts Explícitos BYD ($totalBroadcastsFired disparados)")
 
         // CANAL 4: Android Automotive CarPropertyManager (se presente na ROM)
         try {
@@ -195,15 +270,18 @@ class BYDDiLinkServiceHelper(private val context: Context) {
             val getCarManagerMethod = carClass.getMethod("getCarManager", String::class.java)
             val propertyManager = getCarManagerMethod.invoke(carObj, "property")
 
-            // CABIN_LIGHTS_SWITCH = 289410818 (0x11400F02)
             val setPropertyMethod = propertyManager.javaClass.getMethod(
                 "setIntProperty",
                 Int::class.javaPrimitiveType,
                 Int::class.javaPrimitiveType,
                 Int::class.javaPrimitiveType
             )
-            setPropertyMethod.invoke(propertyManager, 289410818, 0, 1)
-            channels.add("Android Automotive CarPropertyManager")
+
+            // CABIN_LIGHTS_SWITCH = 289410818 (0x11400F02) -> 0 = OFF
+            // READING_LIGHTS_SWITCH = 289410820 (0x11400F04) -> 0 = OFF
+            setPropertyMethod.invoke(propertyManager, 289410818, 0, 0)
+            setPropertyMethod.invoke(propertyManager, 289410820, 0, 0)
+            channels.add("Android Automotive CarPropertyManager (CABIN & READING = 0)")
         } catch (_: Exception) {
             // Não é uma ROM pura AAOS
         }
@@ -211,10 +289,10 @@ class BYDDiLinkServiceHelper(private val context: Context) {
         // CANAL 5: Shell Fallback
         try {
             Runtime.getRuntime().exec(arrayOf("sh", "-c", "settings put system auto_dome_light 0; settings put system byd_dome_light 0"))
-            channels.add("Shell System Command")
+            channels.add("Shell Command (settings put auto_dome_light 0)")
         } catch (_: Exception) {}
 
-        val summary = "Corte de iluminação executado através de ${channels.size} canais: " + channels.joinToString(", ")
+        val summary = "Corte de iluminação executado em ${channels.size} canais no Dolphin Plus: " + channels.joinToString(", ")
         Log.i(TAG, summary)
 
         return LightControlResult(
@@ -238,19 +316,21 @@ class BYDDiLinkServiceHelper(private val context: Context) {
             } catch (_: Exception) {}
         }
 
-        try {
-            Settings.System.putInt(context.contentResolver, "auto_dome_light", 1)
-            Settings.System.putInt(context.contentResolver, "byd_ambient_light_switch", 1)
-            channels.add("Settings.System")
-        } catch (_: Exception) {}
+        if (hasWriteSettingsPermission()) {
+            try {
+                Settings.System.putInt(context.contentResolver, "auto_dome_light", 1)
+                Settings.System.putInt(context.contentResolver, "byd_ambient_light_switch", 1)
+                channels.add("Settings.System")
+            } catch (_: Exception) {}
+        }
 
         val intent = Intent("com.byd.action.LIGHT_CONTROL").apply {
             putExtra("target", "ALL_INTERNAL_LIGHTS")
             putExtra("command", "MASTER_ON")
             putExtra("value", 1)
         }
-        context.sendBroadcast(intent)
-        channels.add("Broadcast DiLink")
+        sendTargetedBYDBroadcasts(intent)
+        channels.add("Broadcast Explícito BYD")
 
         return LightControlResult(
             success = true,
@@ -265,31 +345,58 @@ class BYDDiLinkServiceHelper(private val context: Context) {
     fun activateTotalBlackout(): LightControlResult {
         val lightResult = turnOffAllInteriorLights()
         try {
-            context.sendBroadcast(Intent("com.byd.action.SCREEN_OFF"))
-            context.sendBroadcast(Intent("com.byd.action.NIGHT_MODE"))
+            sendTargetedBYDBroadcasts(Intent("com.byd.action.SCREEN_OFF"))
+            sendTargetedBYDBroadcasts(Intent("com.byd.action.NIGHT_MODE"))
         } catch (_: Exception) {}
         return LightControlResult(
             success = true,
             message = "Blackout total ativado (Luzes + Tela DiLink apagadas)",
-            channelsTriggered = lightResult.channelsTriggered + listOf("Screen Off Intent")
+            channelsTriggered = lightResult.channelsTriggered + listOf("Screen Off Intent Target")
         )
     }
 
     /**
-     * Varredura geral de compatibilidade de hardware do veículo.
+     * Executa varredura profunda de diagnóstico no hardware e serviços do Dolphin Plus.
      */
-    fun runFullDiLinkCapabilitiesScan(): List<Pair<String, Boolean>> {
-        val results = mutableListOf<Pair<String, Boolean>>()
-        results.add("BYDAutoLightDevice (Plafonier & Ambiance LED)" to (bydLightBusInstance != null))
-        results.add("BYDAutoDoorDevice (Portas & Trava Elétrica)" to (bydDoorBusInstance != null))
-        results.add("BYDAutoWindowDevice (Vidros & Teto Solar)" to (bydWindowBusInstance != null))
-        results.add("BYDAutoAirConditionDevice (Ar-Condicionado & Clima)" to (bydHvacBusInstance != null))
-        results.add("BYDAutoPowerDevice (Bateria Blade HV & SoC)" to (bydBatteryBusInstance != null))
-        results.add("BYDAutoScreenDevice (Giro de Tela 90°)" to (bydScreenBusInstance != null))
-        results.add("Sinal CAN Bus Cintos de Segurança" to true)
-        results.add("Sinal CAN Bus Pressão de Pneus TPMS" to true)
-        results.add("Sinal CAN Bus Modos de Condução (ECO/SPORT)" to true)
-        return results
+    fun runFullDiLinkDiagnostics(): String {
+        val sb = StringBuilder()
+        sb.append("=== DIAGNÓSTICO DILINK DOLPHIN PLUS ===\n")
+        sb.append("Modelo Dispositivo: ${Build.MANUFACTURER} ${Build.MODEL} (${Build.PRODUCT})\n")
+        sb.append("Versão Android: ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})\n")
+        sb.append("Permissão WRITE_SETTINGS: ${if (hasWriteSettingsPermission()) "CONCEDIDA ✅" else "PENDENTE ⚠️"}\n\n")
+
+        sb.append("--- MÓDULOS DE HARDWARE VINCULADOS (HAL) ---\n")
+        sb.append("Luzes (LightDevice): ${detectedLightClassName ?: "Não detectado (Usando Broadcast/Settings)"}\n")
+        sb.append("Portas (DoorDevice): ${if (bydDoorBusInstance != null) "Conectado ✅" else "Fallback"}\n")
+        sb.append("Vidros (WindowDevice): ${if (bydWindowBusInstance != null) "Conectado ✅" else "Fallback"}\n")
+        sb.append("Ar-Condicionado (HVAC): ${if (bydHvacBusInstance != null) "Conectado ✅" else "Fallback"}\n")
+        sb.append("Bateria Blade (Power): ${if (bydBatteryBusInstance != null) "Conectado ✅" else "Fallback"}\n")
+        sb.append("Giro de Tela (Screen): ${if (bydScreenBusInstance != null) "Conectado ✅" else "Fallback"}\n\n")
+
+        sb.append("--- BINDER SERVICES REGISTRADOS ---\n")
+        val binderNames = listOf("bydauto_light", "byd_light", "bydauto_door", "bydauto_window", "bydauto_ac", "bydauto_car")
+        try {
+            val getServiceMethod = Class.forName("android.os.ServiceManager").getMethod("getService", String::class.java)
+            for (name in binderNames) {
+                val service = getServiceMethod.invoke(null, name)
+                sb.append("Service '$name': ${if (service != null) "ATIVO ✅" else "Indisponível"}\n")
+            }
+        } catch (e: Exception) {
+            sb.append("Falha na varredura ServiceManager: ${e.message}\n")
+        }
+
+        sb.append("\n--- VALORES ATUAIS EM SETTINGS.SYSTEM ---\n")
+        val keys = listOf("auto_dome_light", "byd_dome_light", "byd_reading_light", "byd_ambient_light_switch")
+        for (key in keys) {
+            try {
+                val valInt = Settings.System.getInt(context.contentResolver, key, -1)
+                sb.append("$key = $valInt\n")
+            } catch (_: Exception) {
+                sb.append("$key = N/A\n")
+            }
+        }
+
+        return sb.toString()
     }
 
     fun setDriverTemperature(tempCelsius: Float) {
@@ -304,7 +411,7 @@ class BYDDiLinkServiceHelper(private val context: Context) {
         val intent = Intent("com.byd.action.HVAC_TEMP_CHANGE").apply {
             putExtra("target_temp", tempCelsius)
         }
-        context.sendBroadcast(intent)
+        sendTargetedBYDBroadcasts(intent)
     }
 
     fun rotateScreen(orientation: Int) { // 0 = Horizontal, 1 = Vertical
@@ -319,7 +426,7 @@ class BYDDiLinkServiceHelper(private val context: Context) {
         val intent = Intent("com.byd.action.SCREEN_ROTATE_CONTROL").apply {
             putExtra("orientation", orientation)
         }
-        context.sendBroadcast(intent)
+        sendTargetedBYDBroadcasts(intent)
     }
 
     data class SeatbeltStatus(
