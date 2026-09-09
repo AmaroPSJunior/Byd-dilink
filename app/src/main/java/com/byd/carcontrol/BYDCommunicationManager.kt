@@ -4,6 +4,10 @@ import android.content.Context
 import android.os.Build
 import android.os.SystemClock
 import android.util.Log
+import com.byd.carcontrol.discovery.ExperimentModeManager
+import com.byd.carcontrol.discovery.FullDiscoveryEngine
+import com.byd.carcontrol.discovery.LogcatInspector
+import com.byd.carcontrol.repository.DiscoveryRepository
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -25,6 +29,11 @@ class BYDCommunicationManager(private val context: Context) {
             }
         }
     }
+
+    val repository = DiscoveryRepository(context)
+    val fullEngine = FullDiscoveryEngine(context, repository)
+    val experimentManager = ExperimentModeManager(context, repository)
+    val logcatInspector = LogcatInspector(context)
 
     // Lista de transportes desacoplados
     val transports: List<IBYDTransport> = listOf(
@@ -67,6 +76,12 @@ class BYDCommunicationManager(private val context: Context) {
      */
     fun runFullDiscovery(): Map<TransportType, TransportProbeResult> {
         discoveryMatrix.clear()
+        try {
+            fullEngine.runFullDiscovery()
+        } catch (e: Exception) {
+            Log.e(TAG, "Erro durante fullEngine discovery", e)
+        }
+
         for (t in transports) {
             try {
                 val probeResult = t.probe()

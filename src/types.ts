@@ -114,6 +114,18 @@ export type TransportState =
   | 'EXECUTED_NO_CONFIRMATION'
   | 'CONFIRMED';
 
+export type DiscoveryStatusType =
+  | 'DISCOVERED'
+  | 'TESTED'
+  | 'VALIDATED'
+  | 'FAILED'
+  | 'DENIED'
+  | 'NOT_AVAILABLE'
+  | 'UNSUPPORTED'
+  | 'UNKNOWN';
+
+export type ApiSafetyType = 'READ_ONLY' | 'CONTROL' | 'UNKNOWN';
+
 export interface TransportDiscoveryItem {
   id: string;
   name: string;
