@@ -158,7 +158,7 @@ class CloudManagerTransport(private val context: Context) : IBYDTransport {
 class NativeLibraryTransport(private val context: Context) : IBYDTransport {
     override val type = TransportType.NATIVE_JNI
     override val name = "Native Library / JNI Transport"
-    override val description = "Mapeamento das bibliotecas C/C++ nativas do DiLink (auto.default.so, libbyd_*.so)"
+    override val description = "Mapeamento das bibliotecas C/C++ nativas do DiLink (auto.default.so, libbyd_auto.so)"
 
     override fun probe(): TransportProbeResult {
         val startTime = SystemClock.elapsedRealtime()
@@ -193,7 +193,7 @@ class NativeLibraryTransport(private val context: Context) : IBYDTransport {
 class SocketTransport(private val context: Context) : IBYDTransport {
     override val type = TransportType.LOCAL_SOCKET
     override val name = "Local Socket Transport"
-    override val description = "Comunicação via Unix Domain Sockets em /dev/socket/byd_*"
+    override val description = "Comunicação via Unix Domain Sockets no diretório dev/socket"
 
     override fun probe(): TransportProbeResult {
         val startTime = SystemClock.elapsedRealtime()
@@ -220,12 +220,12 @@ class SocketTransport(private val context: Context) : IBYDTransport {
 }
 
 /**
- * 13. Direct Device Transport (/dev/*)
+ * 13. Direct Device Transport
  */
 class DirectDeviceTransport(private val context: Context) : IBYDTransport {
     override val type = TransportType.DIRECT_DEVICE
     override val name = "Direct Device Transport"
-    override val description = "Nós de dispositivo físico do kernel (/dev/spidev*, /dev/can*, /dev/mcu*)"
+    override val description = "Nós de dispositivo físico do kernel no diretório dev"
 
     override fun probe(): TransportProbeResult {
         val startTime = SystemClock.elapsedRealtime()
@@ -255,7 +255,7 @@ class DirectDeviceTransport(private val context: Context) : IBYDTransport {
 class ContentProviderTransport(private val context: Context) : IBYDTransport {
     override val type = TransportType.CONTENT_PROVIDER
     override val name = "Content Provider Transport"
-    override val description = "Consultas e leitura de dados veiculares via URIs content://com.byd.*"
+    override val description = "Consultas e leitura de dados veiculares via URIs content"
 
     override fun probe(): TransportProbeResult {
         val startTime = SystemClock.elapsedRealtime()
