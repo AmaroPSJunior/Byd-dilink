@@ -14,7 +14,7 @@ export const ANDROID_MANIFEST_XML = `<?xml version="1.0" encoding="utf-8"?>
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="BYD Controller"
+        android:label="BYD Controller Kotlin"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.NoActionBar">
@@ -32,12 +32,13 @@ export const ANDROID_MANIFEST_XML = `<?xml version="1.0" encoding="utf-8"?>
             </intent-filter>
         </activity>
 
-        <!-- Receiver to capture BYD DiLink CAN Bus Broadcasts -->
+        <!-- Receiver em Kotlin para capturar eventos de CAN Bus e Intenções DiLink -->
         <receiver android:name=".BYDCarStateReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="com.byd.action.SEATBELT_STATE_CHANGED" />
                 <action android:name="com.byd.action.DOOR_STATE_CHANGED" />
                 <action android:name="com.byd.action.LIGHT_STATE_CHANGED" />
+                <action android:name="com.byd.action.WINDOW_STATE_CHANGED" />
             </intent-filter>
         </receiver>
     </application>
@@ -65,6 +66,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bydHelper: BYDDiLinkServiceHelper
     private lateinit var btnMasterTurnOffLights: Button
     private lateinit var txtSeatbeltStatus: TextView
+    private lateinit var txtDoorsStatus: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,6 +77,7 @@ class MainActivity : AppCompatActivity() {
 
         btnMasterTurnOffLights = findViewById(R.id.btnMasterTurnOffLights)
         txtSeatbeltStatus = findViewById(R.id.txtSeatbeltStatus)
+        txtDoorsStatus = findViewById(R.id.txtDoorsStatus)
 
         // Botão Central: Apagar todas as luzes internas do carro
         btnMasterTurnOffLights.setOnClickListener {
@@ -90,6 +93,13 @@ class MainActivity : AppCompatActivity() {
         bydHelper.observeSeatbeltStatus { status ->
             runOnUiThread {
                 txtSeatbeltStatus.text = "Status Cintos: \${status.getDescription()}"
+            }
+        }
+
+        // Observa status das portas
+        bydHelper.observeDoorStatus { status ->
+            runOnUiThread {
+                txtDoorsStatus.text = "Status Portas: \${status.getDescription()}"
             }
         }
     }
@@ -118,23 +128,32 @@ class BYDDiLinkServiceHelper(private val context: Context) {
     }
 
     private var bydLightBusInstance: Any? = null
+    private var bydDoorBusInstance: Any? = null
 
     init {
-        initBYDLightBusReflection()
+        initBYDServicesReflection()
     }
 
     /**
-     * Inicializa com.byd.service.BYDAutoLightBus via Reflection em Kotlin.
-     * Permite compilar sem necessitar dos arquivos .jar proprietários no Gradle.
+     * Inicializa serviços nativos do BYD OS via Reflection em Kotlin.
      */
-    private fun initBYDLightBusReflection() {
+    private fun initBYDServicesReflection() {
         try {
-            val clazz = Class.forName("com.byd.service.BYDAutoLightBus")
-            val getInstance: Method = clazz.getMethod("getInstance", Context::class.java)
-            bydLightBusInstance = getInstance.invoke(null, context)
-            Log.d(TAG, "Conectado com sucesso ao serviço nativo BYDAutoLightBus!")
+            val lightClazz = Class.forName("com.byd.service.BYDAutoLightBus")
+            val getLightInstance: Method = lightClazz.getMethod("getInstance", Context::class.java)
+            bydLightBusInstance = getLightInstance.invoke(null, context)
+            Log.d(TAG, "Conectado ao serviço BYDAutoLightBus!")
         } catch (e: Exception) {
-            Log.w(TAG, "SDK Nativo BYD não encontrado nesta plataforma. Usando Fallback de Broadcast Intent.")
+            Log.w(TAG, "SDK Nativo de Luzes não encontrado. Usando Broadcast Intent Fallback.")
+        }
+
+        try {
+            val doorClazz = Class.forName("com.byd.service.BYDAutoDoorBus")
+            val getDoorInstance: Method = doorClazz.getMethod("getInstance", Context::class.java)
+            bydDoorBusInstance = getDoorInstance.invoke(null, context)
+            Log.d(TAG, "Conectado ao serviço BYDAutoDoorBus!")
+        } catch (e: Exception) {
+            Log.w(TAG, "SDK Nativo de Portas não encontrado. Usando Broadcast Intent Fallback.")
         }
     }
 
@@ -145,18 +164,18 @@ class BYDDiLinkServiceHelper(private val context: Context) {
         var nativeSuccess = false
         bydLightBusInstance?.let { instance ->
             try {
-                // Invoca setReadingLightState(int lightArea, int state) -> Area 0 = ALL, State 0 = OFF
+                // setReadingLightState(int lightArea, int state) -> Area 0 = ALL, State 0 = OFF
                 val setLight = instance.javaClass.getMethod("setReadingLightState", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
                 setLight.invoke(instance, 0, 0)
 
-                // Invoca setAmbientLightState(int state) -> 0 = OFF
+                // setAmbientLightState(int state) -> 0 = OFF
                 val setAmbient = instance.javaClass.getMethod("setAmbientLightState", Int::class.javaPrimitiveType)
                 setAmbient.invoke(instance, 0)
 
                 nativeSuccess = true
-                Log.i(TAG, "API Nativa de Luzes BYD executada via Kotlin com sucesso!")
+                Log.i(TAG, "API Nativa de Luzes BYD executada via Kotlin!")
             } catch (e: Exception) {
-                Log.e(TAG, "Erro ao invocar API de luzes via Reflection", e)
+                Log.e(TAG, "Erro ao invocar API de luzes", e)
             }
         }
 
@@ -184,12 +203,59 @@ class BYDDiLinkServiceHelper(private val context: Context) {
         }
     }
 
+    data class DoorStatus(
+        val driverOpen: Boolean = false,
+        val passengerOpen: Boolean = false,
+        val rearLeftOpen: Boolean = false,
+        val rearRightOpen: Boolean = false,
+        val trunkOpen: Boolean = false
+    ) {
+        fun getDescription(): String {
+            val openCount = listOf(driverOpen, passengerOpen, rearLeftOpen, rearRightOpen, trunkOpen).count { it }
+            return if (openCount == 0) "Todas as portas fechadas" else "$openCount porta(s) aberta(s)!"
+        }
+    }
+
     fun observeSeatbeltStatus(callback: (SeatbeltStatus) -> Unit) {
-        // Observer de telemetria CAN Bus / Receiver
+        callback(SeatbeltStatus())
+    }
+
+    fun observeDoorStatus(callback: (DoorStatus) -> Unit) {
+        callback(DoorStatus())
     }
 
     fun unregisterReceivers() {
-        // Cleanup de receivers registrado
+        // Cleanup
+    }
+}`;
+
+export const CAR_STATE_RECEIVER_KOTLIN = `package com.byd.carcontrol
+
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.util.Log
+
+/**
+ * Kotlin BroadcastReceiver para capturar eventos em tempo real do CAN Bus BYD
+ */
+class BYDCarStateReceiver : BroadcastReceiver() {
+
+    override fun onReceive(context: Context?, intent: Intent?) {
+        intent?.action?.let { action ->
+            Log.d("BYDCarReceiver", "Evento de veículo recebido: $action")
+            when (action) {
+                "com.byd.action.SEATBELT_STATE_CHANGED" -> {
+                    val driverState = intent.getBooleanExtra("driver_buckled", true)
+                    Log.i("BYDCarReceiver", "Status Cinto Motorista: $driverState")
+                }
+                "com.byd.action.DOOR_STATE_CHANGED" -> {
+                    val doorId = intent.getIntExtra("door_id", 0)
+                    val isOpen = intent.getBooleanExtra("is_open", false)
+                    Log.i("BYDCarReceiver", "Porta $doorId alterada: isOpen=$isOpen")
+                }
+            }
+        }
     }
 }`;
 
@@ -265,11 +331,20 @@ zipStoreBase=GRADLE_USER_HOME
 zipStorePath=wrapper/dists
 `;
 
+export const GRADLEW_SHELL_SCRIPT = `#!/usr/bin/env sh
+##############################################################################
+##
+##  Gradle start up script for UN*X
+##
+##############################################################################
+exec gradle "$@"
+`;
+
 export const GITHUB_ACTIONS_WORKFLOW = `name: Build BYD Car Control APK (Kotlin Native)
 
 on:
   push:
-    branches: [ "main", "master" ]
+  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -288,16 +363,25 @@ jobs:
         distribution: 'temurin'
         cache: 'gradle'
 
-    - name: Grant Execute Permission for Gradlew
-      run: chmod +x gradlew
+    - name: Install & Configure Gradle Wrapper
+      run: |
+        chmod +x gradlew || true
+        sudo apt-get update && sudo apt-get install -y gradle || true
 
-    - name: Build Kotlin Debug APK with Gradle
-      run: ./gradlew assembleDebug --no-daemon
+    - name: Build Kotlin Debug APK
+      run: |
+        if [ -f "./gradlew" ]; then
+          ./gradlew assembleDebug --no-daemon
+        else
+          gradle assembleDebug --no-daemon
+        fi
 
-    - name: Upload APK to Artifacts
+    - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: BYD-Controller-Kotlin-Debug.apk
-        path: app/build/outputs/apk/debug/app-debug.apk
+        path: |
+          app/build/outputs/apk/debug/app-debug.apk
+          app/build/outputs/apk/debug/*.apk
         retention-days: 30
 `;

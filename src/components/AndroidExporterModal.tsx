@@ -226,6 +226,45 @@ export const AndroidExporterModal: React.FC = () => {
               </button>
             </div>
           </div>
+
+          {/* TROUBLESHOOTING GITHUB ACTIONS CARD */}
+          <div className="bg-gradient-to-r from-amber-950/40 via-slate-900 to-purple-950/40 p-6 rounded-3xl border border-amber-500/30 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="font-bold text-sm text-amber-200 font-mono">
+                  ⚠️ Nada apareceu na aba Actions do GitHub? Veja como resolver:
+                </h4>
+                <p className="text-xs text-slate-300 font-mono mt-0.5">
+                  Siga estas 4 verificações rápidas para ativar a geração automática do seu APK:
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 text-xs text-slate-300 font-mono space-y-1">
+                <span className="text-amber-400 font-bold">1. Ponto inicial na pasta:</span>
+                <p className="text-slate-400">O arquivo deve ficar estritamente em <code className="text-purple-300 bg-slate-950 px-1 py-0.5 rounded">.github/workflows/build-apk.yml</code> (não esqueça o <b>ponto</b> em <code className="text-slate-300">.github</code>!).</p>
+              </div>
+
+              <div className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 text-xs text-slate-300 font-mono space-y-1">
+                <span className="text-amber-400 font-bold">2. Habilitar Actions no GitHub:</span>
+                <p className="text-slate-400">Na aba <b>Actions</b> do GitHub, se houver o botão verde <b>"I understand my workflows, go ahead and enable them"</b>, clique nele!</p>
+              </div>
+
+              <div className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 text-xs text-slate-300 font-mono space-y-1">
+                <span className="text-amber-400 font-bold">3. Botão de Disparo Manual:</span>
+                <p className="text-slate-400">Vá em <b>Actions</b> &gt; selecione <b>Build BYD Car Control APK (Kotlin Native)</b> &gt; clique em <b>Run workflow</b> &gt; <b>Run workflow</b>.</p>
+              </div>
+
+              <div className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 text-xs text-slate-300 font-mono space-y-1">
+                <span className="text-amber-400 font-bold">4. Suporte a Qualquer Branch:</span>
+                <p className="text-slate-400">Atualizamos a trigger no arquivo YAML de workflow para disparar em <b>qualquer branch</b> (<code className="text-purple-300">push:</code> aberto e <code className="text-purple-300">workflow_dispatch:</code>).</p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
