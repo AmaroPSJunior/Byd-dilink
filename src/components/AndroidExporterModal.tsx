@@ -16,12 +16,13 @@ import {
   Cpu,
   ShieldCheck,
   ExternalLink,
-  Zap
+  Zap,
+  Code2
 } from 'lucide-react';
 import {
   ANDROID_MANIFEST_XML,
-  MAIN_ACTIVITY_JAVA,
-  BYD_DILINK_SERVICE_HELPER_JAVA,
+  MAIN_ACTIVITY_KOTLIN,
+  BYD_DILINK_SERVICE_HELPER_KOTLIN,
   BUILD_GRADLE,
   ROOT_BUILD_GRADLE,
   SETTINGS_GRADLE,
@@ -52,8 +53,8 @@ export const AndroidExporterModal: React.FC = () => {
 
   const fileMap = {
     workflow: { name: '.github/workflows/build-apk.yml', code: GITHUB_ACTIONS_WORKFLOW, path: '.github/workflows/build-apk.yml', lang: 'yaml' },
-    mainActivity: { name: 'MainActivity.java', code: MAIN_ACTIVITY_JAVA, path: 'app/src/main/java/com/byd/carcontrol/MainActivity.java', lang: 'java' },
-    serviceHelper: { name: 'BYDDiLinkServiceHelper.java', code: BYD_DILINK_SERVICE_HELPER_JAVA, path: 'app/src/main/java/com/byd/carcontrol/BYDDiLinkServiceHelper.java', lang: 'java' },
+    mainActivity: { name: 'MainActivity.kt', code: MAIN_ACTIVITY_KOTLIN, path: 'app/src/main/java/com/byd/carcontrol/MainActivity.kt', lang: 'kotlin' },
+    serviceHelper: { name: 'BYDDiLinkServiceHelper.kt', code: BYD_DILINK_SERVICE_HELPER_KOTLIN, path: 'app/src/main/java/com/byd/carcontrol/BYDDiLinkServiceHelper.kt', lang: 'kotlin' },
     manifest: { name: 'AndroidManifest.xml', code: ANDROID_MANIFEST_XML, path: 'app/src/main/AndroidManifest.xml', lang: 'xml' },
     appGradle: { name: 'app/build.gradle', code: BUILD_GRADLE, path: 'app/build.gradle', lang: 'groovy' },
     rootGradle: { name: 'build.gradle (raiz)', code: ROOT_BUILD_GRADLE, path: 'build.gradle', lang: 'groovy' },
@@ -77,12 +78,13 @@ export const AndroidExporterModal: React.FC = () => {
 
     const steps = [
       { delay: 400, text: '🚀 [GitHub Actions] Trigger: push on branch main...', progress: 15 },
-      { delay: 900, text: '🐧 Setting up Ubuntu 22.04 LTS runner environment...', progress: 30 },
-      { delay: 1400, text: '📦 actions/checkout@v4: Source code fetched from repository.', progress: 45 },
-      { delay: 2000, text: '☕ actions/setup-java@v4: Installing OpenJDK 17 (Temurin)...', progress: 60 },
-      { delay: 2600, text: '⚙️ Executing: chmod +x gradlew && ./gradlew assembleDebug', progress: 75 },
-      { delay: 3300, text: 'BUILD SUCCESSFUL in 1m 12s - 24 actionable tasks: 24 executed', progress: 90 },
-      { delay: 3900, text: '🎉 Artifact created: app/build/outputs/apk/debug/app-debug.apk (14.2 MB)', progress: 100 },
+      { delay: 900, text: '🐧 Setting up Ubuntu 22.04 LTS runner environment...', progress: 28 },
+      { delay: 1400, text: '📦 actions/checkout@v4: Fetching Kotlin source code...', progress: 40 },
+      { delay: 2000, text: '☕ actions/setup-java@v4: Configuring JDK 17 & Kotlin compiler 1.9.22...', progress: 55 },
+      { delay: 2700, text: '⚡ Executing: ./gradlew assembleDebug --no-daemon', progress: 70 },
+      { delay: 3200, text: '🔮 [Kotlin Compiler] Compiling Kotlin classes & BYD reflection hooks...', progress: 85 },
+      { delay: 3800, text: 'BUILD SUCCESSFUL in 1m 08s - Kotlin APK compiled!', progress: 95 },
+      { delay: 4300, text: '🎉 Artifact created: app/build/outputs/apk/debug/app-debug.apk (12.8 MB)', progress: 100 },
     ];
 
     steps.forEach((st) => {
@@ -104,20 +106,20 @@ export const AndroidExporterModal: React.FC = () => {
       <div className="bg-slate-900/90 backdrop-blur-md rounded-3xl p-6 border border-slate-800 shadow-2xl">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-3.5 rounded-2xl bg-emerald-950 border border-emerald-500/40 text-emerald-400">
-              <Github className="w-7 h-7" />
+            <div className="p-3.5 rounded-2xl bg-purple-950 border border-purple-500/40 text-purple-400">
+              <Code2 className="w-7 h-7" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-white text-base font-mono uppercase tracking-wide">
-                  Análise & Estrutura de Build: AmaroPSJunior/BydController
+                  Projeto Kotlin Native & Build CI/CD (Padrão Indriver-analyzer)
                 </h3>
-                <span className="px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] font-mono font-bold">
-                  CI/CD Sem Android Studio
+                <span className="px-2 py-0.5 rounded-md bg-purple-950 text-purple-400 border border-purple-800 text-[10px] font-mono font-bold">
+                  Kotlin 1.9 + JDK 17
                 </span>
               </div>
               <p className="text-xs text-slate-400 font-mono mt-0.5">
-                Compilação 100% automatizada via GitHub Actions. O APK é gerado em nuvem e pronto para download.
+                Código Kotlin nativo com compilação automática via GitHub Actions sem necessidade de Android Studio local.
               </p>
             </div>
           </div>
@@ -127,7 +129,7 @@ export const AndroidExporterModal: React.FC = () => {
               onClick={() => setActiveTab('analysis')}
               className={`px-3 py-2 rounded-xl text-xs font-mono font-semibold transition-all ${
                 activeTab === 'analysis'
-                  ? 'bg-emerald-600 text-white shadow-md'
+                  ? 'bg-purple-600 text-white shadow-md'
                   : 'bg-slate-800 text-slate-400 hover:text-white'
               }`}
             >
@@ -137,17 +139,17 @@ export const AndroidExporterModal: React.FC = () => {
               onClick={() => setActiveTab('files')}
               className={`px-3 py-2 rounded-xl text-xs font-mono font-semibold transition-all ${
                 activeTab === 'files'
-                  ? 'bg-emerald-600 text-white shadow-md'
+                  ? 'bg-purple-600 text-white shadow-md'
                   : 'bg-slate-800 text-slate-400 hover:text-white'
               }`}
             >
-              Arquivos
+              Arquivos Kotlin
             </button>
             <button
               onClick={() => setActiveTab('simulator')}
               className={`px-3 py-2 rounded-xl text-xs font-mono font-semibold transition-all ${
                 activeTab === 'simulator'
-                  ? 'bg-emerald-600 text-white shadow-md'
+                  ? 'bg-purple-600 text-white shadow-md'
                   : 'bg-slate-800 text-slate-400 hover:text-white'
               }`}
             >
@@ -162,12 +164,12 @@ export const AndroidExporterModal: React.FC = () => {
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div className="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 space-y-3">
-              <div className="p-2.5 w-fit rounded-xl bg-emerald-950 border border-emerald-800 text-emerald-400">
-                <Zap className="w-5 h-5" />
+              <div className="p-2.5 w-fit rounded-xl bg-purple-950 border border-purple-800 text-purple-400">
+                <Code2 className="w-5 h-5" />
               </div>
-              <h4 className="font-bold text-sm text-slate-200 font-mono">1. GitHub Actions Pipeline</h4>
+              <h4 className="font-bold text-sm text-slate-200 font-mono">1. Migração para Kotlin Native</h4>
               <p className="text-xs text-slate-400 leading-relaxed">
-                A compilação do APK ocorre em uma máquina virtual Linux (<code className="text-emerald-400">ubuntu-latest</code>) na nuvem do GitHub. Você não precisa instalar Android Studio, SDK, Gradle ou Java no seu computador.
+                Seguindo o padrão do <code className="text-purple-400">Indriver-analyzer</code>, o código do app foi convertido de Java para <b>Kotlin idiomatico</b>, trazendo <code className="text-slate-300">data classes</code>, extensões, síntaxe limpa e segurança de nullability.
               </p>
             </div>
 
@@ -175,19 +177,19 @@ export const AndroidExporterModal: React.FC = () => {
               <div className="p-2.5 w-fit rounded-xl bg-indigo-950 border border-indigo-800 text-indigo-400">
                 <Cpu className="w-5 h-5" />
               </div>
-              <h4 className="font-bold text-sm text-slate-200 font-mono">2. Acesso ao DiLink por Reflexão</h4>
+              <h4 className="font-bold text-sm text-slate-200 font-mono">2. DiLink Reflection em Kotlin</h4>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Assim como no <code className="text-indigo-300">BydController</code>, o app usa <i>Java Reflection</i> para interagir com <code className="text-slate-300">com.byd.service.*</code>, eliminando a necessidade de arquivos <code className="text-slate-300">.jar</code> proprietários durante o build.
+                Invocação via Reflection em Kotlin para <code className="text-slate-300">com.byd.service.BYDAutoLightBus</code> com fallback de <code className="text-indigo-300">BroadcastIntent</code> em Kotlin conciso, permitindo build limpo no Gradle.
               </p>
             </div>
 
             <div className="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 space-y-3">
-              <div className="p-2.5 w-fit rounded-xl bg-cyan-950 border border-cyan-800 text-cyan-400">
-                <ShieldCheck className="w-5 h-5" />
+              <div className="p-2.5 w-fit rounded-xl bg-emerald-950 border border-emerald-800 text-emerald-400">
+                <Zap className="w-5 h-5" />
               </div>
-              <h4 className="font-bold text-sm text-slate-200 font-mono">3. Instalação e Teste no Carro</h4>
+              <h4 className="font-bold text-sm text-slate-200 font-mono">3. Build na Nuvem com Gradle + Kotlin</h4>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Após o commit no GitHub, a aba <b>Actions</b> disponibiliza o arquivo <code className="text-cyan-300">app-debug.apk</code>. Basta copiá-lo para um pendrive ou instalar no multimídia do BYD via Aurora Store / Files.
+                O arquivo <code className="text-emerald-400">.github/workflows/build-apk.yml</code> executa o plugin <code className="text-slate-300">org.jetbrains.kotlin.android</code> no runner do GitHub, gerando o APK compilado automaticamente.
               </p>
             </div>
           </div>
@@ -195,18 +197,18 @@ export const AndroidExporterModal: React.FC = () => {
           {/* WORKFLOW STEPS DIAGRAM */}
           <div className="bg-slate-950 p-6 rounded-3xl border border-slate-800 space-y-4">
             <h4 className="font-mono text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-emerald-400" /> Fluxo Simplificado de Compilação (Sem Android Studio)
+              <Terminal className="w-4 h-4 text-purple-400" /> Fluxo de Compilação Kotlin (Sem Android Studio)
             </h4>
             
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2">
               {[
-                { step: '01', title: 'Crie o Repositório', desc: 'No GitHub, crie um novo repositório chamado BydController.' },
-                { step: '02', title: 'Adicione os Arquivos', desc: 'Faça upload ou commit dos arquivos fornecidos na aba Arquivos.' },
-                { step: '03', title: 'Trigger do Workflow', desc: 'O arquivo .github/workflows/build-apk.yml dispara a compilação automática.' },
-                { step: '04', title: 'Baixe o APK', desc: 'Acesse a aba Actions do repositório e baixe o arquivo app-debug.apk.' }
+                { step: '01', title: 'Crie o Repositório', desc: 'No GitHub, crie um novo repositório em Kotlin chamado BydControllerKotlin.' },
+                { step: '02', title: 'Copie os Arquivos Kotlin', desc: 'Faça upload de MainActivity.kt, BYDDiLinkServiceHelper.kt e das configurações do Gradle.' },
+                { step: '03', title: 'Compilação Kotlin CI/CD', desc: 'O GitHub Actions compila os fontes Kotlin com o plugin org.jetbrains.kotlin.android.' },
+                { step: '04', title: 'Baixe o APK para o BYD', desc: 'Acesse a aba Actions e faça o download de BYD-Controller-Kotlin-Debug.apk.' }
               ].map((st) => (
                 <div key={st.step} className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-2">
-                  <span className="font-mono font-bold text-xs text-emerald-400 bg-emerald-950 px-2.5 py-0.5 rounded-full border border-emerald-800">
+                  <span className="font-mono font-bold text-xs text-purple-400 bg-purple-950 px-2.5 py-0.5 rounded-full border border-purple-800">
                     PASSO {st.step}
                   </span>
                   <h5 className="font-bold text-sm text-slate-200 font-mono">{st.title}</h5>
@@ -218,9 +220,9 @@ export const AndroidExporterModal: React.FC = () => {
             <div className="flex justify-end pt-2">
               <button
                 onClick={() => setActiveTab('files')}
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold rounded-xl flex items-center gap-2 transition-all"
+                className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-mono text-xs font-bold rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-purple-950/60"
               >
-                Ver Arquivos do Projeto <ArrowRight className="w-4 h-4" />
+                Ver Arquivos Kotlin <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -239,7 +241,7 @@ export const AndroidExporterModal: React.FC = () => {
                 onClick={() => setActiveFile(key)}
                 className={`px-3.5 py-2 rounded-xl font-mono text-xs font-semibold flex items-center gap-2 transition-all shrink-0 ${
                   activeFile === key
-                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/80'
+                    ? 'bg-purple-600 text-white shadow-md shadow-purple-950/80'
                     : 'bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-850'
                 }`}
               >
@@ -250,14 +252,14 @@ export const AndroidExporterModal: React.FC = () => {
           </div>
 
           <div className="flex items-center justify-between text-xs font-mono text-slate-400 px-2">
-            <span>Caminho no Repositório: <code className="text-emerald-400">{currentFileObj.path}</code></span>
+            <span>Caminho no Repositório: <code className="text-purple-400">{currentFileObj.path}</code></span>
             <button
               onClick={() => handleCopyCode(currentFileObj.code, activeFile)}
               className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-200 flex items-center gap-1.5 border border-slate-700 transition"
             >
               {copiedKey === activeFile ? (
                 <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400" /> Copiado!
+                  <Check className="w-3.5 h-3.5 text-purple-400" /> Copiado!
                 </>
               ) : (
                 <>
@@ -268,7 +270,7 @@ export const AndroidExporterModal: React.FC = () => {
           </div>
 
           {/* Code View Area */}
-          <pre className="p-5 bg-slate-900/90 rounded-2xl border border-slate-800/80 text-emerald-300 text-xs font-mono overflow-x-auto leading-relaxed max-h-[500px]">
+          <pre className="p-5 bg-slate-900/90 rounded-2xl border border-slate-800/80 text-purple-300 text-xs font-mono overflow-x-auto leading-relaxed max-h-[500px]">
             <code>{currentFileObj.code}</code>
           </pre>
         </div>
@@ -280,26 +282,26 @@ export const AndroidExporterModal: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
             <div>
               <h4 className="font-mono text-sm font-bold text-white flex items-center gap-2">
-                <Terminal className="w-4 h-4 text-emerald-400" />
-                Simulador do Executor GitHub Actions
+                <Terminal className="w-4 h-4 text-purple-400" />
+                Simulador do Executor GitHub Actions (Kotlin Compiler)
               </h4>
               <p className="text-xs text-slate-400 font-mono mt-0.5">
-                Veja em tempo real como o runner <code className="text-emerald-400">ubuntu-latest</code> compila o APK do seu BYD.
+                Veja em tempo real como o runner <code className="text-purple-400">ubuntu-latest</code> compila o APK Kotlin do seu BYD.
               </p>
             </div>
 
             <button
               onClick={runBuildSimulation}
               disabled={simulating}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-mono text-xs font-bold rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-emerald-950/60"
+              className="px-4 py-2.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-mono text-xs font-bold rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-purple-950/60"
             >
               {simulating ? (
                 <>
-                  <RotateCcw className="w-4 h-4 animate-spin" /> Compilando...
+                  <RotateCcw className="w-4 h-4 animate-spin" /> Compilando Kotlin...
                 </>
               ) : (
                 <>
-                  <Play className="w-4 h-4" /> Iniciar Simulação de Build
+                  <Play className="w-4 h-4" /> Iniciar Simulação Kotlin Build
                 </>
               )}
             </button>
@@ -313,7 +315,7 @@ export const AndroidExporterModal: React.FC = () => {
             </div>
             <div className="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-slate-800">
               <div
-                className="bg-emerald-500 h-full transition-all duration-300 ease-out"
+                className="bg-purple-500 h-full transition-all duration-300 ease-out"
                 style={{ width: `${simProgress}%` }}
               />
             </div>
@@ -322,12 +324,12 @@ export const AndroidExporterModal: React.FC = () => {
           {/* Terminal Box */}
           <div className="bg-slate-900/90 rounded-2xl border border-slate-800 p-4 font-mono text-xs text-slate-300 min-h-[220px] max-h-[300px] overflow-y-auto space-y-2">
             {simLogs.length === 0 ? (
-              <p className="text-slate-500 italic">Clique em "Iniciar Simulação de Build" para testar a pipeline do GitHub Actions.</p>
+              <p className="text-slate-500 italic">Clique em "Iniciar Simulação Kotlin Build" para testar a pipeline do GitHub Actions.</p>
             ) : (
               simLogs.map((log, index) => (
                 <div key={index} className="flex items-start gap-2">
                   <span className="text-slate-600 font-bold shrink-0">&gt;</span>
-                  <span className={log.includes('SUCCESSFUL') || log.includes('Artifact') ? 'text-emerald-400 font-bold' : ''}>
+                  <span className={log.includes('SUCCESSFUL') || log.includes('Artifact') ? 'text-purple-400 font-bold' : ''}>
                     {log}
                   </span>
                 </div>
@@ -337,13 +339,13 @@ export const AndroidExporterModal: React.FC = () => {
 
           {/* Simulation Artifact Result */}
           {simComplete && (
-            <div className="p-4 rounded-2xl bg-emerald-950/60 border border-emerald-800 flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in">
+            <div className="p-4 rounded-2xl bg-purple-950/60 border border-purple-800 flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in">
               <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0" />
+                <CheckCircle2 className="w-6 h-6 text-purple-400 shrink-0" />
                 <div>
-                  <h5 className="font-bold text-sm text-emerald-200 font-mono">Build Concluído com Sucesso!</h5>
-                  <p className="text-xs text-emerald-400 font-mono">
-                    O artefato <code className="text-white">app-debug.apk</code> foi gerado e validado.
+                  <h5 className="font-bold text-sm text-purple-200 font-mono">Build Kotlin Concluído com Sucesso!</h5>
+                  <p className="text-xs text-purple-300 font-mono">
+                    O artefato <code className="text-white">BYD-Controller-Kotlin-Debug.apk</code> foi gerado.
                   </p>
                 </div>
               </div>
@@ -353,9 +355,9 @@ export const AndroidExporterModal: React.FC = () => {
                   href="#download-sim"
                   onClick={(e) => {
                     e.preventDefault();
-                    alert("No seu repositório real do GitHub, o download do arquivo 'BYD-Controller-Debug.apk' estará disponível diretamente na aba Actions > Summary.");
+                    alert("No seu repositório real do GitHub, o download do arquivo 'BYD-Controller-Kotlin-Debug.apk' estará disponível na aba Actions > Summary.");
                   }}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold rounded-xl flex items-center gap-2 transition"
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-mono text-xs font-bold rounded-xl flex items-center gap-2 transition"
                 >
                   <Download className="w-4 h-4" /> Download Simulado APK
                 </a>
@@ -368,4 +370,5 @@ export const AndroidExporterModal: React.FC = () => {
     </div>
   );
 };
+
 

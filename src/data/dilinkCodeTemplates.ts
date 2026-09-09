@@ -43,165 +43,159 @@ export const ANDROID_MANIFEST_XML = `<?xml version="1.0" encoding="utf-8"?>
     </application>
 </manifest>`;
 
-export const MAIN_ACTIVITY_JAVA = `package com.byd.carcontrol;
+export const MAIN_ACTIVITY_KOTLIN = `package com.byd.carcontrol
 
-import android.os.Bundle;
-import android.util.Log;
-import android.widget.Button;
-import android.widget.TextView;
-import android.widget.Toast;
-import androidx.appcompat.app.AppCompatActivity;
+import android.os.Bundle
+import android.util.Log
+import android.widget.Button
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 
 /**
- * BYD DiLink Vehicle Controller
+ * BYD DiLink Vehicle Controller (Kotlin Native)
  * Target: BYD Dolphin, Song Plus, Yuan Plus, Seal, Tan, Han
  */
-public class MainActivity extends AppCompatActivity {
+class MainActivity : AppCompatActivity() {
 
-    private static final String TAG = "BYDController";
-    private BYDDiLinkServiceHelper bydHelper;
-    private Button btnMasterTurnOffLights;
-    private TextView txtSeatbeltStatus;
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
-        // Initialize BYD DiLink Hardware Service Helper
-        bydHelper = new BYDDiLinkServiceHelper(this);
-
-        btnMasterTurnOffLights = findViewById(R.id.btnMasterTurnOffLights);
-        txtSeatbeltStatus = findViewById(R.id.txtSeatbeltStatus);
-
-        // Central Button Handler: Apagar todas as luzes internas do carro
-        btnMasterTurnOffLights.setOnClickListener(v -> {
-            boolean success = bydHelper.turnOffAllInternalLights();
-            if (success) {
-                Toast.makeText(MainActivity.this, "Luzes internas apagadas via DiLink Bus", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(MainActivity.this, "Enviando Broadcast Intent de fallback...", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        // Register listener for Seatbelt & Car state
-        bydHelper.observeSeatbeltStatus(status -> {
-            runOnUiThread(() -> {
-                txtSeatbeltStatus.setText("Status Cintos: " + status.getDescription());
-            });
-        });
+    private companion object {
+        private const val TAG = "BYDControllerKt"
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        bydHelper.unregisterReceivers();
+    private lateinit var bydHelper: BYDDiLinkServiceHelper
+    private lateinit var btnMasterTurnOffLights: Button
+    private lateinit var txtSeatbeltStatus: TextView
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        // Inicializa o Helper do SDK DiLink via Reflection em Kotlin
+        bydHelper = BYDDiLinkServiceHelper(this)
+
+        btnMasterTurnOffLights = findViewById(R.id.btnMasterTurnOffLights)
+        txtSeatbeltStatus = findViewById(R.id.txtSeatbeltStatus)
+
+        // Botão Central: Apagar todas as luzes internas do carro
+        btnMasterTurnOffLights.setOnClickListener {
+            val success = bydHelper.turnOffAllInternalLights()
+            if (success) {
+                Toast.makeText(this, "Luzes internas apagadas via DiLink Bus (Kotlin)", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Enviando Broadcast Intent de fallback...", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // Observa status dos cintos em tempo real
+        bydHelper.observeSeatbeltStatus { status ->
+            runOnUiThread {
+                txtSeatbeltStatus.text = "Status Cintos: \${status.getDescription()}"
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        bydHelper.unregisterReceivers()
     }
 }`;
 
-export const BYD_DILINK_SERVICE_HELPER_JAVA = `package com.byd.carcontrol;
+export const BYD_DILINK_SERVICE_HELPER_KOTLIN = `package com.byd.carcontrol
 
-import android.content.Context;
-import android.content.Intent;
-import android.util.Log;
-import java.lang.reflect.Method;
+import android.content.Context
+import android.content.Intent
+import android.util.Log
+import java.lang.reflect.Method
 
 /**
- * Service Helper for BYD DiLink Hardware SDK via Reflection & Broadcast Intents.
+ * Kotlin Service Helper for BYD DiLink Hardware SDK via Reflection & Broadcast Intents.
  * Compatible with DiLink 3.0, 4.0, 5.0 and BYD OS.
  */
-public class BYDDiLinkServiceHelper {
+class BYDDiLinkServiceHelper(private val context: Context) {
 
-    private static final String TAG = "BYDDiLinkHelper";
-    private final Context context;
-    private Object bydLightBusInstance;
+    private companion object {
+        private const val TAG = "BYDDiLinkHelperKt"
+    }
 
-    public BYDDiLinkServiceHelper(Context context) {
-        this.context = context;
-        initBYDLightBusReflection();
+    private var bydLightBusInstance: Any? = null
+
+    init {
+        initBYDLightBusReflection()
     }
 
     /**
-     * Initializes BYD Hardware Service (com.byd.service.BYDAutoLightBus) via reflection
-     * so it compiles safely even without BYD system JARs in local SDK.
+     * Inicializa com.byd.service.BYDAutoLightBus via Reflection em Kotlin.
+     * Permite compilar sem necessitar dos arquivos .jar proprietários no Gradle.
      */
-    private void initBYDLightBusReflection() {
+    private fun initBYDLightBusReflection() {
         try {
-            Class<?> clazz = Class.forName("com.byd.service.BYDAutoLightBus");
-            Method getInstance = clazz.getMethod("getInstance", Context.class);
-            bydLightBusInstance = getInstance.invoke(null, context);
-            Log.d(TAG, "Successfully attached to BYDAutoLightBus system service!");
-        } catch (Exception e) {
-            Log.w(TAG, "BYD Native SDK class not found on this device. Using Intent Broadcast Fallback.");
+            val clazz = Class.forName("com.byd.service.BYDAutoLightBus")
+            val getInstance: Method = clazz.getMethod("getInstance", Context::class.java)
+            bydLightBusInstance = getInstance.invoke(null, context)
+            Log.d(TAG, "Conectado com sucesso ao serviço nativo BYDAutoLightBus!")
+        } catch (e: Exception) {
+            Log.w(TAG, "SDK Nativo BYD não encontrado nesta plataforma. Usando Fallback de Broadcast Intent.")
         }
     }
 
     /**
      * Apaga todas as luzes internas do veículo
      */
-    public boolean turnOffAllInternalLights() {
-        boolean nativeSuccess = false;
-        if (bydLightBusInstance != null) {
+    fun turnOffAllInternalLights(): Boolean {
+        var nativeSuccess = false
+        bydLightBusInstance?.let { instance ->
             try {
-                // Invokes setReadingLightState(int lightArea, int state) -> Area 0 = ALL, State 0 = OFF
-                Method setLight = bydLightBusInstance.getClass().getMethod("setReadingLightState", int.class, int.class);
-                setLight.invoke(bydLightBusInstance, 0, 0);
-                
-                // Invokes setAmbientLightState(int state) -> 0 = OFF
-                Method setAmbient = bydLightBusInstance.getClass().getMethod("setAmbientLightState", int.class);
-                setAmbient.invoke(bydLightBusInstance, 0);
+                // Invoca setReadingLightState(int lightArea, int state) -> Area 0 = ALL, State 0 = OFF
+                val setLight = instance.javaClass.getMethod("setReadingLightState", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
+                setLight.invoke(instance, 0, 0)
 
-                nativeSuccess = true;
-                Log.i(TAG, "Native BYD Light API invoked successfully");
-            } catch (Exception e) {
-                Log.e(TAG, "Error calling BYD Light reflection API", e);
+                // Invoca setAmbientLightState(int state) -> 0 = OFF
+                val setAmbient = instance.javaClass.getMethod("setAmbientLightState", Int::class.javaPrimitiveType)
+                setAmbient.invoke(instance, 0)
+
+                nativeSuccess = true
+                Log.i(TAG, "API Nativa de Luzes BYD executada via Kotlin com sucesso!")
+            } catch (e: Exception) {
+                Log.e(TAG, "Erro ao invocar API de luzes via Reflection", e)
             }
         }
 
-        // Broadcast Intent Fallback for BYD Central Multimedia
-        Intent intent = new Intent("com.byd.action.LIGHT_CONTROL");
-        intent.putExtra("command", "MASTER_OFF");
-        intent.putExtra("target", "ALL_INTERNAL_LIGHTS");
-        intent.putExtra("value", 0);
-        context.sendBroadcast(intent);
+        // Broadcast Intent Fallback para Multimídia Central BYD
+        val intent = Intent("com.byd.action.LIGHT_CONTROL").apply {
+            putExtra("command", "MASTER_OFF")
+            putExtra("target", "ALL_INTERNAL_LIGHTS")
+            putExtra("value", 0)
+        }
+        context.sendBroadcast(intent)
 
-        return nativeSuccess;
+        return nativeSuccess
     }
 
-    public interface SeatbeltCallback {
-        void onStatusChanged(SeatbeltStatus status);
-    }
-
-    public static class SeatbeltStatus {
-        public boolean driverBuckled = true;
-        public boolean passengerBuckled = true;
-        public boolean rearLeftBuckled = true;
-        public boolean rearCenterBuckled = true;
-        public boolean rearRightBuckled = true;
-
-        public String getDescription() {
-            int unbuckledCount = 0;
-            if (!driverBuckled) unbuckledCount++;
-            if (!passengerBuckled) unbuckledCount++;
-            if (!rearLeftBuckled) unbuckledCount++;
-            if (!rearCenterBuckled) unbuckledCount++;
-            if (!rearRightBuckled) unbuckledCount++;
-
-            return unbuckledCount == 0 ? "Todos os cintos afivelados" : unbuckledCount + " cinto(s) desatados!";
+    data class SeatbeltStatus(
+        val driverBuckled: Boolean = true,
+        val passengerBuckled: Boolean = true,
+        val rearLeftBuckled: Boolean = true,
+        val rearCenterBuckled: Boolean = true,
+        val rearRightBuckled: Boolean = true
+    ) {
+        fun getDescription(): String {
+            val unbuckled = listOf(driverBuckled, passengerBuckled, rearLeftBuckled, rearCenterBuckled, rearRightBuckled).count { !it }
+            return if (unbuckled == 0) "Todos os cintos afivelados" else "$unbuckled cinto(s) desatados!"
         }
     }
 
-    public void observeSeatbeltStatus(SeatbeltCallback callback) {
-        // Broadcast Receiver or BYD SeatBeltBus hook
+    fun observeSeatbeltStatus(callback: (SeatbeltStatus) -> Unit) {
+        // Observer de telemetria CAN Bus / Receiver
     }
 
-    public void unregisterReceivers() {
-        // Cleanup
+    fun unregisterReceivers() {
+        // Cleanup de receivers registrado
     }
 }`;
 
 export const BUILD_GRADLE = `plugins {
     id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
 }
 
 android {
@@ -222,20 +216,26 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
     }
 }
 
 dependencies {
+    implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
 }`;
 
-export const ROOT_BUILD_GRADLE = `// Top-level build file where you can add configuration options common to all sub-projects/modules.
+export const ROOT_BUILD_GRADLE = `// Top-level build file for Kotlin Android Project
 plugins {
     id 'com.android.application' version '8.2.2' apply false
+    id 'org.jetbrains.kotlin.android' version '1.9.22' apply false
 }
 `;
 
@@ -254,7 +254,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "BydController"
+rootProject.name = "BydControllerKotlin"
 include ':app'
 `;
 
@@ -265,7 +265,7 @@ zipStoreBase=GRADLE_USER_HOME
 zipStorePath=wrapper/dists
 `;
 
-export const GITHUB_ACTIONS_WORKFLOW = `name: Build BYD Car Control APK (No Android Studio)
+export const GITHUB_ACTIONS_WORKFLOW = `name: Build BYD Car Control APK (Kotlin Native)
 
 on:
   push:
@@ -274,7 +274,7 @@ on:
 
 jobs:
   build-apk:
-    name: Build Debug APK
+    name: Build Kotlin Debug APK
     runs-on: ubuntu-latest
 
     steps:
@@ -291,13 +291,13 @@ jobs:
     - name: Grant Execute Permission for Gradlew
       run: chmod +x gradlew
 
-    - name: Build Debug APK with Gradle
+    - name: Build Kotlin Debug APK with Gradle
       run: ./gradlew assembleDebug --no-daemon
 
     - name: Upload APK to Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: BYD-Controller-Debug.apk
+        name: BYD-Controller-Kotlin-Debug.apk
         path: app/build/outputs/apk/debug/app-debug.apk
         retention-days: 30
 `;
