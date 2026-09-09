@@ -233,7 +233,39 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 }`;
 
-export const GITHUB_ACTIONS_WORKFLOW = `name: Build BYD Car Control APK
+export const ROOT_BUILD_GRADLE = `// Top-level build file where you can add configuration options common to all sub-projects/modules.
+plugins {
+    id 'com.android.application' version '8.2.2' apply false
+}
+`;
+
+export const SETTINGS_GRADLE = `pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "BydController"
+include ':app'
+`;
+
+export const GRADLE_WRAPPER_PROPERTIES = `distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+`;
+
+export const GITHUB_ACTIONS_WORKFLOW = `name: Build BYD Car Control APK (No Android Studio)
 
 on:
   push:
@@ -241,28 +273,31 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-apk:
+    name: Build Debug APK
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout Source Code
+      uses: actions/checkout@v4
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v3
+    - name: Set up Java JDK 17
+      uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
-        cache: gradle
+        cache: 'gradle'
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew || true
+    - name: Grant Execute Permission for Gradlew
+      run: chmod +x gradlew
 
-    - name: Build Debug APK
-      run: ./gradlew assembleDebug || gradle assembleDebug
+    - name: Build Debug APK with Gradle
+      run: ./gradlew assembleDebug --no-daemon
 
-    - name: Upload APK Artifact
+    - name: Upload APK to Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: byd-car-control-debug.apk
+        name: BYD-Controller-Debug.apk
         path: app/build/outputs/apk/debug/app-debug.apk
+        retention-days: 30
 `;
