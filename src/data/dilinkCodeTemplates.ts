@@ -259,53 +259,97 @@ class BYDCarStateReceiver : BroadcastReceiver() {
     }
 }`;
 
-export const BUILD_GRADLE = `plugins {
-    id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
+export const APP_BUILD_GRADLE_KTS = `plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
 }
 
+val buildNumberParam: String? = project.findProperty("buildNumber") as String?
+val buildNum: Int = buildNumberParam?.toIntOrNull() ?: 1
+val verName: String = "1.0.$buildNum"
+
 android {
-    compileSdk 34
+    namespace = "com.byd.carcontrol"
+    compileSdk = 34
 
     defaultConfig {
-        applicationId "com.byd.carcontrol"
-        minSdk 24
-        targetSdk 34
-        versionCode 1
-        versionName "1.0.0"
+        applicationId = "com.byd.carcontrol"
+        minSdk = 24
+        targetSdk = 34
+        versionCode = buildNum
+        versionName = verName
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("KEYSTORE_PATH")
+            if (!keystorePath.isNullOrEmpty()) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        getByName("debug") {
+            isMinifyEnabled = false
+            applicationIdSuffix = ".debug"
+            isDebuggable = true
+        }
+        getByName("release") {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            val keystorePath = System.getenv("KEYSTORE_PATH")
+            if (!keystorePath.isNullOrEmpty()) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
+
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
+
     kotlinOptions {
-        jvmTarget = '17'
+        jvmTarget = "17"
+    }
+
+    buildFeatures {
+        viewBinding = true
     }
 }
 
 dependencies {
-    implementation 'androidx.core:core-ktx:1.12.0'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.11.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.11.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
 }`;
 
-export const ROOT_BUILD_GRADLE = `// Top-level build file for Kotlin Android Project
+export const ROOT_BUILD_GRADLE_KTS = `// Top-level build file for Kotlin Android Project with Gradle Kotlin DSL
 plugins {
-    id 'com.android.application' version '8.2.2' apply false
-    id 'org.jetbrains.kotlin.android' version '1.9.22' apply false
+    id("com.android.application") version "8.2.2" apply false
+    id("org.jetbrains.kotlin.android") version "1.9.22" apply false
 }
 `;
 
-export const SETTINGS_GRADLE = `pluginManagement {
+export const SETTINGS_GRADLE_KTS = `pluginManagement {
     repositories {
         google()
         mavenCentral()
@@ -320,9 +364,13 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "BydControllerKotlin"
-include ':app'
+rootProject.name = "BYDCarControl"
+include(":app")
 `;
+
+export const BUILD_GRADLE = APP_BUILD_GRADLE_KTS;
+export const ROOT_BUILD_GRADLE = ROOT_BUILD_GRADLE_KTS;
+export const SETTINGS_GRADLE = SETTINGS_GRADLE_KTS;
 
 export const GRADLE_WRAPPER_PROPERTIES = `distributionBase=GRADLE_USER_HOME
 distributionPath=wrapper/dists
@@ -340,48 +388,84 @@ export const GRADLEW_SHELL_SCRIPT = `#!/usr/bin/env sh
 exec gradle "$@"
 `;
 
-export const GITHUB_ACTIONS_WORKFLOW = `name: Build BYD Car Control APK (Kotlin Native)
+export const GITHUB_ACTIONS_WORKFLOW = `name: Build Android APK (Kotlin DSL & CI/CD Release)
 
 on:
   push:
+    branches: [ "main", "master" ]
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
-  build-apk:
-    name: Build Kotlin Debug APK
+  build:
+    name: Build Android Debug APK
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Source Code
-      uses: actions/checkout@v4
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
 
-    - name: Set up Java JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: 'gradle'
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
 
-    - name: Install & Configure Gradle Wrapper
-      run: |
-        chmod +x gradlew || true
-        sudo apt-get update && sudo apt-get install -y gradle || true
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
-    - name: Build Kotlin Debug APK
-      run: |
-        if [ -f "./gradlew" ]; then
-          ./gradlew assembleDebug --no-daemon
-        else
-          gradle assembleDebug --no-daemon
-        fi
+      - name: Grant Execute Permission for Gradlew
+        run: chmod +x gradlew || true
 
-    - name: Upload APK Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: BYD-Controller-Kotlin-Debug.apk
-        path: |
-          app/build/outputs/apk/debug/app-debug.apk
-          app/build/outputs/apk/debug/*.apk
-        retention-days: 30
+      - name: Build Android Debug APK with Dynamic Versioning
+        run: |
+          BUILD_NUM=\${{ github.run_number }}
+          echo "Building APK version code \$BUILD_NUM..."
+          if [ -f "./gradlew" ]; then
+            ./gradlew assembleDebug -PbuildNumber=\$BUILD_NUM --no-daemon
+          else
+            gradle assembleDebug -PbuildNumber=\$BUILD_NUM --no-daemon
+          fi
+
+      - name: Prepare APK Artifact Name
+        run: |
+          BUILD_NUM=\${{ github.run_number }}
+          mkdir -p artifacts
+          APK_PATH=\$(find app/build/outputs/apk/debug/ -name "*.apk" | head -n 1)
+          if [ -f "\$APK_PATH" ]; then
+            cp "\$APK_PATH" "artifacts/byd-car-control-v1.0.\${BUILD_NUM}.apk"
+            echo "APK successfully created and renamed to byd-car-control-v1.0.\${BUILD_NUM}.apk"
+          else
+            echo "Warning: APK path not found directly, checking build outputs."
+          fi
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: byd-car-control-v1.0.\${{ github.run_number }}.apk
+          path: artifacts/*.apk
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.\${{ github.run_number }}
+          name: BYD Car Control v1.0.\${{ github.run_number }}
+          draft: false
+          prerelease: false
+          files: artifacts/*.apk
+          body: |
+            🚀 **Novo APK Automático Gerado via GitHub Actions**
+            
+            - **Versão:** \`1.0.\${{ github.run_number }}\`
+            - **Build Number:** \`\${{ github.run_number }}\`
+            - **Arquitetura:** Kotlin Native + Gradle Kotlin DSL (.gradle.kts)
+            - **Compatibilidade:** BYD DiLink Multimedia Systems & Android 7.0+ (API 24+)
+        env:
+          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
 `;

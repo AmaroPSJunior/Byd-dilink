@@ -52,13 +52,13 @@ export const AndroidExporterModal: React.FC = () => {
   const [simComplete, setSimComplete] = useState(false);
 
   const fileMap = {
-    workflow: { name: '.github/workflows/build-apk.yml', code: GITHUB_ACTIONS_WORKFLOW, path: '.github/workflows/build-apk.yml', lang: 'yaml' },
+    workflow: { name: '.github/workflows/android.yml', code: GITHUB_ACTIONS_WORKFLOW, path: '.github/workflows/android.yml', lang: 'yaml' },
     mainActivity: { name: 'MainActivity.kt', code: MAIN_ACTIVITY_KOTLIN, path: 'app/src/main/java/com/byd/carcontrol/MainActivity.kt', lang: 'kotlin' },
     serviceHelper: { name: 'BYDDiLinkServiceHelper.kt', code: BYD_DILINK_SERVICE_HELPER_KOTLIN, path: 'app/src/main/java/com/byd/carcontrol/BYDDiLinkServiceHelper.kt', lang: 'kotlin' },
     manifest: { name: 'AndroidManifest.xml', code: ANDROID_MANIFEST_XML, path: 'app/src/main/AndroidManifest.xml', lang: 'xml' },
-    appGradle: { name: 'app/build.gradle', code: BUILD_GRADLE, path: 'app/build.gradle', lang: 'groovy' },
-    rootGradle: { name: 'build.gradle (raiz)', code: ROOT_BUILD_GRADLE, path: 'build.gradle', lang: 'groovy' },
-    settingsGradle: { name: 'settings.gradle', code: SETTINGS_GRADLE, path: 'settings.gradle', lang: 'groovy' },
+    appGradle: { name: 'app/build.gradle.kts', code: BUILD_GRADLE, path: 'app/build.gradle.kts', lang: 'kotlin' },
+    rootGradle: { name: 'build.gradle.kts (raiz)', code: ROOT_BUILD_GRADLE, path: 'build.gradle.kts', lang: 'kotlin' },
+    settingsGradle: { name: 'settings.gradle.kts', code: SETTINGS_GRADLE, path: 'settings.gradle.kts', lang: 'kotlin' },
     wrapperProps: { name: 'gradle-wrapper.properties', code: GRADLE_WRAPPER_PROPERTIES, path: 'gradle/wrapper/gradle-wrapper.properties', lang: 'ini' },
   };
 

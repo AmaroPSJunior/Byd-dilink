@@ -1,0 +1,80 @@
+name: Build Android APK (Kotlin DSL & CI/CD Release)
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Android Debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Grant Execute Permission for Gradlew
+        run: chmod +x gradlew || true
+
+      - name: Build Android Debug APK with Dynamic Versioning
+        run: |
+          BUILD_NUM=${{ github.run_number }}
+          echo "Building APK version code $BUILD_NUM..."
+          if [ -f "./gradlew" ]; then
+            ./gradlew assembleDebug -PbuildNumber=$BUILD_NUM --no-daemon
+          else
+            gradle assembleDebug -PbuildNumber=$BUILD_NUM --no-daemon
+          fi
+
+      - name: Prepare APK Artifact Name
+        run: |
+          BUILD_NUM=${{ github.run_number }}
+          mkdir -p artifacts
+          APK_PATH=$(find app/build/outputs/apk/debug/ -name "*.apk" | head -n 1)
+          if [ -f "$APK_PATH" ]; then
+            cp "$APK_PATH" "artifacts/byd-car-control-v1.0.${BUILD_NUM}.apk"
+            echo "APK successfully created and renamed to byd-car-control-v1.0.${BUILD_NUM}.apk"
+          else
+            echo "Warning: APK path not found directly, checking build outputs."
+          fi
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: byd-car-control-v1.0.${{ github.run_number }}.apk
+          path: artifacts/*.apk
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: BYD Car Control v1.0.${{ github.run_number }}
+          draft: false
+          prerelease: false
+          files: artifacts/*.apk
+          body: |
+            🚀 **Novo APK Automático Gerado via GitHub Actions**
+            
+            - **Versão:** `1.0.${{ github.run_number }}`
+            - **Build Number:** `${{ github.run_number }}`
+            - **Arquitetura:** Kotlin Native + Gradle Kotlin DSL (.gradle.kts)
+            - **Compatibilidade:** BYD DiLink Multimedia Systems & Android 7.0+ (API 24+)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
