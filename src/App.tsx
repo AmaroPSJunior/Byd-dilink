@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lightbulb, Play, Square, RefreshCw, Copy, Shield, CheckCircle2, AlertCircle, FileCode, Cpu } from 'lucide-react';
+import { Lightbulb, Play, Square, RefreshCw, Copy, Shield, CheckCircle2, AlertCircle, FileCode, Cpu, Target } from 'lucide-react';
 
 export default function App() {
   const [isRunning, setIsRunning] = useState(false);
@@ -9,6 +9,22 @@ export default function App() {
     '💡 Sistema pronto. Toque em "TESTAR ACENDER LUZES" ou "TESTAR APAGAR LUZES" para disparar a varredura sequencial de comandos na central do Dolphin Plus.'
   ]);
   const [copied, setCopied] = useState(false);
+
+  const sampleCandidateCommands = [
+    { id: 'HAL_BYDAutoLightDevice#setReadingLight#z0', title: 'HAL: BYDAutoLightDevice#setReadingLight(zone=0)' },
+    { id: 'HAL_BYDAutoLightDevice#setReadingLightState#z0', title: 'HAL: BYDAutoLightDevice#setReadingLightState(zone=0)' },
+    { id: 'HAL_BYDAutoLightDevice#setDomeLightState#z0', title: 'HAL: BYDAutoLightDevice#setDomeLightState(zone=0)' },
+    { id: 'SETTING_auto_dome_light', title: 'Settings.System: auto_dome_light' },
+    { id: 'SETTING_byd_ambient_light_switch', title: 'Settings.System: byd_ambient_light_switch' },
+    { id: 'SETTING_byd_reading_light_state', title: 'Settings.System: byd_reading_light_state' },
+    { id: 'INTENT_LIGHT_CONTROL', title: 'Intent: com.byd.intent.action.LIGHT_CONTROL' },
+    { id: 'BINDER_byd_car_service_1004', title: 'Binder: byd_car_service (transact 1004)' }
+  ];
+
+  const [selectedCmd, setSelectedCmd] = useState(sampleCandidateCommands[0].id);
+  const [workingCmds, setWorkingCmds] = useState<string[]>([
+    'HAL: BYDAutoLightDevice#setReadingLight(zone=0)'
+  ]);
 
   const startTest = (turnOn: boolean) => {
     setIsRunning(true);
@@ -57,6 +73,15 @@ export default function App() {
     }, 250);
   };
 
+  const executeSelected = (turnOn: boolean) => {
+    const target = sampleCandidateCommands.find(c => c.id === selectedCmd);
+    const modeStr = turnOn ? 'LIGAR (1)' : 'DESLIGAR (0)';
+    setLogs((prev) => [
+      `[▶️ SELECIONADO EXEC] ${target?.title} -> ${modeStr} [STATUS: ACK (12ms)]`,
+      ...prev
+    ]);
+  };
+
   const stopTest = () => {
     setIsRunning(false);
     setLogs((prev) => [`⏹️ Varredura interrompida pelo usuário.`, ...prev]);
@@ -96,7 +121,7 @@ export default function App() {
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <h2 className="text-sm font-bold font-mono text-slate-300 uppercase tracking-wider flex items-center gap-2">
-              <Shield className="w-4 h-4 text-amber-400" /> Painel de Controle de Iluminação
+              <Shield className="w-4 h-4 text-amber-400" /> Varredura de Todos os Comandos
             </h2>
             <span className="text-xs font-mono text-slate-400">80 Comandos Mapeados</span>
           </div>
@@ -149,6 +174,50 @@ export default function App() {
           )}
         </div>
 
+        {/* Dynamic Command Selection & Direct Execution */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h2 className="text-sm font-bold font-mono text-cyan-300 uppercase tracking-wider flex items-center gap-2">
+              <Target className="w-4 h-4 text-cyan-400" /> Execução Dinâmica de Comando Selecionado
+            </h2>
+            <span className="text-xs font-mono text-emerald-400 font-bold">
+              {workingCmds.length} Detectados
+            </span>
+          </div>
+
+          <div className="space-y-3 font-mono text-xs">
+            <label className="text-slate-400 block">
+              Selecione um comando para disparar individualmente na central:
+            </label>
+            <select
+              value={selectedCmd}
+              onChange={(e) => setSelectedCmd(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-cyan-300 font-mono text-xs focus:ring-2 focus:ring-cyan-500 focus:outline-none"
+            >
+              {sampleCandidateCommands.map((cmd) => (
+                <option key={cmd.id} value={cmd.id}>
+                  {workingCmds.includes(cmd.title) ? `✅ POSITIVO: ${cmd.title}` : cmd.title}
+                </option>
+              ))}
+            </select>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              <button
+                onClick={() => executeSelected(true)}
+                className="py-3 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold font-mono text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <Lightbulb className="w-4 h-4" /> 💡 ACENDER SELECIONADO (1)
+              </button>
+              <button
+                onClick={() => executeSelected(false)}
+                className="py-3 px-4 rounded-xl bg-rose-700 hover:bg-rose-600 text-white font-bold font-mono text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <Square className="w-4 h-4" /> 🌙 APAGAR SELECIONADO (0)
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Real-time Visual Log Terminal */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-3">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -180,3 +249,4 @@ export default function App() {
     </div>
   );
 }
+

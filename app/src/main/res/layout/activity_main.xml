@@ -88,6 +88,74 @@
                 android:visibility="gone" />
         </LinearLayout>
 
+        <!-- PAINEL DE SELEÇÃO E EXECUÇÃO DINÂMICA DE COMANDOS SELECIONADOS -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#0f172a"
+            android:padding="14dp"
+            android:layout_marginBottom="14dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🎯 EXECUÇÃO DINÂMICA DE COMANDO SELECIONADO:"
+                android:textColor="#38bdf8"
+                android:textStyle="bold"
+                android:textSize="13sp"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:id="@+id/txtWorkingCount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Selecione um comando para disparar individualmente na central:"
+                android:textColor="#94a3b8"
+                android:textSize="11sp"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Dropdown Spinner de Comandos -->
+            <Spinner
+                android:id="@+id/spinnerCommands"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="#1e293b"
+                android:padding="8dp"
+                android:layout_marginBottom="10dp" />
+
+            <!-- Botões para Executar Comando Selecionado -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnExecuteSelectedOn"
+                    android:layout_width="0dp"
+                    android:layout_height="50dp"
+                    android:layout_weight="1"
+                    android:text="💡 ACENDER (1)"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#059669"
+                    android:layout_marginEnd="4dp" />
+
+                <Button
+                    android:id="@+id/btnExecuteSelectedOff"
+                    android:layout_width="0dp"
+                    android:layout_height="50dp"
+                    android:layout_weight="1"
+                    android:text="🌙 APAGAR (0)"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#b91c1c"
+                    android:layout_marginStart="4dp" />
+            </LinearLayout>
+        </LinearLayout>
+
         <!-- Indicador de Progresso Visual em Tempo Real -->
         <LinearLayout
             android:id="@+id/panelProgress"

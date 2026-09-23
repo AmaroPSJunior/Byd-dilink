@@ -27,6 +27,18 @@ data class LightCommandAttempt(
     val errorDetails: String? = null
 )
 
+data class ExecutableCommand(
+    val id: String,
+    val title: String,
+    val protocolType: String, // "HAL", "SETTINGS", "BROADCAST", "BINDER"
+    val classNameOrKey: String,
+    val methodNameOrAction: String,
+    val zoneOrCode: Int = 0,
+    val extras: Map<String, Any>? = null
+) {
+    override fun toString(): String = title
+}
+
 interface LightCommandProgressListener {
     fun onCommandStarted(index: Int, total: Int, commandName: String, transport: String)
     fun onCommandCompleted(attempt: LightCommandAttempt)
@@ -50,6 +62,136 @@ class BYDLightCommandEngine(
     }
 
     fun isBatchRunning(): Boolean = isRunning
+
+    /**
+     * Retorna a lista de todos os 80 comandos mapeados como objetos executáveis individualmente.
+     */
+    fun getAllCandidateCommands(): List<ExecutableCommand> {
+        val list = mutableListOf<ExecutableCommand>()
+
+        // 1. HAL Reflection
+        val halClassNames = listOf(
+            "android.hardware.bydauto.light.BYDAutoLightDevice",
+            "com.byd.auto.light.BYDAutoLightDevice",
+            "com.byd.auto.light.BYDLightManager",
+            "com.byd.auto.BYDAutoDeviceManager"
+        )
+        val halMethodsToTest = listOf(
+            "setReadingLight", "setReadingLightState", "setReadingLightSwitch",
+            "setAmbientLightSwitch", "setAmbientLightColor", "setAmbientLightBrightness",
+            "setDomeLightState", "setLightState", "setValue", "postValue", "setCommonCommand"
+        )
+        for (cName in halClassNames) {
+            val shortClass = cName.substringAfterLast('.')
+            for (mName in halMethodsToTest) {
+                for (zone in listOf(0, 1, 2, 3)) {
+                    list.add(
+                        ExecutableCommand(
+                            id = "HAL_$shortClass#$mName#z$zone",
+                            title = "HAL: $shortClass#$mName(zone=$zone)",
+                            protocolType = "HAL",
+                            classNameOrKey = cName,
+                            methodNameOrAction = mName,
+                            zoneOrCode = zone
+                        )
+                    )
+                }
+            }
+        }
+
+        // 2. Settings.System
+        val settingsKeys = listOf(
+            "auto_dome_light", "byd_ambient_light_switch", "byd_reading_light_state",
+            "byd_light_master_off", "car_light_dome_state", "car_reading_light_driver",
+            "car_reading_light_passenger", "car_reading_light_rear", "byd_interior_light_switch"
+        )
+        for (key in settingsKeys) {
+            list.add(
+                ExecutableCommand(
+                    id = "SETTING_$key",
+                    title = "Settings.System: $key",
+                    protocolType = "SETTINGS",
+                    classNameOrKey = key,
+                    methodNameOrAction = "putInt"
+                )
+            )
+        }
+
+        // 3. Intents
+        val intentActions = listOf(
+            Pair("com.byd.intent.action.LIGHT_CONTROL", mapOf("light_type" to 1, "light_state" to 1)),
+            Pair("com.byd.action.CAR_LIGHT_CONTROL", mapOf("cmd" to 1)),
+            Pair("android.intent.action.BYD_LIGHT_SWITCH", mapOf("state" to 1)),
+            Pair("com.byd.auto.action.READING_LIGHT", mapOf("value" to 1)),
+            Pair("com.byd.car.action.INTERIOR_LIGHT", mapOf("enable" to true))
+        )
+        for ((action, extras) in intentActions) {
+            val shortAction = action.substringAfterLast('.')
+            list.add(
+                ExecutableCommand(
+                    id = "INTENT_$shortAction",
+                    title = "Intent: $shortAction",
+                    protocolType = "BROADCAST",
+                    classNameOrKey = action,
+                    methodNameOrAction = action,
+                    extras = extras
+                )
+            )
+        }
+
+        // 4. Binders
+        val binderServices = listOf("byd_car_service", "bydauto_light", "dicarserver", "cloudmanager")
+        for (srv in binderServices) {
+            for (code in listOf(1, 2, 3, 1004)) {
+                list.add(
+                    ExecutableCommand(
+                        id = "BINDER_${srv}_$code",
+                        title = "Binder: $srv (transact $code)",
+                        protocolType = "BINDER",
+                        classNameOrKey = srv,
+                        methodNameOrAction = "transact",
+                        zoneOrCode = code
+                    )
+                )
+            }
+        }
+
+        return list
+    }
+
+    /**
+     * Executa um único comando selecionado pelo usuário.
+     */
+    fun executeSingleExecutableCommand(cmd: ExecutableCommand, turnOn: Boolean): LightCommandAttempt {
+        val valInt = if (turnOn) 1 else 0
+        val valBool = turnOn
+
+        return when (cmd.protocolType) {
+            "HAL" -> {
+                executeHalMethodCommand(cmd.classNameOrKey, cmd.methodNameOrAction, cmd.zoneOrCode, valInt)
+            }
+            "SETTINGS" -> {
+                val targetValue = if (cmd.classNameOrKey == "byd_light_master_off") (if (turnOn) 0 else 1) else valInt
+                executeSettingsCommand(cmd.classNameOrKey, targetValue)
+            }
+            "BROADCAST" -> {
+                val updatedExtras = mutableMapOf<String, Any>()
+                cmd.extras?.forEach { (k, v) ->
+                    when (v) {
+                        is Boolean -> updatedExtras[k] = valBool
+                        else -> updatedExtras[k] = valInt
+                    }
+                }
+                executeBroadcastCommand(cmd.methodNameOrAction, updatedExtras)
+            }
+            "BINDER" -> {
+                executeBinderCommand(cmd.classNameOrKey, cmd.zoneOrCode, valInt)
+            }
+            else -> {
+                executeHalMethodCommand(cmd.classNameOrKey, cmd.methodNameOrAction, cmd.zoneOrCode, valInt)
+            }
+        }
+    }
 
     /**
      * Executa a varredura completa de acender (ON = 1) ou apagar (OFF = 0)
