@@ -8,10 +8,10 @@ import android.os.Looper
 import android.os.Parcel
 import android.os.SystemClock
 import android.provider.Settings
+import android.util.Log
 import com.byd.carcontrol.repository.DiscoveryRepository
 import org.json.JSONObject
 import java.lang.reflect.Method
-import java.lang.reflect.Modifier
 
 data class LightCommandAttempt(
     val index: Int,
@@ -35,8 +35,7 @@ interface LightCommandProgressListener {
 
 /**
  * Motor de Execução Sequencial de Comandos de Iluminação para BYD Dolphin Plus (DiLink 3.0/4.0).
- * Executa todos os protocolos conhecidos (HAL, Settings, Intent, Binder, ContentProvider)
- * com delay configurável para observação visual real dentro da cabine do veículo.
+ * Ultra-defensivo: Captura qualquer Throwable para impedir crash do app na central do veículo.
  */
 class BYDLightCommandEngine(
     private val context: Context,
@@ -44,11 +43,13 @@ class BYDLightCommandEngine(
 ) {
 
     private val mainHandler = Handler(Looper.getMainLooper())
-    private var isRunning = false
+    @Volatile private var isRunning = false
 
     fun stopBatch() {
         isRunning = false
     }
+
+    fun isBatchRunning(): Boolean = isRunning
 
     /**
      * Executa a varredura completa de acender (ON = 1) ou apagar (OFF = 0)
@@ -155,64 +156,86 @@ class BYDLightCommandEngine(
         val totalCount = commandQueue.size
         DiscoveryLogger.log("LIGHT_ENGINE", "START_BATCH", modeLabel, "Iniciando fila de $totalCount comandos de iluminação")
 
-        // Executar sequencialmente no worker thread
+        // Executar sequencialmente no worker thread protegido contra QUALQUER crash
         Thread {
             var successCount = 0
             val attemptsList = mutableListOf<LightCommandAttempt>()
 
-            for (i in 0 until totalCount) {
-                if (!isRunning) break
+            try {
+                for (i in 0 until totalCount) {
+                    if (!isRunning) break
 
-                val idx = i + 1
-                val cmdBlock = commandQueue[i]
+                    val idx = i + 1
+                    val cmdBlock = commandQueue[i]
+
+                    mainHandler.post {
+                        try {
+                            listener.onCommandStarted(idx, totalCount, "Comando $idx", "Calculando...")
+                        } catch (_: Throwable) {}
+                    }
+
+                    val attempt = try {
+                        cmdBlock.invoke().copy(index = idx, total = totalCount)
+                    } catch (t: Throwable) {
+                        LightCommandAttempt(
+                            index = idx, total = totalCount,
+                            transportName = "Unknown", commandName = "Command $idx",
+                            payloadStr = "val=$targetValInt", success = false,
+                            statusLabel = "CRASH_PREVENTED (${t.javaClass.simpleName})",
+                            readBefore = null, readAfter = null, latencyMs = 0,
+                            errorDetails = t.message
+                        )
+                    }
+
+                    attemptsList.add(attempt)
+                    if (attempt.success) successCount++
+
+                    // Salvar descoberta no SQLite de forma segura
+                    try {
+                        repository.saveDiscovery(
+                            category = "LIGHT_TEST_CMD",
+                            name = "${attempt.transportName}#${attempt.commandName}",
+                            status = if (attempt.success) DiscoveryStatus.VALIDATED else DiscoveryStatus.FAILED,
+                            evidenceJson = JSONObject().apply {
+                                put("mode", modeLabel)
+                                put("payload", attempt.payloadStr)
+                                put("status", attempt.statusLabel)
+                                put("latencyMs", attempt.latencyMs)
+                                put("error", attempt.errorDetails ?: "none")
+                            }.toString()
+                        )
+                    } catch (_: Throwable) {}
+
+                    mainHandler.post {
+                        try {
+                            listener.onCommandCompleted(attempt)
+                        } catch (_: Throwable) {}
+                    }
+
+                    // Pausa configurável entre comandos para permitir inspeção física da lâmpada
+                    if (delayBetweenMs > 0) {
+                        try { Thread.sleep(delayBetweenMs) } catch (_: Throwable) {}
+                    }
+                }
+            } catch (t: Throwable) {
+                Log.e("BYDLightEngine", "Erro no loop de comandos", t)
+            } finally {
+                isRunning = false
+                val summary = """
+                    ==================================================
+                    VARREDURA DE COMANDOS DE ILUMINAÇÃO CONCLUÍDA
+                    ==================================================
+                    Modo Executado: $modeLabel
+                    Total de Comandos Testados: ${attemptsList.size} / $totalCount
+                    Sucessos de Envio / ACK: $successCount
+                    ==================================================
+                """.trimIndent()
 
                 mainHandler.post {
-                    listener.onCommandStarted(idx, totalCount, "Comando $idx", "Calculando...")
+                    try {
+                        listener.onBatchFinished(successCount, totalCount, summary)
+                    } catch (_: Throwable) {}
                 }
-
-                val attempt = cmdBlock.invoke().copy(index = idx, total = totalCount)
-                attemptsList.add(attempt)
-
-                if (attempt.success) successCount++
-
-                // Salvar descoberta no SQLite
-                repository.saveDiscovery(
-                    category = "LIGHT_TEST_CMD",
-                    name = "${attempt.transportName}#${attempt.commandName}",
-                    status = if (attempt.success) DiscoveryStatus.VALIDATED else DiscoveryStatus.FAILED,
-                    evidenceJson = JSONObject().apply {
-                        put("mode", modeLabel)
-                        put("payload", attempt.payloadStr)
-                        put("status", attempt.statusLabel)
-                        put("latencyMs", attempt.latencyMs)
-                        put("error", attempt.errorDetails ?: "none")
-                    }.toString()
-                )
-
-                mainHandler.post {
-                    listener.onCommandCompleted(attempt)
-                }
-
-                // Pausa configurável entre comandos para permitir inspeção física da lâmpada
-                if (delayBetweenMs > 0) {
-                    try { Thread.sleep(delayBetweenMs) } catch (_: InterruptedException) {}
-                }
-            }
-
-            isRunning = false
-
-            val summary = """
-                ==================================================
-                VARREDURA DE COMANDOS DE ILUMINAÇÃO CONCLUÍDA
-                ==================================================
-                Modo Executado: $modeLabel
-                Total de Comandos Testados: ${attemptsList.size} / $totalCount
-                Sucessos de Envio / ACK: $successCount
-                ==================================================
-            """.trimIndent()
-
-            mainHandler.post {
-                listener.onBatchFinished(successCount, totalCount, summary)
             }
         }.start()
     }
@@ -229,19 +252,18 @@ class BYDLightCommandEngine(
             val clazz = Class.forName(cName)
             val instance = try {
                 clazz.getMethod("getInstance", Context::class.java).invoke(null, context)
-            } catch (_: Exception) {
-                try { clazz.getMethod("getInstance").invoke(null) } catch (_: Exception) { null }
+            } catch (_: Throwable) {
+                try { clazz.getMethod("getInstance").invoke(null) } catch (_: Throwable) { null }
             }
 
             if (instance != null) {
-                // Tentar encontrar método com 2 parâmetros int (zone, val)
                 var method: Method? = null
                 try {
                     method = clazz.getMethod(mName, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
-                } catch (_: NoSuchMethodException) {
+                } catch (_: Throwable) {
                     try {
                         method = clazz.getMethod(mName, Int::class.javaPrimitiveType)
-                    } catch (_: NoSuchMethodException) {}
+                    } catch (_: Throwable) {}
                 }
 
                 if (method != null) {
@@ -259,8 +281,8 @@ class BYDLightCommandEngine(
             } else {
                 statusLabel = "INSTANCE_NULL"
             }
-        } catch (e: Exception) {
-            val cause = e.cause ?: e
+        } catch (t: Throwable) {
+            val cause = t.cause ?: t
             success = false
             statusLabel = "EXCEPTED (${cause.javaClass.simpleName})"
             errorDetails = "${cause.javaClass.simpleName}: ${cause.message}"
@@ -287,16 +309,16 @@ class BYDLightCommandEngine(
         var errorDetails: String? = null
 
         try {
-            val readBefore = Settings.System.getInt(context.contentResolver, key, -1)
-            val updated = Settings.System.putInt(context.contentResolver, key, valInt)
-            val readAfter = Settings.System.getInt(context.contentResolver, key, -1)
+            val readBefore = try { Settings.System.getInt(context.contentResolver, key, -1) } catch (_: Throwable) { -1 }
+            val updated = try { Settings.System.putInt(context.contentResolver, key, valInt) } catch (_: Throwable) { false }
+            val readAfter = try { Settings.System.getInt(context.contentResolver, key, -1) } catch (_: Throwable) { -1 }
 
             success = updated && (readAfter == valInt)
             statusLabel = if (success) "VERIFIED_READ_AFTER ($readBefore -> $readAfter)" else "WRITE_FAILED"
-        } catch (e: Exception) {
+        } catch (t: Throwable) {
             success = false
-            statusLabel = "PERMISSION_DENIED (${e.javaClass.simpleName})"
-            errorDetails = e.message
+            statusLabel = "SETTINGS_ERROR (${t.javaClass.simpleName})"
+            errorDetails = t.message
         }
 
         val latency = SystemClock.elapsedRealtime() - start
@@ -331,10 +353,10 @@ class BYDLightCommandEngine(
             context.sendBroadcast(intent)
             success = true
             statusLabel = "BROADCAST_DISPATCHED"
-        } catch (e: Exception) {
+        } catch (t: Throwable) {
             success = false
             statusLabel = "BROADCAST_FAILED"
-            errorDetails = e.message
+            errorDetails = t.message
         }
 
         val latency = SystemClock.elapsedRealtime() - start
@@ -366,23 +388,28 @@ class BYDLightCommandEngine(
                 val data = Parcel.obtain()
                 val reply = Parcel.obtain()
                 try {
-                    data.writeInterfaceToken(binderObj.interfaceDescriptor ?: "android.os.IInterface")
+                    val descriptor = try { binderObj.interfaceDescriptor } catch (_: Throwable) { null }
+                    data.writeInterfaceToken(descriptor ?: "android.os.IInterface")
                     data.writeInt(0) // Zone
                     data.writeInt(valInt) // Value
                     val res = binderObj.transact(code, data, reply, 0)
                     success = res
                     statusLabel = if (res) "TRANSACT_ACK (Code $code)" else "TRANSACT_FALSE"
+                } catch (t: Throwable) {
+                    success = false
+                    statusLabel = "TRANSACT_ERROR (${t.javaClass.simpleName})"
+                    errorDetails = t.message
                 } finally {
-                    data.recycle()
-                    reply.recycle()
+                    try { data.recycle() } catch (_: Throwable) {}
+                    try { reply.recycle() } catch (_: Throwable) {}
                 }
             } else {
                 statusLabel = "SERVICE_NOT_FOUND"
             }
-        } catch (e: Exception) {
+        } catch (t: Throwable) {
             success = false
-            statusLabel = "BINDER_ERROR (${e.javaClass.simpleName})"
-            errorDetails = e.message
+            statusLabel = "BINDER_ERROR (${t.javaClass.simpleName})"
+            errorDetails = t.message
         }
 
         val latency = SystemClock.elapsedRealtime() - start
@@ -399,3 +426,4 @@ class BYDLightCommandEngine(
         )
     }
 }
+

@@ -68,7 +68,7 @@ class BYDCommunicationManager(private val context: Context) {
     val confirmedCapabilities = mutableMapOf<VehicleCapability, TransportType>()
 
     init {
-        runFullDiscovery()
+        // Inicialização leve e instantânea. A varredura pesada do fullDiscovery não deve travar nem derrubar o app na inicialização.
     }
 
     /**
