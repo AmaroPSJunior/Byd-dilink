@@ -12,13 +12,13 @@
         android:padding="16dp"
         android:gravity="center_horizontal">
 
-        <!-- Header: BYD Communication Lab -->
+        <!-- Header: BYD Communication Lab / Dolphin Plus -->
         <TextView
             android:id="@+id/txtHeaderTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="🔬 BYD COMMUNICATION LAB"
-            android:textSize="20sp"
+            android:text="💡 BYD LIGHT COMMAND TESTER"
+            android:textSize="22sp"
             android:textStyle="bold"
             android:textColor="#00e5ff"
             android:letterSpacing="0.05"
@@ -28,130 +28,144 @@
             android:id="@+id/txtVehicleInfo"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="BYD Dolphin Plus • Carregando Firmware..."
-            android:textSize="11sp"
+            android:text="BYD Dolphin Plus • DiLink 3.0/4.0 • Android 10"
+            android:textSize="12sp"
             android:fontFamily="monospace"
             android:textColor="#94a3b8"
-            android:layout_marginBottom="12dp" />
+            android:layout_marginBottom="14dp" />
 
-        <!-- Card de Transporte Ativo e Modo de Teste -->
+        <!-- PAINEL DE CONTROLE PRINCIPAL DE LUZES DILINK -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:background="#0f172a"
-            android:padding="12dp"
-            android:layout_marginBottom="12dp">
+            android:padding="14dp"
+            android:layout_marginBottom="14dp">
 
             <TextView
-                android:id="@+id/txtActiveTransport"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Transporte Ativo: HAL Reflection"
+                android:text="VARREDURA DE PROTOCOLOS DE ILUMINAÇÃO:"
                 android:textColor="#38bdf8"
                 android:textStyle="bold"
-                android:textSize="13sp" />
+                android:textSize="13sp"
+                android:layout_marginBottom="10dp" />
 
-            <TextView
-                android:id="@+id/txtTestMode"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Modo: SAFE READ ONLY (Seguro)"
-                android:textColor="#facc15"
+            <!-- Botão 1: ACENDER TODAS AS LUZES -->
+            <Button
+                android:id="@+id/btnTurnOnAllLights"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:text="💡 TESTAR ACENDER LUZES (TODOS OS COMANDOS)"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#ffffff"
+                android:backgroundTint="#16a34a"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Botão 2: APAGAR TODAS AS LUZES -->
+            <Button
+                android:id="@+id/btnTurnOffAllLights"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:text="🌙 TESTAR APAGAR LUZES (TODOS OS COMANDOS)"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#ffffff"
+                android:backgroundTint="#dc2626"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Botão 3: PARAR VARREDURA -->
+            <Button
+                android:id="@+id/btnStopLightLoop"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:text="⏹️ PARAR VARREDURA EM ANDAMENTO"
                 android:textSize="11sp"
-                android:layout_marginTop="2dp" />
+                android:textColor="#f87171"
+                android:backgroundTint="#450a0a"
+                android:visibility="gone" />
         </LinearLayout>
 
-        <!-- Botões de Ação Principal do Laboratório -->
+        <!-- Indicador de Progresso Visual em Tempo Real -->
+        <LinearLayout
+            android:id="@+id/panelProgress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#1e293b"
+            android:padding="12dp"
+            android:layout_marginBottom="14dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/txtProgressStep"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="[0/80] Executando comando..."
+                android:textColor="#facc15"
+                android:textSize="12sp"
+                android:fontFamily="monospace"
+                android:textStyle="bold" />
+
+            <ProgressBar
+                android:id="@+id/progressBarLight"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:max="100"
+                android:progress="0" />
+        </LinearLayout>
+
+        <!-- Botões de Ação Secundários e Diagnóstico -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="10dp">
+            android:layout_marginBottom="12dp">
 
             <Button
                 android:id="@+id/btnRunDiscovery"
                 android:layout_width="0dp"
-                android:layout_height="50dp"
+                android:layout_height="46dp"
                 android:layout_weight="1"
-                android:text="🔍 Varredura Completa"
-                android:textSize="12sp"
+                android:text="🔍 Varredura HAL"
+                android:textSize="11sp"
                 android:textStyle="bold"
                 android:textColor="#ffffff"
                 android:backgroundTint="#0284c7"
                 android:layout_marginEnd="4dp" />
 
             <Button
-                android:id="@+id/btnTestBenchLight"
-                android:layout_width="0dp"
-                android:layout_height="50dp"
-                android:layout_weight="1"
-                android:text="⚡ Test Bench Luz"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:textColor="#ffffff"
-                android:backgroundTint="#dc2626"
-                android:layout_marginStart="4dp" />
-        </LinearLayout>
-
-        <!-- Fileira Secundária de Ferramentas -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="12dp">
-
-            <Button
                 android:id="@+id/btnExportJson"
                 android:layout_width="0dp"
-                android:layout_height="44dp"
+                android:layout_height="46dp"
                 android:layout_weight="1"
                 android:text="📋 Exportar JSON"
                 android:textSize="11sp"
                 android:textColor="#a7f3d0"
                 android:backgroundTint="#065f46"
-                android:layout_marginEnd="4dp" />
-
-            <Button
-                android:id="@+id/btnSettingsPermission"
-                android:layout_width="0dp"
-                android:layout_height="44dp"
-                android:layout_weight="1"
-                android:text="⚙️ Permissão System"
-                android:textSize="11sp"
-                android:textColor="#fef08a"
-                android:backgroundTint="#854d0e"
                 android:layout_marginStart="4dp" />
         </LinearLayout>
 
-        <!-- Matriz de Descoberta de Transportes -->
+        <!-- Status do Transporte Ativo -->
         <TextView
+            android:id="@+id/txtActiveTransport"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="MATRIZ DE COMUNICAÇÃO (12 TRANSPORTES):"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:textColor="#64748b"
-            android:layout_marginBottom="4dp" />
-
-        <TextView
-            android:id="@+id/txtDiscoveryMatrixView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="#030712"
-            android:padding="10dp"
-            android:text="Carregando matriz de transportes..."
+            android:text="Transporte Ativo: HAL Reflection (BYDAutoLightDevice)"
             android:textColor="#38bdf8"
             android:textSize="11sp"
             android:fontFamily="monospace"
-            android:lineSpacingExtra="2dp"
-            android:layout_marginBottom="12dp" />
+            android:layout_marginBottom="8dp" />
 
-        <!-- Log de Comunicação em Tempo Real -->
+        <!-- Log de Execução em Tempo Real na Tela do Carro -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="LOG DE BAIXO NÍVEL (SEM SUPRESSÃO DE EXCEÇÕES):"
+            android:text="FEEDBACK VISUAL DE COMANDOS EXECUTADOS:"
             android:textSize="11sp"
             android:textStyle="bold"
             android:textColor="#64748b"
@@ -162,12 +176,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="#030712"
-            android:padding="10dp"
-            android:text="Aguardando comandos..."
+            android:padding="12dp"
+            android:text="Toque em 'ACENDER LUZES' ou 'APAGAR LUZES' para testar sequencialmente todos os comandos conhecidos do DiLink..."
             android:textColor="#34d399"
             android:textSize="11sp"
             android:fontFamily="monospace"
-            android:lineSpacingExtra="2dp" />
+            android:lineSpacingExtra="3dp" />
 
     </LinearLayout>
 </ScrollView>
