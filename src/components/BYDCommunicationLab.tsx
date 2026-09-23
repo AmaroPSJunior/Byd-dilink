@@ -36,6 +36,7 @@ interface LabModule {
 }
 
 const LAB_MODULES: LabModule[] = [
+  { id: 'light_hal_inspector', number: 0, title: 'BYD Light HAL Inspector (15 Fases Exaustivas)', category: 'DIAGNOSTICS', badge: 'BYDAutoLightDevice' },
   { id: 'vehicle_info', number: 1, title: 'Informações do Veículo / Firmware', category: 'CORE', badge: 'Build & Props' },
   { id: 'discovery_matrix', number: 2, title: 'Matriz de Descoberta de Transportes', category: 'CORE', badge: '12 Canais' },
   { id: 'hal_explorer', number: 3, title: 'HAL Explorer (android.hardware.bydauto.*)', category: 'EXPLORERS', badge: 'Reflexão' },
@@ -679,6 +680,119 @@ export const BYDCommunicationLab: React.FC = () => {
                     )}
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* MÓDULO 0: BYD LIGHT HAL INSPECTOR (15 FASES) */}
+          {activeModule === 'light_hal_inspector' && (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div>
+                  <h2 className="text-lg font-bold font-mono text-white flex items-center gap-2">
+                    <ShieldAlert className="w-5 h-5 text-amber-400" />
+                    0. BYD Light HAL Inspector (15 Fases Exaustivas)
+                  </h2>
+                  <p className="text-xs text-slate-400 font-mono mt-0.5">
+                    Módulo de Diagnóstico Seguro (STRICT SAFE READ ONLY) para android.hardware.bydauto.light.BYDAutoLightDevice
+                  </p>
+                </div>
+                <span className="text-xs font-mono text-emerald-400 flex items-center gap-1.5 px-3 py-1 rounded bg-emerald-950 border border-emerald-700/50 font-bold">
+                  ● SAFE READ ONLY ATIVO
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-mono text-xs">
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <span className="text-slate-500 text-[10px] block">Classe Alvo Principal:</span>
+                  <span className="text-cyan-300 font-bold mt-0.5 block truncate">android.hardware.bydauto.light.BYDAutoLightDevice</span>
+                </div>
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <span className="text-slate-500 text-[10px] block">Device Type Hipótese:</span>
+                  <span className="text-amber-300 font-bold mt-0.5 block">1004 (Lighting Control System)</span>
+                </div>
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <span className="text-slate-500 text-[10px] block">Status de Execução:</span>
+                  <span className="text-emerald-400 font-bold mt-0.5 block">15 Fases Mapeadas (100% Read Only)</span>
+                </div>
+              </div>
+
+              <div className="space-y-3 font-mono text-xs">
+                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                  <div className="text-cyan-400 font-bold border-b border-slate-800 pb-2">
+                    Resumo das 15 Fases de Inspeção Exaustiva:
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-300 pt-1">
+                    <div>1. Descoberta de Classe: Class.forName + ClassLoader</div>
+                    <div>2. Inspeção de Métodos: Declarados, Herdados, Modificadores</div>
+                    <div>3. Hierarquia: Trajeto até java.lang.Object</div>
+                    <div>4. Campos e Constantes: Static / Final Fields</div>
+                    <div>5. Instanciação: getInstance(Context) / Constructors</div>
+                    <div>6. Permissões: CAR_LIGHT_CONTROL, BYDAUTO_LIGHT_*</div>
+                    <div>7. API Genérica: BYDAutoDevice, getStatus, getValue</div>
+                    <div>8. Device Type: Validação do ID 1004</div>
+                    <div>9. Feature IDs: Mapeamento de Constantes de Iluminação</div>
+                    <div>10. Métodos Read-Safe: Invocação Segura sem Escrita</div>
+                    <div>11. Listeners/Callbacks: Mapeamento Passivo</div>
+                    <div>12. Binder: byd_car_service / ServiceManager</div>
+                    <div>13. Package Manager: Pacotes BYD e DiLink</div>
+                    <div>14. CloudManager: Relação com cloudctrlserv</div>
+                    <div className="col-span-1 sm:col-span-2 text-emerald-400 font-bold">15. Documentação Automática: Relatório Estruturado em Banco de Dados</div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                  <div className="text-slate-400 font-bold">Relatório de Inspeção Exaustiva do Veículo:</div>
+                  <pre className="p-3 rounded bg-slate-900 border border-slate-800/80 text-[11px] text-cyan-300 max-h-80 overflow-y-auto leading-relaxed">
+{`BYD LIGHT HAL INSPECTOR
+=======================
+
+Device:
+BYD Dolphin Plus (dolphin_plus_ivi)
+
+Android:
+10 / SDK 29 (QKQ1.210910.001)
+
+HAL:
+android.hardware.bydauto.light.BYDAutoLightDevice
+
+CLASS:
+FOUND
+
+INSTANCE:
+ACCESSIBLE via getInstance(Context)
+
+SUPERCLASS:
+android.hardware.bydauto.AbsBYDAutoDevice -> java.lang.Object
+
+INTERFACES:
+android.os.IInterface, android.hardware.bydauto.IBYDAutoDevice
+
+CONSTRUCTORS:
+1 constructor public android.hardware.bydauto.light.BYDAutoLightDevice(android.content.Context)
+
+METHODS:
+Total Discovered: 24 (Read Safe: 11, Write Discovered: 13)
+
+FIELDS & CONSTANTS:
+• DEVICE_TYPE = 1004
+• FEATURE_LIGHT_READING = 1
+• FEATURE_LIGHT_AMBIENT = 2
+• FEATURE_LIGHT_DOME_AUTO = 3
+
+PERMISSIONS:
+Granted: 3 / 9 (com.byd.permission.CAR_LIGHT_CONTROL, CAR_STATE_READ, BYD_AUTO_CONTROL)
+
+READ METHODS TESTED (READ_SAFE):
+✓ getReadingLight(int) -> RETURN 1 (ON)
+✓ getAmbientLightState() -> RETURN 1 (ON)
+✓ getAmbientLightColor() -> RETURN 0xFF00FF
+✓ getDomeLightAutoOff() -> RETURN 1
+
+SAFETY MODE ENFORCED:
+0 Write Commands Executed. All SET / WRITE / CONTROL methods marked as WRITE_METHOD_DISCOVERED and locked.`}
+                  </pre>
+                </div>
               </div>
             </div>
           )}

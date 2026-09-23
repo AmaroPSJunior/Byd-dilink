@@ -99,3 +99,53 @@ data class DiscoveryEntity(
     val evidenceJson: String,
     val timestamp: Long = System.currentTimeMillis()
 )
+
+data class DiagnosticSession(
+    val sessionId: String,
+    val timestamp: Long = System.currentTimeMillis(),
+    val firmware: String,
+    val androidVersion: String,
+    val sdk: Int,
+    val device: String,
+    val appVersion: String
+)
+
+data class DiagnosticClass(
+    val className: String,
+    val found: Boolean,
+    val superclass: String? = null,
+    val interfaces: List<String> = emptyList(),
+    val classLoader: String? = null,
+    val packageName: String? = null,
+    val modifiers: String? = null
+)
+
+data class DiagnosticMethod(
+    val className: String,
+    val methodName: String,
+    val returnType: String,
+    val parameters: List<String>,
+    val modifiers: String,
+    val declaringClass: String,
+    val category: String, // READ_SAFE, WRITE_METHOD_DISCOVERED, UNKNOWN_SIDE_EFFECT
+    val executionStatus: String, // NOT_TESTED, SUCCESS, FAILED, PERMISSION_DENIED, etc.
+    val returnValue: String? = null,
+    val exception: String? = null
+)
+
+data class DiagnosticField(
+    val className: String,
+    val fieldName: String,
+    val type: String,
+    val value: String? = null,
+    val isConstant: Boolean = false
+)
+
+data class DiagnosticPermission(
+    val permission: String,
+    val exists: Boolean,
+    val granted: Boolean,
+    val protectionLevel: String,
+    val responsiblePackage: String? = null,
+    val uid: Int? = null
+)

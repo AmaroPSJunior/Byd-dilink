@@ -16,9 +16,13 @@ class FullDiscoveryEngine(
     private val reflectionDisc = ReflectionDiscovery(context, repository)
     private val safeTester = SafeApiTester(context, repository)
     private val logcatInsp = LogcatInspector(context)
+    val lightHalInspector = BYDLightHalInspector(context, repository)
 
     fun runFullDiscovery(): String {
         DiscoveryLogger.log("ENGINE", "START", "FullDiscovery", "Initiating 15-step non-destructive API discovery sequence")
+
+        // 0. BYD Light HAL Exhaustive Inspection
+        val lightHalReport = lightHalInspector.runExhaustiveInspection()
 
         // 1. Device Profile
         val profile = repository.getVehicleProfile()
