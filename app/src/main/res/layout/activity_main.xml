@@ -88,6 +88,255 @@
                 android:visibility="gone" />
         </LinearLayout>
 
+        <!-- ================================================ -->
+        <!-- SEÇÃO NOVA: BYD INTERIOR LIGHT LAB (FASE 22) -->
+        <!-- ================================================ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#1e1b4b"
+            android:padding="14dp"
+            android:layout_marginBottom="14dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🚨 BYD INTERIOR LIGHT LAB (AUTOSERVICE / DEVICE 1023)"
+                android:textColor="#a855f7"
+                android:textStyle="bold"
+                android:textSize="13sp"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Indicadores de Status -->
+            <TextView
+                android:id="@+id/txtLabStatusAutoservice"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="AUTOSERVICE: [ TOQUE EM INSPECT API ]"
+                android:textColor="#cbd5e1"
+                android:textSize="11sp"
+                android:fontFamily="monospace" />
+
+            <TextView
+                android:id="@+id/txtLabStatusManager"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="BYDAUTO MANAGER: [ TOQUE EM INSPECT API ]"
+                android:textColor="#cbd5e1"
+                android:textSize="11sp"
+                android:fontFamily="monospace" />
+
+            <TextView
+                android:id="@+id/txtLabStatusDevice1023"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="DEVICE 1023: [ TOQUE EM READ INTERIOR ]"
+                android:textColor="#cbd5e1"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:layout_marginBottom="10dp" />
+
+            <!-- FIDs Mapeadas -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="• INTERIOR LIGHT FID: 1330643002 (HEX: 0x4F50003A)\n• AMBIENT LIGHT FID: 1069547536 (HEX: 0x3FC00010)"
+                android:textColor="#38bdf8"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Botões Principais de Inspeção e Leitura -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <Button
+                    android:id="@+id/btnInspectApi"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:text="🔍 INSPECT API"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#6d28d9"
+                    android:layout_marginEnd="4dp" />
+
+                <Button
+                    android:id="@+id/btnReadInterior"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:text="📖 READ INTERIOR"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#0284c7"
+                    android:layout_marginStart="4dp" />
+            </LinearLayout>
+
+            <!-- Trava de Segurança de Escrita -->
+            <Button
+                android:id="@+id/btnArmWriteTest"
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:text="🔒 ARMAR TESTE DE ESCRITA (DESARMADO)"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="#facc15"
+                android:backgroundTint="#334155"
+                android:layout_marginBottom="10dp" />
+
+            <!-- Botões de Escrita Luz Interna (Controlados por Arming) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="10dp">
+
+                <Button
+                    android:id="@+id/btnSetInterior1"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:text="💡 SET INTERIOR 1"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#15803d"
+                    android:enabled="false"
+                    android:layout_marginEnd="4dp" />
+
+                <Button
+                    android:id="@+id/btnSetInterior2"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:text="🌙 SET INTERIOR 2"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#b91c1c"
+                    android:enabled="false"
+                    android:layout_marginStart="4dp" />
+            </LinearLayout>
+
+            <!-- Controles Iluminação Ambiente (Níveis 1..5) -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AMBIENT LIGHT BRIGHTNESS (FID 1069547536):"
+                android:textColor="#cbd5e1"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:layout_marginBottom="4dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="12dp">
+
+                <Button
+                    android:id="@+id/btnAmbientL1"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:text="L1"
+                    android:textSize="10sp"
+                    android:enabled="false"
+                    android:backgroundTint="#334155"
+                    android:layout_marginEnd="2dp" />
+
+                <Button
+                    android:id="@+id/btnAmbientL2"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:text="L2"
+                    android:textSize="10sp"
+                    android:enabled="false"
+                    android:backgroundTint="#334155"
+                    android:layout_marginEnd="2dp" />
+
+                <Button
+                    android:id="@+id/btnAmbientL3"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:text="L3"
+                    android:textSize="10sp"
+                    android:enabled="false"
+                    android:backgroundTint="#334155"
+                    android:layout_marginEnd="2dp" />
+
+                <Button
+                    android:id="@+id/btnAmbientL4"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:text="L4"
+                    android:textSize="10sp"
+                    android:enabled="false"
+                    android:backgroundTint="#334155"
+                    android:layout_marginEnd="2dp" />
+
+                <Button
+                    android:id="@+id/btnAmbientL5"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:text="L5"
+                    android:textSize="10sp"
+                    android:enabled="false"
+                    android:backgroundTint="#334155" />
+            </LinearLayout>
+
+            <!-- Confirmação Física no Veículo -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="CONFIRMAÇÃO VISUAL FÍSICA NO CARRO:"
+                android:textColor="#facc15"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:layout_marginBottom="4dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnPhysicalYes"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="🎉 LUZ MUDOU"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#16a34a"
+                    android:layout_marginEnd="4dp" />
+
+                <Button
+                    android:id="@+id/btnPhysicalNo"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:text="❌ LUZ NÃO MUDOU"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#dc2626"
+                    android:layout_marginStart="4dp" />
+            </LinearLayout>
+        </LinearLayout>
+
         <!-- PAINEL DE SELEÇÃO E EXECUÇÃO DINÂMICA DE COMANDOS SELECIONADOS -->
         <LinearLayout
             android:layout_width="match_parent"

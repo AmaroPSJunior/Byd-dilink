@@ -34,6 +34,7 @@ class BYDCommunicationManager(private val context: Context) {
     val fullEngine = FullDiscoveryEngine(context, repository)
     val experimentManager = ExperimentModeManager(context, repository)
     val logcatInspector = LogcatInspector(context)
+    val autoServiceInspector = com.byd.carcontrol.discovery.BYDAutoServiceInspector(context, repository)
 
     // Lista de transportes desacoplados
     val transports: List<IBYDTransport> = listOf(

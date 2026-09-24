@@ -3,6 +3,7 @@ package com.byd.carcontrol
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -14,6 +15,7 @@ import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.byd.carcontrol.discovery.BYDAutoServiceInspector
 import com.byd.carcontrol.discovery.BYDLightCommandEngine
 import com.byd.carcontrol.discovery.ExecutableCommand
 import com.byd.carcontrol.discovery.LightCommandAttempt
@@ -21,8 +23,8 @@ import com.byd.carcontrol.discovery.LightCommandProgressListener
 
 /**
  * Atividade Principal do BYD Light Command Tester.
- * Executa sequencialmente todos os comandos conhecidos do protocolo DiLink (HAL, Settings, Intent, Binder)
- * com feedback visual em tempo real e permite a execução individual e dinâmica de qualquer comando selecionado.
+ * Executa sequencialmente todos os comandos do protocolo DiLink (HAL, Settings, Intent, Binder)
+ * e fornece o módulo "BYD INTERIOR LIGHT LAB" para investigação técnica profunda do autoservice / Device 1023.
  */
 class MainActivity : AppCompatActivity() {
 
@@ -36,6 +38,27 @@ class MainActivity : AppCompatActivity() {
     private lateinit var txtWorkingCount: TextView
     private lateinit var panelProgress: LinearLayout
     private lateinit var progressBarLight: ProgressBar
+
+    // Seção LAB: Status
+    private lateinit var txtLabStatusAutoservice: TextView
+    private lateinit var txtLabStatusManager: TextView
+    private lateinit var txtLabStatusDevice1023: TextView
+
+    // Seção LAB: Botões
+    private lateinit var btnInspectApi: Button
+    private lateinit var btnReadInterior: Button
+    private lateinit var btnArmWriteTest: Button
+    private lateinit var btnSetInterior1: Button
+    private lateinit var btnSetInterior2: Button
+
+    private lateinit var btnAmbientL1: Button
+    private lateinit var btnAmbientL2: Button
+    private lateinit var btnAmbientL3: Button
+    private lateinit var btnAmbientL4: Button
+    private lateinit var btnAmbientL5: Button
+
+    private lateinit var btnPhysicalYes: Button
+    private lateinit var btnPhysicalNo: Button
 
     private lateinit var spinnerCommands: Spinner
     private lateinit var btnExecuteSelectedOn: Button
@@ -82,6 +105,26 @@ class MainActivity : AppCompatActivity() {
             panelProgress = findViewById(R.id.panelProgress)
             progressBarLight = findViewById(R.id.progressBarLight)
 
+            // LAB Views
+            txtLabStatusAutoservice = findViewById(R.id.txtLabStatusAutoservice)
+            txtLabStatusManager = findViewById(R.id.txtLabStatusManager)
+            txtLabStatusDevice1023 = findViewById(R.id.txtLabStatusDevice1023)
+
+            btnInspectApi = findViewById(R.id.btnInspectApi)
+            btnReadInterior = findViewById(R.id.btnReadInterior)
+            btnArmWriteTest = findViewById(R.id.btnArmWriteTest)
+            btnSetInterior1 = findViewById(R.id.btnSetInterior1)
+            btnSetInterior2 = findViewById(R.id.btnSetInterior2)
+
+            btnAmbientL1 = findViewById(R.id.btnAmbientL1)
+            btnAmbientL2 = findViewById(R.id.btnAmbientL2)
+            btnAmbientL3 = findViewById(R.id.btnAmbientL3)
+            btnAmbientL4 = findViewById(R.id.btnAmbientL4)
+            btnAmbientL5 = findViewById(R.id.btnAmbientL5)
+
+            btnPhysicalYes = findViewById(R.id.btnPhysicalYes)
+            btnPhysicalNo = findViewById(R.id.btnPhysicalNo)
+
             spinnerCommands = findViewById(R.id.spinnerCommands)
             btnExecuteSelectedOn = findViewById(R.id.btnExecuteSelectedOn)
             btnExecuteSelectedOff = findViewById(R.id.btnExecuteSelectedOff)
@@ -94,6 +137,7 @@ class MainActivity : AppCompatActivity() {
 
             updateHeaderInfo()
             setupCommandSpinner()
+            setupInteriorLabHandlers()
 
             // 💡 BOTÃO 1: TESTAR ACENDER TODAS AS LUZES
             btnTurnOnAllLights.setOnClickListener {
@@ -168,6 +212,161 @@ class MainActivity : AppCompatActivity() {
         } catch (t: Throwable) {
             Log.e("MainActivity", "Erro no onCreate", t)
         }
+    }
+
+    private fun setupInteriorLabHandlers() {
+        val inspector = commManager.autoServiceInspector
+
+        // 1. INSPECT API
+        btnInspectApi.setOnClickListener {
+            appendLog("🔍 Executando inspeção técnica da API 'autoservice' / BYDAutoManager...")
+            Thread {
+                try {
+                    val report = inspector.inspectApi()
+                    runOnUiThread {
+                        txtLabStatusAutoservice.text = "AUTOSERVICE: [ ${if (report.autoserviceFound) "FOUND (${report.autoserviceDescriptor})" else "NOT FOUND"} ]"
+                        txtLabStatusManager.text = "BYDAUTO MANAGER: [ ${if (report.bydAutoManagerFound) "FOUND (${report.bydAutoManagerClassName})" else "NOT FOUND"} ]"
+                        txtLabStatusDevice1023.text = "DEVICE 1023: [ ${if (report.device1023Found) "FOUND / RESPONDED" else "UNKNOWN / UNRESPONSIVE"} ]"
+
+                        appendLog("=== RESULTADO DA INSPEÇÃO API ===")
+                        report.logs.forEach { appendLog(it) }
+                        Toast.makeText(this@MainActivity, "Inspeção concluída!", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (t: Throwable) {
+                    runOnUiThread {
+                        appendLog("❌ Erro na inspeção: ${t.message}")
+                    }
+                }
+            }.start()
+        }
+
+        // 2. READ INTERIOR (GET DEVICE 1023)
+        btnReadInterior.setOnClickListener {
+            appendLog("📖 Executando GET Device 1023 (Interior Light FID: 1330643002 & Atmosphere FID: 1069547536)...")
+            Thread {
+                try {
+                    val resInterior = inspector.readDevice1023(BYDAutoServiceInspector.DEVICE_INTERIOR_LIGHT, BYDAutoServiceInspector.FID_INTERIOR_LIGHT_STATE)
+                    val resAtmosphere = inspector.readDevice1023(BYDAutoServiceInspector.DEVICE_INTERIOR_LIGHT, BYDAutoServiceInspector.FID_ATMOSPHERE_BRIGHTNESS)
+
+                    runOnUiThread {
+                        appendLog("=== LEITURA DEVICE 1023 ===")
+                        appendLog("• INTERIOR LIGHT (0x4F50003A): ${resInterior.returnedValue ?: "SEM RESPOSTA"} | retCode=${resInterior.returnCode} (${resInterior.durationMs}ms)")
+                        if (resInterior.exception != null) appendLog("  ⚠️ Exceção: ${resInterior.exception}")
+
+                        appendLog("• ATMOSPHERE BRIGHTNESS (0x3FC00010): ${resAtmosphere.returnedValue ?: "SEM RESPOSTA"} | retCode=${resAtmosphere.returnCode} (${resAtmosphere.durationMs}ms)")
+                        if (resAtmosphere.exception != null) appendLog("  ⚠️ Exceção: ${resAtmosphere.exception}")
+
+                        Toast.makeText(this@MainActivity, "Leitura efetuada!", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (t: Throwable) {
+                    runOnUiThread {
+                        appendLog("❌ Erro na leitura: ${t.message}")
+                    }
+                }
+            }.start()
+        }
+
+        // 3. ARMAR TESTE DE ESCRITA
+        btnArmWriteTest.setOnClickListener {
+            val nextState = !inspector.isArmedForWrite
+            inspector.armWriteTests(nextState)
+
+            // Atualizar UI de trava de segurança
+            val writeButtons = listOf(btnSetInterior1, btnSetInterior2, btnAmbientL1, btnAmbientL2, btnAmbientL3, btnAmbientL4, btnAmbientL5)
+            writeButtons.forEach { it.isEnabled = nextState }
+
+            if (nextState) {
+                btnArmWriteTest.text = "⚠️ TESTE DE ESCRITA ARMADO (ESCRITA LIBERADA)"
+                btnArmWriteTest.setBackgroundColor(Color.parseColor("#dc2626"))
+                Toast.makeText(this, "⚠️ AENÇÃO: Testes de escrita habilitados!", Toast.LENGTH_SHORT).show()
+            } else {
+                btnArmWriteTest.text = "🔒 ARMAR TESTE DE ESCRITA (DESARMADO)"
+                btnArmWriteTest.setBackgroundColor(Color.parseColor("#334155"))
+                Toast.makeText(this, "🔒 Testes de escrita desarmados.", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // 4. SET INTERIOR 1 (LIGAR = 1)
+        btnSetInterior1.setOnClickListener {
+            executeInteriorWrite(1)
+        }
+
+        // 5. SET INTERIOR 2 (DESLIGAR = 2)
+        btnSetInterior2.setOnClickListener {
+            executeInteriorWrite(2)
+        }
+
+        // 6. SET AMBIENT LEVELS 1..5
+        val ambientButtons = listOf(
+            Pair(btnAmbientL1, 1), Pair(btnAmbientL2, 2), Pair(btnAmbientL3, 3),
+            Pair(btnAmbientL4, 4), Pair(btnAmbientL5, 5)
+        )
+        for ((btn, level) in ambientButtons) {
+            btn.setOnClickListener {
+                executeAmbientWrite(level)
+            }
+        }
+
+        // 7. CONFIRMAÇÃO FÍSICA
+        btnPhysicalYes.setOnClickListener {
+            inspector.setPhysicalConfirmation(true)
+            appendLog("🎉 CONFIRMAÇÃO REGISTRADA: A iluminação física MUDOU no Dolphin Plus!")
+            Toast.makeText(this, "🎉 Sucesso confirmado no veículo!", Toast.LENGTH_LONG).show()
+        }
+
+        btnPhysicalNo.setOnClickListener {
+            inspector.setPhysicalConfirmation(false)
+            appendLog("❌ CONFIRMAÇÃO REGISTRADA: Nenhuma mudança física observada.")
+            Toast.makeText(this, "Registro gravado como sem efeito físico.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun executeInteriorWrite(targetValue: Int) {
+        val inspector = commManager.autoServiceInspector
+        appendLog("▶️ Executando SET INTERIOR LIGHT -> Value=$targetValue (Device 1023 / FID 0x4F50003A)...")
+
+        Thread {
+            try {
+                val res = inspector.writeDevice1023(BYDAutoServiceInspector.DEVICE_INTERIOR_LIGHT, BYDAutoServiceInspector.FID_INTERIOR_LIGHT_STATE, targetValue)
+                runOnUiThread {
+                    appendLog("=== RESULTADO SET INTERIOR ($targetValue) ===")
+                    appendLog("• Read Before: ${res.readBefore ?: "N/A"}")
+                    appendLog("• Transact 6 retCode: ${res.returnCode} (${res.durationMs}ms)")
+                    appendLog("• Read After: ${res.readAfter ?: "N/A"}")
+                    if (res.exception != null) appendLog("⚠️ Exceção: ${res.exception}")
+
+                    Toast.makeText(this@MainActivity, "SET $targetValue enviado! Observe o carro...", Toast.LENGTH_SHORT).show()
+                }
+            } catch (t: Throwable) {
+                runOnUiThread {
+                    appendLog("❌ Erro no SET Interior: ${t.message}")
+                }
+            }
+        }.start()
+    }
+
+    private fun executeAmbientWrite(level: Int) {
+        val inspector = commManager.autoServiceInspector
+        appendLog("▶️ Executando SET AMBIENT BRIGHTNESS -> Level=$level (Device 1023 / FID 0x3FC00010)...")
+
+        Thread {
+            try {
+                val res = inspector.writeDevice1023(BYDAutoServiceInspector.DEVICE_INTERIOR_LIGHT, BYDAutoServiceInspector.FID_ATMOSPHERE_BRIGHTNESS, level)
+                runOnUiThread {
+                    appendLog("=== RESULTADO SET AMBIENT (Nível $level) ===")
+                    appendLog("• Read Before: ${res.readBefore ?: "N/A"}")
+                    appendLog("• Transact 6 retCode: ${res.returnCode} (${res.durationMs}ms)")
+                    appendLog("• Read After: ${res.readAfter ?: "N/A"}")
+                    if (res.exception != null) appendLog("⚠️ Exceção: ${res.exception}")
+
+                    Toast.makeText(this@MainActivity, "Nível $level enviado! Observe o ambiente...", Toast.LENGTH_SHORT).show()
+                }
+            } catch (t: Throwable) {
+                runOnUiThread {
+                    appendLog("❌ Erro no SET Ambient: ${t.message}")
+                }
+            }
+        }.start()
     }
 
     private fun setupCommandSpinner() {
@@ -318,5 +517,6 @@ class MainActivity : AppCompatActivity() {
         } catch (_: Throwable) {}
     }
 }
+
 
 
