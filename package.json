@@ -1,9 +1,0 @@
-{
-  "name": "byd-dilink-car-control",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "build": "echo 'Native Android APK build ready'",
-    "lint": "echo 'Android Kotlin lint check passed'"
-  }
-}

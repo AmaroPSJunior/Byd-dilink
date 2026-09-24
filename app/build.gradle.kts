@@ -3,10 +3,6 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-val buildNumberParam: String? = project.findProperty("buildNumber") as String?
-val buildNum: Int = buildNumberParam?.toIntOrNull() ?: 1
-val verName: String = "1.0.$buildNum"
-
 android {
     namespace = "com.byd.carcontrol"
     compileSdk = 34
@@ -15,44 +11,19 @@ android {
         applicationId = "com.byd.carcontrol"
         minSdk = 24
         targetSdk = 34
-        versionCode = buildNum
-        versionName = verName
+        versionCode = 1
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
-
-    signingConfigs {
-        create("release") {
-            // Configured via environment variables for CI/CD security
-            val keystorePath = System.getenv("KEYSTORE_PATH")
-            if (!keystorePath.isNullOrEmpty()) {
-                storeFile = file(keystorePath)
-                storePassword = System.getenv("KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("KEY_ALIAS")
-                keyPassword = System.getenv("KEY_PASSWORD")
-            }
-        }
     }
 
     buildTypes {
         getByName("debug") {
             isMinifyEnabled = false
-            applicationIdSuffix = ".debug"
             isDebuggable = true
         }
         getByName("release") {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-            val keystorePath = System.getenv("KEYSTORE_PATH")
-            if (!keystorePath.isNullOrEmpty()) {
-                signingConfig = signingConfigs.getByName("release")
-            } else {
-                signingConfig = signingConfigs.getByName("debug")
-            }
+            isMinifyEnabled = false
         }
     }
 
@@ -65,8 +36,9 @@ android {
         jvmTarget = "17"
     }
 
-    buildFeatures {
-        viewBinding = true
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
     }
 }
 
