@@ -12,6 +12,12 @@ class PermissionDiscovery(
 
     private companion object {
         private val CANDIDATE_PERMISSIONS = listOf(
+            "android.car.permission.CAR_POWERTRAIN",
+            "android.permission.REAL_GET_TASKS",
+            "android.car.permission.CAR_INFO",
+            "android.car.permission.CAR_ENERGY",
+            "android.car.permission.CAR_SPEED",
+            "android.car.permission.READ_CAR_DISPLAY_UNITS",
             "com.byd.permission.CAR_LIGHT_CONTROL",
             "com.byd.permission.CAR_DOOR_CONTROL",
             "com.byd.permission.CAR_WINDOW_CONTROL",
@@ -24,6 +30,8 @@ class PermissionDiscovery(
             "android.car.permission.CONTROL_CAR_INTERIOR_LIGHTS",
             "android.car.permission.CAR_EXTERIOR_LIGHTS",
             "android.car.permission.CAR_CONTROL",
+            "android.permission.BYDAUTO_LIGHT_GET",
+            "android.permission.BYDAUTO_LIGHT_COMMON",
             "cc.omycar.magiccore.permission.API",
             "cc.omycar.magiccore.permission.MANAGER",
             "cc.omycar.magiccore.permission.WHITE_LIST",
