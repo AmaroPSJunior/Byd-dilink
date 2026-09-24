@@ -220,7 +220,7 @@ class BYDLightHalInspector(
             val isStatic = Modifier.isStatic(method.modifiers)
 
             val category = when {
-                WRITE_PREFIXES.any { lowerName.startsWith(it) } -> "WRITE_METHOD_DISCOVERED"
+                WRITE_PREFIXES.any { lowerName.startsWith(it) } -> "WRITE_METHOD_DISCOVERED (NÃO EXECUTADO)"
                 READ_PREFIXES.any { lowerName.startsWith(it) } -> "READ_SAFE"
                 else -> "UNKNOWN_SIDE_EFFECT"
             }
@@ -237,29 +237,54 @@ class BYDLightHalInspector(
             )
             discoveredMethods.add(diagMethod)
 
-            log("  [MÉTODO] $modifiers $returnType $mName(${paramTypes.joinToString(", ")})")
-            log("           Declaring: $declaringClass | Static: $isStatic | Categorias: $category")
+            val methodTag = if (category.contains("WRITE")) " [MÉTODO DE ESCRITA (NÃO EXECUTADO)]" else ""
+            log("  [MÉTODO] $modifiers $returnType $mName(${paramTypes.joinToString(", ")})$methodTag")
+            log("           Declaring: $declaringClass | Static: $isStatic | Categoria: $category")
         }
     }
 
     // ==================================================
-    // FASE 3 — INSPEÇÃO DA HIERARQUIA
+    // FASE 3 — INSPEÇÃO DA HIERARQUIA COMPLETA
     // ==================================================
     private fun inspectPhase3_HierarchyTree(primaryClass: Class<*>?) {
-        log("\n--- FASE 3: INSPEÇÃO DA HIERARQUIA DE CLASSES ---")
+        log("\n--- FASE 3: INSPEÇÃO DA HIERARQUIA COMPLETA DE CLASSES ---")
         if (primaryClass == null) return
 
         var current: Class<*>? = primaryClass.superclass
         var depth = 1
 
         while (current != null && current != Any::class.java) {
-            log("Nível de Herança $depth: ${current.name}")
-            for (method in current.declaredMethods) {
-                val nameLower = method.name.lowercase()
-                if (KEYWORD_FILTER.any { nameLower.contains(it) }) {
-                    log("   -> Método Relevante em Superclasse: ${Modifier.toString(method.modifiers)} ${method.returnType.simpleName} ${method.name}(${method.parameterTypes.map { it.simpleName }.joinToString()})")
-                }
+            log("\n[HERANÇA LEVEL $depth] Class: ${current.name}")
+            log("  Modifiers: ${Modifier.toString(current.modifiers)}")
+            log("  Interfaces: ${current.interfaces.map { it.name }.joinToString(", ").ifEmpty { "Nenhuma" }}")
+            
+            val constructors = current.declaredConstructors
+            log("  Constructors (${constructors.size}):")
+            for (c in constructors) {
+                log("    ${Modifier.toString(c.modifiers)} ${current.simpleName}(${c.parameterTypes.map { it.simpleName }.joinToString(", ")})")
             }
+            
+            val fields = current.declaredFields
+            log("  Fields (${fields.size}):")
+            for (f in fields) {
+                var staticVal: String? = null
+                if (Modifier.isStatic(f.modifiers)) {
+                    try {
+                        f.isAccessible = true
+                        staticVal = formatValueWithHex(f.get(null))
+                    } catch (_: Exception) {}
+                }
+                log("    ${Modifier.toString(f.modifiers)} ${f.type.simpleName} ${f.name}${if (staticVal != null) " = $staticVal" else ""}")
+            }
+
+            val methods = current.declaredMethods
+            log("  Methods (${methods.size}):")
+            for (m in methods) {
+                val isWrite = WRITE_PREFIXES.any { m.name.lowercase().startsWith(it) }
+                val writeTag = if (isWrite) " [MÉTODO DE ESCRITA (NÃO EXECUTADO)]" else ""
+                log("    ${Modifier.toString(m.modifiers)} ${m.returnType.simpleName} ${m.name}(${m.parameterTypes.map { it.simpleName }.joinToString(", ")})$writeTag")
+            }
+
             current = current.superclass
             depth++
         }
@@ -305,6 +330,18 @@ class BYDLightHalInspector(
         }
     }
 
+    private fun formatValueWithHex(value: Any?): String {
+        if (value == null) return "null"
+        return when (value) {
+            is Int -> "$value (0x${Integer.toHexString(value).uppercase()})"
+            is Long -> "$value (0x${java.lang.Long.toHexString(value).uppercase()})"
+            is Short -> "$value (0x${Integer.toHexString(value.toInt()).uppercase()})"
+            is Byte -> "$value (0x${Integer.toHexString(value.toInt() and 0xFF).uppercase()})"
+            is IntArray -> value.joinToString(", ", "[", "]") { "$it (0x${Integer.toHexString(it).uppercase()})" }
+            else -> value.toString()
+        }
+    }
+
     // ==================================================
     // FASE 5 — CONSTRUTORES E INSTANCIAÇÃO
     // ==================================================
@@ -315,11 +352,19 @@ class BYDLightHalInspector(
         var instance: Any? = null
 
         // 1. Inspecionar Construtores
+        log("Constructors declarados em ${primaryClass.simpleName}:")
         for (c in primaryClass.declaredConstructors) {
             log("  [CONSTRUTOR] ${Modifier.toString(c.modifiers)} ${primaryClass.simpleName}(${c.parameterTypes.map { it.simpleName }.joinToString(", ")})")
         }
 
-        // 2. Tentar getInstance(Context)
+        // 2. Procurar e listar overloads de getInstance/Factory
+        val getInstanceMethods = primaryClass.methods.filter { it.name == "getInstance" || it.name.startsWith("getInstance") }
+        log("Métodos getInstance/Factory encontrados (${getInstanceMethods.size}):")
+        for (m in getInstanceMethods) {
+            log("  [FACTORY] ${Modifier.toString(m.modifiers)} ${m.returnType.simpleName} ${m.name}(${m.parameterTypes.map { it.simpleName }.joinToString(", ")})")
+        }
+
+        // 3. Tentar getInstance(Context)
         try {
             val getInstanceCtx = primaryClass.getMethod("getInstance", Context::class.java)
             log("Tentando invocar getInstance(Context)...")
@@ -334,7 +379,7 @@ class BYDLightHalInspector(
             log("❌ ERRO ao chamar getInstance(Context): ${cause.javaClass.simpleName} - ${cause.message}")
         }
 
-        // 3. Tentar getInstance()
+        // 4. Tentar getInstance()
         if (instance == null) {
             try {
                 val getInstanceNoArg = primaryClass.getMethod("getInstance")
@@ -488,7 +533,7 @@ class BYDLightHalInspector(
                     } else {
                         val result = if (method.parameterCount == 1) method.invoke(targetObj, context) else method.invoke(targetObj)
                         execStatus = "SUCCESS"
-                        returnValStr = result?.toString() ?: "null"
+                        returnValStr = formatValueWithHex(result)
                     }
                 } catch (e: Exception) {
                     val cause = e.cause ?: e
