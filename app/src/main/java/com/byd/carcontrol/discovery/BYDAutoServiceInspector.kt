@@ -143,9 +143,10 @@ class BYDAutoServiceInspector(
                 repository.saveBinder(
                     BinderServiceEntity(
                         name = "autoservice",
+                        exists = true,
                         descriptor = autoserviceDescriptor,
                         isAlive = isAlive,
-                        status = DiscoveryStatus.AVAILABLE
+                        status = DiscoveryStatus.VALIDATED
                     )
                 )
             } else {
@@ -224,7 +225,7 @@ class BYDAutoServiceInspector(
                         exists = true,
                         protectionLevel = pInfo.protectionLevel.toString(),
                         isGranted = isGranted,
-                        status = if (isGranted) DiscoveryStatus.AVAILABLE else DiscoveryStatus.PERMISSION_DENIED
+                        status = if (isGranted) DiscoveryStatus.VALIDATED else DiscoveryStatus.DENIED
                     )
                 )
             } catch (_: PackageManager.NameNotFoundException) {
@@ -329,13 +330,13 @@ class BYDAutoServiceInspector(
 
                 repository.saveTestResult(
                     TestResultEntity(
-                        testName = "AUTOSERVICE_GET_${device}_$featureHex",
-                        transportType = "autoservice_Binder",
-                        status = DiscoveryStatus.AVAILABLE,
-                        latencyMs = duration,
-                        payloadSent = reqPayload,
-                        responseReceived = respStr,
-                        verified = true
+                        className = "autoservice_Binder",
+                        methodName = "GET_${device}_$featureHex",
+                        parameters = reqPayload,
+                        returnType = "int",
+                        execution = "SUCCESS",
+                        result = respStr,
+                        durationMs = duration
                     )
                 )
 
@@ -506,13 +507,13 @@ class BYDAutoServiceInspector(
 
                 repository.saveTestResult(
                     TestResultEntity(
-                        testName = "AUTOSERVICE_SET_${device}_${featureHex}_V$value",
-                        transportType = "autoservice_Binder",
-                        status = DiscoveryStatus.AVAILABLE,
-                        latencyMs = duration,
-                        payloadSent = reqPayload,
-                        responseReceived = "retCode=$retCode | ReadBefore=$readBeforeVal | ReadAfter=$readAfterVal",
-                        verified = true
+                        className = "autoservice_Binder",
+                        methodName = "SET_${device}_${featureHex}_V$value",
+                        parameters = reqPayload,
+                        returnType = "int",
+                        execution = "SUCCESS",
+                        result = "retCode=$retCode | ReadBefore=$readBeforeVal | ReadAfter=$readAfterVal",
+                        durationMs = duration
                     )
                 )
 
@@ -582,7 +583,7 @@ class BYDAutoServiceInspector(
             repository.saveDiscovery(
                 category = "PHYSICAL_TEST",
                 name = "DEVICE_${last.deviceType}_FID_${last.featureIdHex}_VAL_${last.returnedValue}",
-                status = if (confirmed) DiscoveryStatus.AVAILABLE else DiscoveryStatus.EXECUTION_FAILED,
+                status = if (confirmed) DiscoveryStatus.VALIDATED else DiscoveryStatus.FAILED,
                 evidenceJson = last.toJson().toString()
             )
         } else {
