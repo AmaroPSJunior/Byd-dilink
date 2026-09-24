@@ -5,24 +5,27 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
-import com.byd.carcontrol.data.*
+import com.byd.carcontrol.data.BinderServiceEntity
+import com.byd.carcontrol.data.PermissionEntity
+import com.byd.carcontrol.discovery.DiscoveryStatus
 import com.byd.carcontrol.repository.DiscoveryRepository
-import org.json.JSONArray
 import org.json.JSONObject
-import java.io.PrintWriter
-import java.io.StringWriter
 import java.lang.reflect.Constructor
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
-import java.util.UUID
 
 /**
- * BYD Light HAL Inspector - Módulo de Diagnóstico Exaustivo e Seguro
+ * BYD Light HAL Deep Inspector - STRICT SAFE READ-ONLY
  * 
- * Inspeciona exaustivamente a classe android.hardware.bydauto.light.BYDAutoLightDevice
- * e todo o subsistema de iluminação do BYD Dolphin Plus (DiLink 3.0/4.0, Android 10, SDK 29)
- * em MODO STRICT SAFE READ ONLY (nenhuma alteração física ou comando de escrita).
+ * Inspeciona exaustivamente a hierarquia da classe:
+ * android.hardware.bydauto.light.BYDAutoLightDevice
+ * e suas superclasses (ex: android.hardware.bydauto.AbsBYDAutoDevice).
+ * 
+ * Opera 100% em modo STRICT SAFE READ-ONLY:
+ * - NENHUM método de escrita é executado.
+ * - NENHUM comando CAN, SPI, UART, UDS ou Binder transact de escrita é disparado.
+ * - Exibe TODOS os métodos e campos encontrados sem truncamento.
  */
 class BYDLightHalInspector(
     private val context: Context,
@@ -32,729 +35,550 @@ class BYDLightHalInspector(
     companion object {
         const val TARGET_CLASS_NAME = "android.hardware.bydauto.light.BYDAutoLightDevice"
 
-        val ALT_CLASS_NAMES = listOf(
-            "com.byd.auto.light.BYDAutoLightDevice",
-            "com.byd.auto.light.BYDLightManager",
-            "com.byd.auto.light.BYDAutoLightManager",
-            "com.byd.auto.BYDAutoDevice",
-            "android.hardware.bydauto.BYDAutoDevice",
-            "android.hardware.bydauto.AbsBYDAutoDevice",
-            "com.byd.service.BYDAutoLightBus"
-        )
-
-        val LIGHT_PERMISSIONS = listOf(
-            "com.byd.permission.CAR_LIGHT_CONTROL",
-            "android.car.permission.CONTROL_CAR_INTERIOR_LIGHTS",
-            "android.car.permission.CAR_EXTERIOR_LIGHTS",
-            "com.byd.permission.BYD_AUTO_CONTROL",
-            "com.byd.permission.CAR_STATE_READ",
-            "com.byd.permission.LIGHT_CONTROL",
-            "BYDAUTO_LIGHT_GET",
-            "BYDAUTO_LIGHT_SET",
-            "BYDAUTO_LIGHT_COMMON"
-        )
-
-        val KEYWORD_FILTER = listOf(
-            "get", "set", "status", "state", "light", "feature",
-            "device", "value", "listener", "register", "unregister",
-            "callback", "command", "control"
-        )
-
-        val WRITE_PREFIXES = listOf(
-            "set", "enable", "disable", "open", "close", "lock", "unlock",
-            "turnon", "turnoff", "write", "control", "move", "post", "send", "adjust"
-        )
-
-        val READ_PREFIXES = listOf(
-            "get", "is", "has", "query", "read", "status", "state", "info"
-        )
+        val READ_KEYWORDS = listOf("get", "read", "query", "status", "feature", "type", "state")
+        val WRITE_KEYWORDS = listOf("set", "write", "send", "command", "control", "update")
+        val COURTESY_KEYWORDS = listOf("inside", "interior", "reading", "reader", "room", "dome", "ceiling", "roof", "courtesy", "lamp", "light", "door")
+        val AMBIENT_KEYWORDS = listOf("ambient", "atmosphere", "color", "rgb", "brightness")
     }
 
-    // Diagnostic Storage
-    private var diagnosticSession: DiagnosticSession? = null
-    private val discoveredClasses = mutableListOf<DiagnosticClass>()
-    private val discoveredMethods = mutableListOf<DiagnosticMethod>()
-    private val discoveredFields = mutableListOf<DiagnosticField>()
-    private val discoveredPermissions = mutableListOf<DiagnosticPermission>()
-    private val logs = mutableListOf<String>()
+    private val inspectionErrors = mutableListOf<String>()
 
     fun runExhaustiveInspection(): String {
         val startTime = SystemClock.elapsedRealtime()
-        val sessionId = "LIGHT_HAL_" + UUID.randomUUID().toString().take(8)
+        val sb = StringBuilder()
 
-        diagnosticSession = DiagnosticSession(
-            sessionId = sessionId,
-            timestamp = System.currentTimeMillis(),
-            firmware = Build.DISPLAY ?: "DiLink 3.0",
-            androidVersion = Build.VERSION.RELEASE ?: "10",
-            sdk = Build.VERSION.SDK_INT,
-            device = Build.MODEL ?: "BYD Dolphin Plus",
-            appVersion = "1.0.0"
+        sb.append("==================================================\n")
+        sb.append("BYD LIGHT HAL DEEP INSPECTOR\n")
+        sb.append("STRICT SAFE READ-ONLY\n")
+        sb.append("==================================================\n\n")
+
+        // 1. DEVICE INFORMATION
+        sb.append("DEVICE INFORMATION\n")
+        sb.append("------------------\n")
+        sb.append("Model: ${Build.MODEL}\n")
+        sb.append("Device: ${Build.DEVICE}\n")
+        sb.append("Manufacturer: ${Build.MANUFACTURER}\n")
+        sb.append("Brand: ${Build.BRAND}\n")
+        sb.append("Android Release: ${Build.VERSION.RELEASE}\n")
+        sb.append("SDK Int: ${Build.VERSION.SDK_INT}\n")
+        sb.append("Build Display: ${Build.DISPLAY}\n")
+        sb.append("Fingerprint: ${Build.FINGERPRINT}\n\n")
+
+        // Load Primary Class & Hierarchy
+        var primaryClass: Class<*>? = null
+        try {
+            primaryClass = Class.forName(TARGET_CLASS_NAME)
+        } catch (t: Throwable) {
+            inspectionErrors.add("Primary class $TARGET_CLASS_NAME not found: ${t.javaClass.simpleName} - ${t.message}")
+        }
+
+        val hierarchy = mutableListOf<Class<*>>()
+        var current: Class<*>? = primaryClass
+        while (current != null && current != Any::class.java) {
+            hierarchy.add(current)
+            try {
+                current = current.superclass
+            } catch (t: Throwable) {
+                inspectionErrors.add("Error traversing superclass of ${current.name}: ${t.message}")
+                break
+            }
+        }
+
+        // 2. HAL CLASS
+        sb.append("HAL CLASS\n")
+        sb.append("---------\n")
+        if (primaryClass != null) {
+            sb.append("Target Class: ${primaryClass.name}\n")
+            sb.append("Status: FOUND\n")
+            sb.append("Modifiers: ${Modifier.toString(primaryClass.modifiers)}\n")
+            sb.append("Package: ${primaryClass.`package`?.name ?: "N/A"}\n")
+            sb.append("ClassLoader: ${primaryClass.classLoader?.javaClass?.name ?: "System"}\n\n")
+        } else {
+            sb.append("Target Class: $TARGET_CLASS_NAME\n")
+            sb.append("Status: NOT_FOUND\n\n")
+        }
+
+        // 3. INSTANCE
+        var instanceObj: Any? = null
+        var instanceMethodName = "NONE"
+        sb.append("INSTANCE\n")
+        sb.append("--------\n")
+        if (primaryClass != null) {
+            try {
+                val getInstanceCtx = primaryClass.getMethod("getInstance", Context::class.java)
+                getInstanceCtx.isAccessible = true
+                instanceObj = getInstanceCtx.invoke(null, context)
+                if (instanceObj != null) instanceMethodName = "getInstance(Context)"
+            } catch (_: Throwable) {}
+
+            if (instanceObj == null) {
+                try {
+                    val getInstanceNoArg = primaryClass.getMethod("getInstance")
+                    getInstanceNoArg.isAccessible = true
+                    instanceObj = getInstanceNoArg.invoke(null)
+                    if (instanceObj != null) instanceMethodName = "getInstance()"
+                } catch (_: Throwable) {}
+            }
+
+            if (instanceObj != null) {
+                sb.append("Status: FOUND / ACCESSIBLE\n")
+                sb.append("Method: $instanceMethodName\n")
+                sb.append("Runtime Class: ${instanceObj.javaClass.name}\n\n")
+            } else {
+                sb.append("Status: NOT_OBTAINED\n")
+                sb.append("Note: Static methods and class inspection remain fully operational.\n\n")
+            }
+        } else {
+            sb.append("Status: NOT_AVAILABLE\n\n")
+        }
+
+        // 4. INHERITANCE
+        sb.append("INHERITANCE\n")
+        sb.append("-----------\n")
+        if (hierarchy.isNotEmpty()) {
+            hierarchy.forEachIndexed { index, clazz ->
+                sb.append("Level $index: ${clazz.name}\n")
+                sb.append("  Modifiers: ${Modifier.toString(clazz.modifiers)}\n")
+                val interfaces = clazz.interfaces.map { it.name }
+                sb.append("  Interfaces (${interfaces.size}): ${interfaces.joinToString(", ").ifEmpty { "None" }}\n")
+
+                val constructors = try { clazz.declaredConstructors } catch (t: Throwable) { emptyArray<Constructor<*>>() }
+                sb.append("  Constructors (${constructors.size}):\n")
+                constructors.forEach { c ->
+                    val params = c.parameterTypes.map { it.simpleName }.joinToString(", ")
+                    sb.append("    ${Modifier.toString(c.modifiers)} ${clazz.simpleName}($params)\n")
+                }
+                sb.append("\n")
+            }
+        } else {
+            sb.append("No class hierarchy resolved.\n\n")
+        }
+
+        // Data collection across hierarchy
+        data class DiscoveredMethodInfo(
+            val declaringClass: String,
+            val modifiers: String,
+            val returnType: String,
+            val name: String,
+            val parameters: String,
+            val exceptions: String,
+            val methodRef: Method
         )
 
-        log("==================================================")
-        log("INICIANDO INSPEÇÃO DO BYD LIGHT HAL (SAFE READ ONLY)")
-        log("Sessão: $sessionId | Dispositivo: ${Build.MODEL} | SDK: ${Build.VERSION.SDK_INT}")
-        log("==================================================")
+        data class DiscoveredFieldInfo(
+            val declaringClass: String,
+            val modifiers: String,
+            val type: String,
+            val name: String,
+            val valueStr: String,
+            val decimalStr: String?,
+            val hexStr: String?,
+            val rawValue: Any?,
+            val isStatic: Boolean
+        )
 
-        // FASE 1: Descobrir a Classe Principal
-        val primaryClass = inspectPhase1_DiscoverClass()
+        val allMethods = mutableListOf<DiscoveredMethodInfo>()
+        val allFields = mutableListOf<DiscoveredFieldInfo>()
 
-        // FASE 2: Inspeção Completa de Métodos
-        inspectPhase2_InspectMethods(primaryClass)
-
-        // FASE 3: Inspeção da Hierarquia de Classes
-        inspectPhase3_HierarchyTree(primaryClass)
-
-        // FASE 4: Inspeção de Campos e Constantes
-        inspectPhase4_FieldsAndConstants(primaryClass)
-
-        // FASE 5: Construtores e Obtendo Instância
-        val lightInstance = inspectPhase5_ConstructorsAndInstance(primaryClass)
-
-        // FASE 6: Inspeção de Permissões
-        inspectPhase6_Permissions()
-
-        // FASE 7: API Genérica BYDAutoDevice
-        inspectPhase7_GenericBYDDeviceAPI()
-
-        // FASE 8: Inspeção do Device Type (ex: 1004)
-        inspectPhase8_DeviceType()
-
-        // FASE 9: Feature IDs
-        inspectPhase9_FeatureIDs()
-
-        // FASE 10: Invocação Segura de Métodos READ_SAFE
-        inspectPhase10_ExecuteReadSafeMethods(primaryClass, lightInstance)
-
-        // FASE 11: Listeners & Callbacks
-        inspectPhase11_ListenersAndCallbacks(primaryClass)
-
-        // FASE 12: Conexão com Binder / ServiceManager
-        inspectPhase12_BinderServiceManager()
-
-        // FASE 13: PackageManager & Serviços Instalados
-        inspectPhase13_PackageManagerServices()
-
-        // FASE 14: Relação com cloudmanager e dicarserver
-        inspectPhase14_CloudManagerRelation()
-
-        val elapsed = SystemClock.elapsedRealtime() - startTime
-
-        // FASE 15: Documentação Automática & Relatório Final
-        val report = generatePhase15Report(elapsed)
-
-        // Persist Findings
-        persistDiagnosticData(sessionId, report)
-
-        return report
-    }
-
-    private fun log(message: String) {
-        logs.add(message)
-        DiscoveryLogger.log("LIGHT_INSPECTOR", "PHASE", "LOG", message)
-    }
-
-    // ==================================================
-    // FASE 1 — DESCOBRIR A CLASSE
-    // ==================================================
-    private fun inspectPhase1_DiscoverClass(): Class<*>? {
-        log("\n--- FASE 1: DESCOBERTA DA CLASSE ---")
-        var targetClass: Class<*>? = null
-
-        for (className in listOf(TARGET_CLASS_NAME) + ALT_CLASS_NAMES) {
-            try {
-                val clazz = Class.forName(className)
-                if (targetClass == null && className == TARGET_CLASS_NAME) {
-                    targetClass = clazz
-                }
-                val diagClass = DiagnosticClass(
-                    className = className,
-                    found = true,
-                    superclass = clazz.superclass?.name,
-                    interfaces = clazz.interfaces.map { it.name },
-                    classLoader = clazz.classLoader?.javaClass?.name ?: "System",
-                    packageName = clazz.`package`?.name ?: className.substringBeforeLast('.', ""),
-                    modifiers = Modifier.toString(clazz.modifiers)
-                )
-                discoveredClasses.add(diagClass)
-                log("✅ CLASSE ENCONTRADA: $className")
-                log("   ClassLoader: ${diagClass.classLoader}")
-                log("   Package: ${diagClass.packageName}")
-                log("   Superclasse: ${diagClass.superclass}")
-                log("   Interfaces: ${diagClass.interfaces.joinToString(", ")}")
-                log("   Modificadores: ${diagClass.modifiers}")
-            } catch (e: ClassNotFoundException) {
-                discoveredClasses.add(DiagnosticClass(className = className, found = false))
-                log("❌ CLASSE NÃO ENCONTRADA: $className (ClassNotFoundException)")
-            } catch (e: Exception) {
-                log("⚠️ ERRO AO CARREGAR CLASSE $className: ${e.javaClass.simpleName} - ${e.message}")
+        hierarchy.forEach { clazz ->
+            // Inspect methods
+            val methods = try { clazz.declaredMethods } catch (t: Throwable) {
+                inspectionErrors.add("Error inspecting declaredMethods on ${clazz.name}: ${t.message}")
+                emptyArray<Method>()
             }
-        }
-        return targetClass
-    }
-
-    // ==================================================
-    // FASE 2 — INSPEÇÃO COMPLETA DOS MÉTODOS
-    // ==================================================
-    private fun inspectPhase2_InspectMethods(primaryClass: Class<*>?) {
-        log("\n--- FASE 2: INSPEÇÃO COMPLETA DOS MÉTODOS ---")
-        if (primaryClass == null) {
-            log("⚠️ Classe principal $TARGET_CLASS_NAME não carregada na Fase 1. Inspecionando alternativas...")
-            return
-        }
-
-        val allDeclared = primaryClass.declaredMethods
-        val allPublic = primaryClass.methods
-
-        log("Total de métodos declarados diretamente: ${allDeclared.size}")
-        log("Total de métodos públicos (incluindo herdados): ${allPublic.size}")
-
-        for (method in allDeclared) {
-            val mName = method.name
-            val lowerName = mName.lowercase()
-            val returnType = method.returnType.name
-            val paramTypes = method.parameterTypes.map { it.name }
-            val modifiers = Modifier.toString(method.modifiers)
-            val declaringClass = method.declaringClass.name
-            val isStatic = Modifier.isStatic(method.modifiers)
-
-            val category = when {
-                WRITE_PREFIXES.any { lowerName.startsWith(it) } -> "WRITE_METHOD_DISCOVERED (NÃO EXECUTADO)"
-                READ_PREFIXES.any { lowerName.startsWith(it) } -> "READ_SAFE"
-                else -> "UNKNOWN_SIDE_EFFECT"
-            }
-
-            val diagMethod = DiagnosticMethod(
-                className = primaryClass.name,
-                methodName = mName,
-                returnType = returnType,
-                parameters = paramTypes,
-                modifiers = modifiers,
-                declaringClass = declaringClass,
-                category = category,
-                executionStatus = "NOT_TESTED"
-            )
-            discoveredMethods.add(diagMethod)
-
-            val methodTag = if (category.contains("WRITE")) " [MÉTODO DE ESCRITA (NÃO EXECUTADO)]" else ""
-            log("  [MÉTODO] $modifiers $returnType $mName(${paramTypes.joinToString(", ")})$methodTag")
-            log("           Declaring: $declaringClass | Static: $isStatic | Categoria: $category")
-        }
-    }
-
-    // ==================================================
-    // FASE 3 — INSPEÇÃO DA HIERARQUIA COMPLETA
-    // ==================================================
-    private fun inspectPhase3_HierarchyTree(primaryClass: Class<*>?) {
-        log("\n--- FASE 3: INSPEÇÃO DA HIERARQUIA COMPLETA DE CLASSES ---")
-        if (primaryClass == null) return
-
-        var current: Class<*>? = primaryClass.superclass
-        var depth = 1
-
-        while (current != null && current != Any::class.java) {
-            log("\n[HERANÇA LEVEL $depth] Class: ${current.name}")
-            log("  Modifiers: ${Modifier.toString(current.modifiers)}")
-            log("  Interfaces: ${current.interfaces.map { it.name }.joinToString(", ").ifEmpty { "Nenhuma" }}")
-            
-            val constructors = current.declaredConstructors
-            log("  Constructors (${constructors.size}):")
-            for (c in constructors) {
-                log("    ${Modifier.toString(c.modifiers)} ${current.simpleName}(${c.parameterTypes.map { it.simpleName }.joinToString(", ")})")
-            }
-            
-            val fields = current.declaredFields
-            log("  Fields (${fields.size}):")
-            for (f in fields) {
-                var staticVal: String? = null
-                if (Modifier.isStatic(f.modifiers)) {
-                    try {
-                        f.isAccessible = true
-                        staticVal = formatValueWithHex(f.get(null))
-                    } catch (_: Exception) {}
-                }
-                log("    ${Modifier.toString(f.modifiers)} ${f.type.simpleName} ${f.name}${if (staticVal != null) " = $staticVal" else ""}")
-            }
-
-            val methods = current.declaredMethods
-            log("  Methods (${methods.size}):")
             for (m in methods) {
-                val isWrite = WRITE_PREFIXES.any { m.name.lowercase().startsWith(it) }
-                val writeTag = if (isWrite) " [MÉTODO DE ESCRITA (NÃO EXECUTADO)]" else ""
-                log("    ${Modifier.toString(m.modifiers)} ${m.returnType.simpleName} ${m.name}(${m.parameterTypes.map { it.simpleName }.joinToString(", ")})$writeTag")
-            }
-
-            current = current.superclass
-            depth++
-        }
-    }
-
-    // ==================================================
-    // FASE 4 — CAMPOS E CONSTANTES
-    // ==================================================
-    private fun inspectPhase4_FieldsAndConstants(primaryClass: Class<*>?) {
-        log("\n--- FASE 4: CAMPOS E CONSTANTES ---")
-        if (primaryClass == null) return
-
-        val fields = primaryClass.declaredFields
-        log("Total de campos declarados: ${fields.size}")
-
-        for (field in fields) {
-            val fName = field.name
-            val fType = field.type.name
-            val isStatic = Modifier.isStatic(field.modifiers)
-            val isFinal = Modifier.isFinal(field.modifiers)
-            var valueStr: String? = null
-
-            if (isStatic) {
                 try {
-                    field.isAccessible = true
-                    val valObj = field.get(null)
-                    valueStr = valObj?.toString() ?: "null"
-                } catch (e: Exception) {
-                    valueStr = "ERRO_ACESSO: ${e.javaClass.simpleName}"
+                    val mods = Modifier.toString(m.modifiers)
+                    val ret = m.returnType.name
+                    val params = m.parameterTypes.map { it.name }.joinToString(", ")
+                    val excs = m.exceptionTypes.map { it.name }.joinToString(", ").ifEmpty { "NONE" }
+                    allMethods.add(
+                        DiscoveredMethodInfo(
+                            declaringClass = clazz.name,
+                            modifiers = mods,
+                            returnType = ret,
+                            name = m.name,
+                            parameters = params,
+                            exceptions = excs,
+                            methodRef = m
+                        )
+                    )
+                } catch (t: Throwable) {
+                    inspectionErrors.add("Error reading method ${m.name} on ${clazz.name}: ${t.message}")
                 }
             }
 
-            val diagField = DiagnosticField(
-                className = primaryClass.name,
-                fieldName = fName,
-                type = fType,
-                value = valueStr,
-                isConstant = isStatic && isFinal
-            )
-            discoveredFields.add(diagField)
-
-            log("  [CAMPO] ${Modifier.toString(field.modifiers)} $fType $fName = ${valueStr ?: "<instância>"}")
-        }
-    }
-
-    private fun formatValueWithHex(value: Any?): String {
-        if (value == null) return "null"
-        return when (value) {
-            is Int -> "$value (0x${Integer.toHexString(value).uppercase()})"
-            is Long -> "$value (0x${java.lang.Long.toHexString(value).uppercase()})"
-            is Short -> "$value (0x${Integer.toHexString(value.toInt()).uppercase()})"
-            is Byte -> "$value (0x${Integer.toHexString(value.toInt() and 0xFF).uppercase()})"
-            is IntArray -> value.joinToString(", ", "[", "]") { "$it (0x${Integer.toHexString(it).uppercase()})" }
-            else -> value.toString()
-        }
-    }
-
-    // ==================================================
-    // FASE 5 — CONSTRUTORES E INSTANCIAÇÃO
-    // ==================================================
-    private fun inspectPhase5_ConstructorsAndInstance(primaryClass: Class<*>?): Any? {
-        log("\n--- FASE 5: CONSTRUTORES E OBTENÇÃO DA INSTÂNCIA ---")
-        if (primaryClass == null) return null
-
-        var instance: Any? = null
-
-        // 1. Inspecionar Construtores
-        log("Constructors declarados em ${primaryClass.simpleName}:")
-        for (c in primaryClass.declaredConstructors) {
-            log("  [CONSTRUTOR] ${Modifier.toString(c.modifiers)} ${primaryClass.simpleName}(${c.parameterTypes.map { it.simpleName }.joinToString(", ")})")
-        }
-
-        // 2. Procurar e listar overloads de getInstance/Factory
-        val getInstanceMethods = primaryClass.methods.filter { it.name == "getInstance" || it.name.startsWith("getInstance") }
-        log("Métodos getInstance/Factory encontrados (${getInstanceMethods.size}):")
-        for (m in getInstanceMethods) {
-            log("  [FACTORY] ${Modifier.toString(m.modifiers)} ${m.returnType.simpleName} ${m.name}(${m.parameterTypes.map { it.simpleName }.joinToString(", ")})")
-        }
-
-        // 3. Tentar getInstance(Context)
-        try {
-            val getInstanceCtx = primaryClass.getMethod("getInstance", Context::class.java)
-            log("Tentando invocar getInstance(Context)...")
-            instance = getInstanceCtx.invoke(null, context)
-            if (instance != null) {
-                log("✅ SUCESSO: Instância obtida via getInstance(Context) -> ${instance.javaClass.name}")
+            // Inspect fields
+            val fields = try { clazz.declaredFields } catch (t: Throwable) {
+                inspectionErrors.add("Error inspecting declaredFields on ${clazz.name}: ${t.message}")
+                emptyArray<Field>()
             }
-        } catch (e: NoSuchMethodException) {
-            log("  getInstance(Context) não encontrado na classe.")
-        } catch (e: Exception) {
-            val cause = e.cause ?: e
-            log("❌ ERRO ao chamar getInstance(Context): ${cause.javaClass.simpleName} - ${cause.message}")
-        }
-
-        // 4. Tentar getInstance()
-        if (instance == null) {
-            try {
-                val getInstanceNoArg = primaryClass.getMethod("getInstance")
-                log("Tentando invocar getInstance()...")
-                instance = getInstanceNoArg.invoke(null)
-                if (instance != null) {
-                    log("✅ SUCESSO: Instância obtida via getInstance() -> ${instance.javaClass.name}")
-                }
-            } catch (e: NoSuchMethodException) {
-                log("  getInstance() sem argumentos não encontrado.")
-            } catch (e: Exception) {
-                val cause = e.cause ?: e
-                log("❌ ERRO ao chamar getInstance(): ${cause.javaClass.simpleName} - ${cause.message}")
-            }
-        }
-
-        return instance
-    }
-
-    // ==================================================
-    // FASE 6 — PERMISSÕES
-    // ==================================================
-    private fun inspectPhase6_Permissions() {
-        log("\n--- FASE 6: PERMISSÕES DE ILUMINAÇÃO BYD ---")
-        val pm = context.packageManager
-
-        for (permName in LIGHT_PERMISSIONS) {
-            var exists = false
-            var isGranted = false
-            var protectionLevel = "UNKNOWN"
-            var responsiblePkg: String? = null
-
-            try {
-                val permInfo = pm.getPermissionInfo(permName, 0)
-                exists = true
-                protectionLevel = "0x" + Integer.toHexString(permInfo.protectionLevel)
-                responsiblePkg = permInfo.packageName
-            } catch (_: Exception) {}
-
-            try {
-                val check = context.checkSelfPermission(permName)
-                isGranted = (check == PackageManager.PERMISSION_GRANTED)
-            } catch (_: Exception) {}
-
-            val diagPerm = DiagnosticPermission(
-                permission = permName,
-                exists = exists,
-                granted = isGranted,
-                protectionLevel = protectionLevel,
-                responsiblePackage = responsiblePkg
-            )
-            discoveredPermissions.add(diagPerm)
-
-            log("  [PERMISSÃO] $permName")
-            log("              Existe: $exists | Concedida: $isGranted | Proteção: $protectionLevel | Pacote: ${responsiblePkg ?: "N/A"}")
-        }
-    }
-
-    // ==================================================
-    // FASE 7 — API GENÉRICA BYDAUTODEVICE
-    // ==================================================
-    private fun inspectPhase7_GenericBYDDeviceAPI() {
-        log("\n--- FASE 7: API GENÉRICA BYDAUTODEVICE ---")
-        for (genericName in listOf("com.byd.auto.BYDAutoDevice", "android.hardware.bydauto.BYDAutoDevice", "android.hardware.bydauto.AbsBYDAutoDevice")) {
-            try {
-                val clazz = Class.forName(genericName)
-                log("✅ Classe genérica encontrada: $genericName")
-                for (m in clazz.declaredMethods) {
-                    val mName = m.name
-                    if (mName.contains("get", ignoreCase = true) || mName.contains("set", ignoreCase = true) || mName.contains("value", ignoreCase = true) || mName.contains("status", ignoreCase = true)) {
-                        log("   Method: ${Modifier.toString(m.modifiers)} ${m.returnType.simpleName} $mName(${m.parameterTypes.map { it.simpleName }.joinToString(", ")})")
-                    }
-                }
-            } catch (_: ClassNotFoundException) {
-                log("   Classe genérica $genericName não encontrada.")
-            } catch (e: Exception) {
-                log("   Erro inspecionando $genericName: ${e.message}")
-            }
-        }
-    }
-
-    // ==================================================
-    // FASE 8 — DEVICE TYPE
-    // ==================================================
-    private fun inspectPhase8_DeviceType() {
-        log("\n--- FASE 8: INVESTIGAÇÃO DE DEVICE TYPE (Ex: 1004) ---")
-        var found1004 = false
-
-        for (field in discoveredFields) {
-            if (field.value == "1004" || field.fieldName.contains("DEVICE", ignoreCase = true) || field.fieldName.contains("TYPE", ignoreCase = true)) {
-                log("✅ Campo relevante encontrado: ${field.className}#${field.fieldName} = ${field.value}")
-                if (field.value == "1004") found1004 = true
-            }
-        }
-
-        if (!found1004) {
-            log("ℹ️ Valor '1004' não localizado diretamente em constantes estáticas públicas. Hipótese registrada para verificação.")
-        }
-    }
-
-    // ==================================================
-    // FASE 9 — FEATURE IDS
-    // ==================================================
-    private fun inspectPhase9_FeatureIDs() {
-        log("\n--- FASE 9: INVESTIGAÇÃO DE FEATURE IDS DE ILUMINAÇÃO ---")
-        val featureFields = discoveredFields.filter {
-            it.fieldName.contains("FEATURE", ignoreCase = true) ||
-            it.fieldName.contains("LIGHT", ignoreCase = true) ||
-            it.fieldName.contains("LAMP", ignoreCase = true) ||
-            it.fieldName.contains("AMBIENT", ignoreCase = true)
-        }
-
-        log("Campos de Feature IDs encontrados (${featureFields.size}):")
-        for (f in featureFields) {
-            log("   Feature Constant: ${f.fieldName} (${f.type}) = ${f.value ?: "<instância>"}")
-        }
-    }
-
-    // ==================================================
-    // FASE 10 — MÉTODOS DE LEITURA (READ_SAFE)
-    // ==================================================
-    private fun inspectPhase10_ExecuteReadSafeMethods(primaryClass: Class<*>?, instance: Any?) {
-        log("\n--- FASE 10: EXECUÇÃO DE MÉTODOS READ_SAFE ---")
-        if (primaryClass == null) return
-
-        val readMethods = primaryClass.declaredMethods.filter { m ->
-            val nameLower = m.name.lowercase()
-            READ_PREFIXES.any { nameLower.startsWith(it) } &&
-            !WRITE_PREFIXES.any { nameLower.startsWith(it) }
-        }
-
-        log("Métodos READ_SAFE identificados para teste de leitura: ${readMethods.size}")
-
-        for (method in readMethods) {
-            val mName = method.name
-            val startTime = SystemClock.elapsedRealtime()
-            var execStatus = "FAILED"
-            var returnValStr: String? = null
-            var exStr: String? = null
-
-            // Somente tentar invocar se não exigir parâmetros numéricos arbitrários de escrita
-            if (method.parameterCount == 0 || (method.parameterCount == 1 && method.parameterTypes[0] == Context::class.java)) {
+            for (f in fields) {
                 try {
-                    method.isAccessible = true
-                    val isStatic = Modifier.isStatic(method.modifiers)
-                    val targetObj = if (isStatic) null else instance
+                    f.isAccessible = true
+                    val mods = Modifier.toString(f.modifiers)
+                    val typeStr = f.type.name
+                    val isStatic = Modifier.isStatic(f.modifiers)
 
-                    if (!isStatic && targetObj == null) {
-                        execStatus = "INSTANTIATION_ERROR"
-                        exStr = "Sem instância para invocar método $mName"
+                    var valueStr = "VALUE_ACCESS_DENIED"
+                    var decimalStr: String? = null
+                    var hexStr: String? = null
+                    var rawVal: Any? = null
+
+                    if (isStatic) {
+                        try {
+                            rawVal = f.get(null)
+                            val formatted = formatNumber(rawVal)
+                            valueStr = formatted.first
+                            decimalStr = formatted.second
+                            hexStr = formatted.third
+                        } catch (t: Throwable) {
+                            valueStr = "VALUE_ERROR: ${t.javaClass.simpleName} - ${t.message}"
+                        }
+                    } else if (instanceObj != null && clazz.isInstance(instanceObj)) {
+                        try {
+                            rawVal = f.get(instanceObj)
+                            val formatted = formatNumber(rawVal)
+                            valueStr = formatted.first
+                            decimalStr = formatted.second
+                            hexStr = formatted.third
+                        } catch (t: Throwable) {
+                            valueStr = "VALUE_ERROR: ${t.javaClass.simpleName} - ${t.message}"
+                        }
                     } else {
-                        val result = if (method.parameterCount == 1) method.invoke(targetObj, context) else method.invoke(targetObj)
-                        execStatus = "SUCCESS"
-                        returnValStr = formatValueWithHex(result)
+                        valueStr = "<INSTANCE_REQUIRED>"
                     }
-                } catch (e: Exception) {
-                    val cause = e.cause ?: e
-                    execStatus = when (cause) {
-                        is SecurityException -> "SECURITY_EXCEPTION"
-                        else -> "REFLECTION_ERROR"
-                    }
-                    val sw = StringWriter()
-                    cause.printStackTrace(PrintWriter(sw))
-                    exStr = "${cause.javaClass.simpleName}: ${cause.message}\n${sw.toString().take(200)}"
+
+                    allFields.add(
+                        DiscoveredFieldInfo(
+                            declaringClass = clazz.name,
+                            modifiers = mods,
+                            type = typeStr,
+                            name = f.name,
+                            valueStr = valueStr,
+                            decimalStr = decimalStr,
+                            hexStr = hexStr,
+                            rawValue = rawVal,
+                            isStatic = isStatic
+                        )
+                    )
+                } catch (t: Throwable) {
+                    inspectionErrors.add("Error reading field ${f.name} on ${clazz.name}: ${t.message}")
                 }
-            } else {
-                execStatus = "REQUIRES_PARAMETERS"
-                returnValStr = "Exige parâmetros: ${method.parameterTypes.map { it.simpleName }.joinToString()}"
+            }
+        }
+
+        // 5. ===== FULL METHOD LIST =====
+        sb.append("===== FULL METHOD LIST =====\n")
+        sb.append("Total Methods Found Across Hierarchy: ${allMethods.size}\n\n")
+        allMethods.forEachIndexed { idx, m ->
+            sb.append("METHOD [${idx + 1}/${allMethods.size}]\n")
+            sb.append("DECLARING CLASS: ${m.declaringClass}\n")
+            sb.append("MODIFIERS: ${m.modifiers}\n")
+            sb.append("RETURN TYPE: ${m.returnType}\n")
+            sb.append("METHOD NAME: ${m.name}\n")
+            sb.append("PARAMETER TYPES: (${m.parameters})\n")
+            sb.append("EXCEPTIONS: ${m.exceptions}\n\n")
+        }
+
+        // 6. ===== POSSIBLE READ METHODS =====
+        val readMethods = allMethods.filter { m ->
+            READ_KEYWORDS.any { m.name.lowercase().contains(it) }
+        }
+        sb.append("===== POSSIBLE READ METHODS =====\n")
+        sb.append("Total Read Candidates: ${readMethods.size}\n\n")
+        readMethods.forEach { m ->
+            sb.append("${m.declaringClass}#${m.modifiers} ${m.returnType} ${m.name}(${m.parameters})\n")
+        }
+        sb.append("\n")
+
+        // 7. ===== POSSIBLE WRITE METHODS - NOT EXECUTED =====
+        val writeMethods = allMethods.filter { m ->
+            WRITE_KEYWORDS.any { m.name.lowercase().contains(it) }
+        }
+        sb.append("===== POSSIBLE WRITE METHODS - NOT EXECUTED =====\n")
+        sb.append("Total Write Candidates (BLOCKED - NOT EXECUTED): ${writeMethods.size}\n\n")
+        writeMethods.forEach { m ->
+            sb.append("[WRITE METHOD (NOT EXECUTED)] ${m.declaringClass}#${m.modifiers} ${m.returnType} ${m.name}(${m.parameters})\n")
+        }
+        sb.append("\n")
+
+        // 8. ===== POSSIBLE INTERIOR / COURTESY LIGHT METHODS =====
+        val courtesyMethods = allMethods.filter { m ->
+            COURTESY_KEYWORDS.any { m.name.lowercase().contains(it) }
+        }
+        sb.append("===== POSSIBLE INTERIOR / COURTESY LIGHT METHODS =====\n")
+        sb.append("Total Courtesy Light Candidates: ${courtesyMethods.size}\n\n")
+        courtesyMethods.forEach { m ->
+            val isWrite = WRITE_KEYWORDS.any { m.name.lowercase().contains(it) }
+            val tag = if (isWrite) " [WRITE METHOD (NOT EXECUTED)]" else " [READ CANDIDATE]"
+            sb.append("${m.declaringClass}#${m.modifiers} ${m.returnType} ${m.name}(${m.parameters})$tag\n")
+        }
+        sb.append("\n")
+
+        // 9. ===== FULL FIELD LIST =====
+        sb.append("===== FULL FIELD LIST =====\n")
+        sb.append("Total Fields Found Across Hierarchy: ${allFields.size}\n\n")
+        allFields.forEachIndexed { idx, f ->
+            sb.append("FIELD [${idx + 1}/${allFields.size}]\n")
+            sb.append("DECLARING CLASS: ${f.declaringClass}\n")
+            sb.append("MODIFIERS: ${f.modifiers}\n")
+            sb.append("TYPE: ${f.type}\n")
+            sb.append("NAME: ${f.name}\n")
+            sb.append("VALUE: ${f.valueStr}\n\n")
+        }
+
+        // 10. ===== POSSIBLE INTERIOR / COURTESY LIGHT FIELDS =====
+        val courtesyFields = allFields.filter { f ->
+            COURTESY_KEYWORDS.any { f.name.lowercase().contains(it) }
+        }
+        sb.append("===== POSSIBLE INTERIOR / COURTESY LIGHT FIELDS =====\n")
+        sb.append("Total Courtesy Light Fields Found: ${courtesyFields.size}\n\n")
+        courtesyFields.forEach { f ->
+            sb.append("NAME: ${f.name}\n")
+            sb.append("TYPE: ${f.type}\n")
+            sb.append("DECLARING CLASS: ${f.declaringClass}\n")
+            if (f.decimalStr != null) sb.append("DECIMAL: ${f.decimalStr}\n")
+            if (f.hexStr != null) sb.append("HEX: ${f.hexStr}\n")
+            sb.append("VALUE: ${f.valueStr}\n\n")
+        }
+
+        // 11. ===== AMBIENT LIGHT - SECONDARY =====
+        val ambientFields = allFields.filter { f ->
+            AMBIENT_KEYWORDS.any { f.name.lowercase().contains(it) }
+        }
+        val ambientMethods = allMethods.filter { m ->
+            AMBIENT_KEYWORDS.any { m.name.lowercase().contains(it) }
+        }
+        sb.append("===== AMBIENT LIGHT - SECONDARY =====\n")
+        sb.append("Ambient Light Fields (${ambientFields.size}):\n")
+        ambientFields.forEach { f ->
+            sb.append("  [FIELD] ${f.declaringClass}#${f.name} = ${f.valueStr}\n")
+        }
+        sb.append("Ambient Light Methods (${ambientMethods.size}):\n")
+        ambientMethods.forEach { m ->
+            val isWrite = WRITE_KEYWORDS.any { m.name.lowercase().contains(it) }
+            val tag = if (isWrite) " [WRITE METHOD (NOT EXECUTED)]" else ""
+            sb.append("  [METHOD] ${m.declaringClass}#${m.name}(${m.parameters})$tag\n")
+        }
+        sb.append("\n")
+
+        // 12. ===== DEVICE TYPE =====
+        sb.append("===== DEVICE TYPE =====\n")
+        var runtimeDeviceType: Any? = null
+        var runtimeTypeVal: Any? = null
+
+        if (instanceObj != null) {
+            try {
+                val mGetDevType = primaryClass?.getMethod("getDevicetype") ?: primaryClass?.getMethod("getDeviceType")
+                if (mGetDevType != null) {
+                    mGetDevType.isAccessible = true
+                    runtimeDeviceType = mGetDevType.invoke(instanceObj)
+                }
+            } catch (t: Throwable) {
+                inspectionErrors.add("Error invoking getDevicetype(): ${t.message}")
             }
 
-            val elapsed = SystemClock.elapsedRealtime() - startTime
-
-            // Atualizar status na lista
-            val idx = discoveredMethods.indexOfFirst { it.methodName == mName }
-            if (idx >= 0) {
-                discoveredMethods[idx] = discoveredMethods[idx].copy(
-                    executionStatus = execStatus,
-                    returnValue = returnValStr,
-                    exception = exStr
-                )
+            try {
+                val mGetType = primaryClass?.getMethod("getType")
+                if (mGetType != null) {
+                    mGetType.isAccessible = true
+                    runtimeTypeVal = mGetType.invoke(instanceObj)
+                }
+            } catch (t: Throwable) {
+                inspectionErrors.add("Error invoking getType(): ${t.message}")
             }
-
-            log("  [READ TEST] $mName() -> Status: $execStatus (${elapsed}ms)")
-            if (returnValStr != null) log("              Retorno: $returnValStr")
-            if (exStr != null) log("              Exceção: $exStr")
         }
+
+        val devTypeFormat = formatNumber(runtimeDeviceType)
+        val typeFormat = formatNumber(runtimeTypeVal)
+
+        sb.append("getDevicetype:\n")
+        sb.append("DECIMAL: ${devTypeFormat.second ?: "N/A"}\n")
+        sb.append("HEX: ${devTypeFormat.third ?: "N/A"}\n\n")
+
+        sb.append("getType:\n")
+        sb.append("DECIMAL: ${typeFormat.second ?: "N/A"}\n")
+        sb.append("HEX: ${typeFormat.third ?: "N/A"}\n\n")
+
+        // 13. ===== FEATURE LIST =====
+        sb.append("===== FEATURE LIST =====\n")
+        var featureListObj: Any? = null
+        if (instanceObj != null) {
+            try {
+                val mGetFeatureList = primaryClass?.getMethod("getFeatureList")
+                if (mGetFeatureList != null) {
+                    mGetFeatureList.isAccessible = true
+                    featureListObj = mGetFeatureList.invoke(instanceObj)
+                }
+            } catch (t: Throwable) {
+                inspectionErrors.add("Error invoking getFeatureList(): ${t.message}")
+            }
+        }
+        if (featureListObj == null) {
+            sb.append("getFeatureList() = null\n\n")
+        } else {
+            sb.append("getFeatureList() = $featureListObj\n\n")
+        }
+
+        // 14. ===== BYDAUTO_LIGHT_GET =====
+        sb.append("===== BYDAUTO_LIGHT_GET =====\n")
+        appendPermissionDetail(sb, "android.permission.BYDAUTO_LIGHT_GET")
+
+        // 15. ===== BYDAUTO_LIGHT_SET =====
+        sb.append("===== BYDAUTO_LIGHT_SET =====\n")
+        appendPermissionDetail(sb, "android.permission.BYDAUTO_LIGHT_SET")
+
+        // 16. ===== OTHER BYDAUTO_LIGHT PERMISSIONS =====
+        sb.append("===== OTHER BYDAUTO_LIGHT PERMISSIONS =====\n")
+        try {
+            val pm = context.packageManager
+            val knownCandidates = listOf(
+                "android.permission.BYDAUTO_LIGHT_COMMON",
+                "com.byd.permission.BYD_LIGHT_CONTROL",
+                "com.byd.permission.CAR_LIGHT_CONTROL",
+                "android.car.permission.CONTROL_CAR_INTERIOR_LIGHTS",
+                "android.car.permission.CAR_EXTERIOR_LIGHTS"
+            )
+            knownCandidates.forEach { perm ->
+                try {
+                    val info = pm.getPermissionInfo(perm, 0)
+                    sb.append("Permission: $perm\n")
+                    sb.append("  Owner Package: ${info.packageName}\n")
+                    sb.append("  Protection Level: 0x${Integer.toHexString(info.protectionLevel)}\n\n")
+                } catch (_: Throwable) {
+                    sb.append("Permission: $perm (Not registered in System PM)\n\n")
+                }
+            }
+        } catch (t: Throwable) {
+            sb.append("Error querying system permissions: ${t.message}\n\n")
+        }
+
+        // 17. ===== BINDER SERVICES =====
+        sb.append("===== BINDER SERVICES =====\n")
+        inspectBinderService(sb, "autoservice")
+        inspectBinderService(sb, "byd_car_service")
+
+        // 18. ===== ERRORS =====
+        sb.append("===== ERRORS =====\n")
+        if (inspectionErrors.isEmpty()) {
+            sb.append("None. All reflection steps completed safely.\n\n")
+        } else {
+            inspectionErrors.forEach { err ->
+                sb.append("• $err\n")
+            }
+            sb.append("\n")
+        }
+
+        // 19. ===== END REPORT =====
+        val totalMs = SystemClock.elapsedRealtime() - startTime
+        sb.append("==================================================\n")
+        sb.append("END REPORT (Inspection completed in ${totalMs}ms)\n")
+        sb.append("==================================================\n")
+
+        val reportString = sb.toString()
+
+        // Persist Findings to local database safely
+        try {
+            repository.saveDiscovery(
+                category = "LIGHT_HAL_DEEP_INSPECTOR",
+                name = "BYDAutoLightDevice_Exhaustive_Report",
+                status = if (primaryClass != null) DiscoveryStatus.VALIDATED else DiscoveryStatus.NOT_AVAILABLE,
+                evidenceJson = JSONObject().apply {
+                    put("methodsCount", allMethods.size)
+                    put("fieldsCount", allFields.size)
+                    put("instanceFound", instanceObj != null)
+                    put("durationMs", totalMs)
+                }.toString()
+            )
+        } catch (_: Throwable) {}
+
+        return reportString
     }
 
-    // ==================================================
-    // FASE 11 — LISTENERS / CALLBACKS
-    // ==================================================
-    private fun inspectPhase11_ListenersAndCallbacks(primaryClass: Class<*>?) {
-        log("\n--- FASE 11: LISTENERS E CALLBACKS ---")
-        if (primaryClass == null) return
+    private fun appendPermissionDetail(sb: StringBuilder, permName: String) {
+        sb.append("Permission: $permName\n")
+        var isDeclared = false
+        try {
+            val pkgInfo = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_PERMISSIONS)
+            isDeclared = pkgInfo.requestedPermissions?.contains(permName) == true
+        } catch (_: Throwable) {}
+        sb.append("Declared in our AndroidManifest: ${if (isDeclared) "YES" else "NO"}\n")
 
-        val listenerMethods = primaryClass.declaredMethods.filter { m ->
-            m.name.contains("listener", ignoreCase = true) ||
-            m.name.contains("callback", ignoreCase = true) ||
-            m.name.contains("register", ignoreCase = true)
-        }
+        var pmCheckStr = "DENIED"
+        try {
+            val res = context.packageManager.checkPermission(permName, context.packageName)
+            pmCheckStr = if (res == PackageManager.PERMISSION_GRANTED) "GRANTED" else "DENIED"
+        } catch (_: Throwable) {}
+        sb.append("PackageManager checkPermission: $pmCheckStr\n")
 
-        log("Métodos de Listener/Callback encontrados: ${listenerMethods.size}")
-        for (m in listenerMethods) {
-            log("   Listener Method: ${Modifier.toString(m.modifiers)} ${m.name}(${m.parameterTypes.map { it.name }.joinToString(", ")})")
-        }
+        var ctxCheckStr = "DENIED"
+        try {
+            val res = context.checkSelfPermission(permName)
+            ctxCheckStr = if (res == PackageManager.PERMISSION_GRANTED) "GRANTED" else "DENIED"
+        } catch (_: Throwable) {}
+        sb.append("Context.checkSelfPermission: $ctxCheckStr\n")
+
+        var protectionLevelStr = "UNKNOWN"
+        var ownerPkg = "UNKNOWN"
+        try {
+            val info = context.packageManager.getPermissionInfo(permName, 0)
+            protectionLevelStr = "0x" + Integer.toHexString(info.protectionLevel)
+            ownerPkg = info.packageName
+        } catch (_: Throwable) {}
+
+        sb.append("Protection Level: $protectionLevelStr\n")
+        sb.append("Permission Owner: $ownerPkg\n\n")
+
+        repository.savePermission(
+            PermissionEntity(
+                permissionName = permName,
+                exists = protectionLevelStr != "UNKNOWN",
+                protectionLevel = protectionLevelStr,
+                isGranted = ctxCheckStr == "GRANTED",
+                status = if (ctxCheckStr == "GRANTED") DiscoveryStatus.VALIDATED else DiscoveryStatus.DENIED
+            )
+        )
     }
 
-    // ==================================================
-    // FASE 12 — BINDER / SERVICEMANAGER
-    // ==================================================
-    private fun inspectPhase12_BinderServiceManager() {
-        log("\n--- FASE 12: BINDER / SERVICEMANAGER (SOMENTE LEITURA) ---")
+    private fun inspectBinderService(sb: StringBuilder, serviceName: String) {
+        var found = false
+        var descriptor = "N/A"
         try {
             val smClass = Class.forName("android.os.ServiceManager")
             val getServiceM = smClass.getMethod("getService", String::class.java)
-
-            for (serviceName in listOf("byd_car_service", "bydauto_light", "byd_light", "cloudmanager", "car_service")) {
-                val binderObj = getServiceM.invoke(null, serviceName) as? IBinder
-                if (binderObj != null) {
-                    val descriptor = try { binderObj.interfaceDescriptor } catch (e: Exception) { "ERROR: ${e.message}" }
-                    log("✅ Binder Service encontrado: '$serviceName' | Descriptor: $descriptor | IsAlive: ${binderObj.isBinderAlive}")
-                } else {
-                    log("⚪ Binder Service '$serviceName': NÃO ENCONTRADO")
-                }
+            val binderObj = getServiceM.invoke(null, serviceName) as? IBinder
+            if (binderObj != null && binderObj.isBinderAlive) {
+                found = true
+                descriptor = try { binderObj.interfaceDescriptor ?: "N/A" } catch (_: Throwable) { "N/A" }
             }
-        } catch (e: Exception) {
-            log("⚠️ Erro consultando ServiceManager: ${e.message}")
+        } catch (t: Throwable) {
+            inspectionErrors.add("Error querying Binder $serviceName: ${t.message}")
         }
-    }
 
-    // ==================================================
-    // FASE 13 — PACKAGE MANAGER
-    // ==================================================
-    private fun inspectPhase13_PackageManagerServices() {
-        log("\n--- FASE 13: PACOTES DO SISTEMA BYD INSTALADOS ---")
-        val pm = context.packageManager
-        val packages = pm.getInstalledPackages(0)
-        val bydPkgs = packages.filter { it.packageName.contains("byd", ignoreCase = true) || it.packageName.contains("omycar", ignoreCase = true) }
-
-        log("Total de pacotes BYD/DiLink encontrados: ${bydPkgs.size}")
-        for (pkg in bydPkgs) {
-            log("   Package: ${pkg.packageName} (Version: ${pkg.versionName})")
-        }
-    }
-
-    // ==================================================
-    // FASE 14 — RELAÇÃO COM SERVIÇOS ENCONTRADOS
-    // ==================================================
-    private fun inspectPhase14_CloudManagerRelation() {
-        log("\n--- FASE 14: RELAÇÃO COM CLOUDMANAGER / CLOUDCTRLSERV ---")
-        for (cName in listOf("com.byd.service.CloudManager", "com.byd.service.CloudCtrlServ")) {
-            try {
-                val clazz = Class.forName(cName)
-                log("✅ Classe de Serviço encontrada: $cName")
-            } catch (_: ClassNotFoundException) {
-                log("   Classe $cName não encontrada diretamente.")
-            }
-        }
-    }
-
-    // ==================================================
-    // FASE 15 — RELATÓRIO FINAL FORMATADO
-    // ==================================================
-    private fun generatePhase15Report(durationMs: Long): String {
-        val primaryClassDiag = discoveredClasses.find { it.className == TARGET_CLASS_NAME }
-        val readSafeMethodsCount = discoveredMethods.count { it.category == "READ_SAFE" }
-        val writeMethodsCount = discoveredMethods.count { it.category == "WRITE_METHOD_DISCOVERED" }
-        val grantedPermsCount = discoveredPermissions.count { it.granted }
-
-        val sb = StringBuilder()
-        sb.append("BYD LIGHT HAL INSPECTOR\n")
-        sb.append("=======================\n\n")
-
-        sb.append("Device:\n")
-        sb.append("${Build.MODEL} (${Build.DEVICE})\n\n")
-
-        sb.append("Android:\n")
-        sb.append("${Build.VERSION.RELEASE} / SDK ${Build.VERSION.SDK_INT} (${Build.DISPLAY})\n\n")
-
-        sb.append("HAL:\n")
-        sb.append("$TARGET_CLASS_NAME\n\n")
-
-        sb.append("CLASS:\n")
-        sb.append(if (primaryClassDiag?.found == true) "FOUND" else "NOT_FOUND")
+        sb.append("$serviceName = ${if (found) "FOUND" else "NOT FOUND"}")
+        if (found) sb.append(" (Interface Descriptor: $descriptor)")
         sb.append("\n\n")
 
-        sb.append("INSTANCE:\n")
-        val instStatus = discoveredMethods.any { it.executionStatus == "SUCCESS" }
-        sb.append(if (instStatus) "FOUND / ACCESSIBLE" else "NOT_OBTAINED_OR_RESTRICTED")
-        sb.append("\n\n")
-
-        sb.append("SUPERCLASS:\n")
-        sb.append(primaryClassDiag?.superclass ?: "N/A")
-        sb.append("\n\n")
-
-        sb.append("INTERFACES:\n")
-        sb.append(primaryClassDiag?.interfaces?.joinToString(", ") ?: "None")
-        sb.append("\n\n")
-
-        sb.append("CONSTRUCTORS:\n")
-        sb.append("${discoveredClasses.size} classes analisadas")
-        sb.append("\n\n")
-
-        sb.append("METHODS:\n")
-        sb.append("Total Discovered: ${discoveredMethods.size} (Read Safe: $readSafeMethodsCount, Write Discovered: $writeMethodsCount)\n\n")
-
-        sb.append("FIELDS:\n")
-        sb.append("Total Fields: ${discoveredFields.size}\n\n")
-
-        sb.append("CONSTANTS:\n")
-        val consts = discoveredFields.filter { it.isConstant }
-        sb.append(if (consts.isEmpty()) "None found statically" else consts.take(10).joinToString("\n") { "${it.fieldName} = ${it.value}" })
-        sb.append("\n\n")
-
-        sb.append("PERMISSIONS:\n")
-        sb.append("Granted: $grantedPermsCount / ${discoveredPermissions.size}\n\n")
-
-        sb.append("DEVICE TYPE:\n")
-        val devTypeField = discoveredFields.find { it.value == "1004" || it.fieldName.contains("DEVICE", ignoreCase = true) }
-        sb.append(devTypeField?.let { "${it.fieldName} = ${it.value}" } ?: "Hypothesis 1004 (Pending Hardware ACK)")
-        sb.append("\n\n")
-
-        sb.append("FEATURE IDS:\n")
-        val featureIds = discoveredFields.filter { it.fieldName.contains("FEATURE", ignoreCase = true) }
-        sb.append(if (featureIds.isEmpty()) "Discovered via method signatures" else featureIds.joinToString("\n") { "${it.fieldName} = ${it.value}" })
-        sb.append("\n\n")
-
-        sb.append("READ METHODS:\n")
-        val testedReads = discoveredMethods.filter { it.executionStatus == "SUCCESS" }
-        sb.append(if (testedReads.isEmpty()) "No zero-arg getter returned SUCCESS without privileges" else testedReads.joinToString("\n") { "✓ ${it.methodName} -> ${it.returnValue}" })
-        sb.append("\n\n")
-
-        sb.append("LISTENERS:\n")
-        sb.append("Passive Callback Interfaces Catalogued\n\n")
-
-        sb.append("BINDER:\n")
-        sb.append("byd_car_service / cloudmanager checked\n\n")
-
-        sb.append("SERVICES:\n")
-        sb.append("DiLink System Daemons Active\n\n")
-
-        sb.append("SAFE CAPABILITIES:\n")
-        sb.append("Inspection Completed in ${durationMs}ms in SAFE READ ONLY Mode.\n\n")
-
-        sb.append("=======================\n")
-        sb.append("DETAILED LOGS:\n")
-        sb.append(logs.takeLast(30).joinToString("\n"))
-
-        return sb.toString()
-    }
-
-    // ==================================================
-    // PERSISTÊNCIA EM BANCO DE DADOS E FIREBASE
-    // ==================================================
-    private fun persistDiagnosticData(sessionId: String, reportText: String) {
-        try {
-            val jsonEvidence = JSONObject().apply {
-                put("sessionId", sessionId)
-                put("classesCount", discoveredClasses.size)
-                put("methodsCount", discoveredMethods.size)
-                put("fieldsCount", discoveredFields.size)
-                put("permissionsCount", discoveredPermissions.size)
-                put("reportText", reportText)
-            }
-
-            repository.saveDiscovery(
-                category = "LIGHT_HAL_INSPECTOR",
-                name = "BYDAutoLightDevice_Exhaustive_Report",
-                status = if (discoveredClasses.any { it.found }) DiscoveryStatus.VALIDATED else DiscoveryStatus.NOT_AVAILABLE,
-                evidenceJson = jsonEvidence.toString()
+        repository.saveBinder(
+            BinderServiceEntity(
+                name = serviceName,
+                exists = found,
+                descriptor = descriptor,
+                isAlive = found,
+                status = if (found) DiscoveryStatus.VALIDATED else DiscoveryStatus.NOT_AVAILABLE
             )
+        )
+    }
 
-            DiscoveryLogger.log("LIGHT_INSPECTOR", "PERSIST", "Database", "Diagnostic session $sessionId persisted successfully.")
-        } catch (e: Exception) {
-            DiscoveryLogger.log("LIGHT_INSPECTOR", "PERSIST_ERROR", "Database", "Error persisting session: ${e.message}", e)
+    private fun formatNumber(valObj: Any?): Triple<String, String?, String?> {
+        if (valObj == null) return Triple("null", null, null)
+        return when (valObj) {
+            is Int -> Triple("$valObj", "$valObj", "0x" + Integer.toHexString(valObj).uppercase())
+            is Long -> Triple("$valObj", "$valObj", "0x" + java.lang.Long.toHexString(valObj).uppercase())
+            is Short -> Triple("$valObj", "$valObj", "0x" + Integer.toHexString(valObj.toInt()).uppercase())
+            is Byte -> Triple("$valObj", "$valObj", "0x" + Integer.toHexString(valObj.toInt() and 0xFF).uppercase())
+            else -> Triple(valObj.toString(), null, null)
         }
     }
 }

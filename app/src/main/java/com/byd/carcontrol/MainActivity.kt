@@ -132,17 +132,21 @@ class MainActivity : AppCompatActivity() {
             // 3️⃣ OPÇÃO 3: EXPORTAR RELATÓRIO COMPLETO
             btnExportReport.setOnClickListener {
                 try {
-                    val fullReport = generateFullReport()
+                    val fullReport = if (!lastInspectionReport.isNullOrEmpty()) {
+                        lastInspectionReport!!
+                    } else {
+                        generateFullReport()
+                    }
+
                     val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     val clip = ClipData.newPlainText("BYD_Light_HAL_Report", fullReport)
                     clipboard.setPrimaryClip(clip)
 
                     appendLog("==================================================")
-                    appendLog("📋 RELATÓRIO COMPLETO GERADO E COPIADO PARA A ÁREA DE TRANSFERÊNCIA!")
+                    appendLog("📋 RELATÓRIO COMPLETO COPIADO PARA A ÁREA DE TRANSFERÊNCIA!")
                     appendLog("==================================================")
-                    appendLog(fullReport)
 
-                    Toast.makeText(this, "Relatório copiado para a área de transferência!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "Relatório completo copiado para a área de transferência!", Toast.LENGTH_LONG).show()
                 } catch (t: Throwable) {
                     appendLog("❌ Erro ao exportar relatório: ${t.message}")
                 }

@@ -11,7 +11,7 @@ class DiscoveryDbHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_N
 
     companion object {
         private const val DATABASE_NAME = "byd_discovery_lab.db"
-        private const val DATABASE_VERSION = 1
+        private const val DATABASE_VERSION = 2
 
         private const val TABLE_DISCOVERIES = "discoveries"
         private const val TABLE_BINDERS = "binder_services"
@@ -37,7 +37,7 @@ class DiscoveryDbHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_N
         db.execSQL("""
             CREATE TABLE $TABLE_BINDERS (
                 name TEXT PRIMARY KEY,
-                exists INTEGER,
+                service_exists INTEGER,
                 descriptor TEXT,
                 isAlive INTEGER,
                 status TEXT,
@@ -62,7 +62,7 @@ class DiscoveryDbHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_N
         db.execSQL("""
             CREATE TABLE $TABLE_PERMISSIONS (
                 permissionName TEXT PRIMARY KEY,
-                exists INTEGER,
+                perm_exists INTEGER,
                 protectionLevel TEXT,
                 isGranted INTEGER,
                 status TEXT,
@@ -74,7 +74,7 @@ class DiscoveryDbHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_N
             CREATE TABLE $TABLE_CLASSES (
                 className TEXT PRIMARY KEY,
                 packageName TEXT,
-                exists INTEGER,
+                class_exists INTEGER,
                 superclass TEXT,
                 interfaces TEXT,
                 status TEXT,
@@ -142,7 +142,7 @@ class DiscoveryDbHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_N
     fun saveBinder(entity: BinderServiceEntity) {
         val cv = ContentValues().apply {
             put("name", entity.name)
-            put("exists", if (entity.exists) 1 else 0)
+            put("service_exists", if (entity.exists) 1 else 0)
             put("descriptor", entity.descriptor)
             put("isAlive", if (entity.isAlive) 1 else 0)
             put("status", entity.status.name)
@@ -169,7 +169,7 @@ class DiscoveryDbHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_N
     fun savePermission(entity: PermissionEntity) {
         val cv = ContentValues().apply {
             put("permissionName", entity.permissionName)
-            put("exists", if (entity.exists) 1 else 0)
+            put("perm_exists", if (entity.exists) 1 else 0)
             put("protectionLevel", entity.protectionLevel)
             put("isGranted", if (entity.isGranted) 1 else 0)
             put("status", entity.status.name)
@@ -182,7 +182,7 @@ class DiscoveryDbHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_N
         val cv = ContentValues().apply {
             put("className", entity.className)
             put("packageName", entity.packageName)
-            put("exists", if (entity.exists) 1 else 0)
+            put("class_exists", if (entity.exists) 1 else 0)
             put("superclass", entity.superclass)
             put("interfaces", entity.interfaces.joinToString(","))
             put("status", entity.status.name)
