@@ -275,7 +275,11 @@ class MainActivity : AppCompatActivity() {
                     var grantedCount = 0
 
                     permsToTest.forEach { perm ->
-                        val isGranted = permissionDiscovery.checkPermissionGranted(perm)
+                        val isGranted = try {
+                            checkSelfPermission(perm) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                        } catch (_: Throwable) {
+                            permissionDiscovery.checkPermissionGranted(perm)
+                        }
                         if (isGranted) grantedCount++
                         val statusStr = if (isGranted) "GRANTED ✅" else "DENIED ❌"
                         sb.append("• $perm: $statusStr\n")
