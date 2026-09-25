@@ -1,28 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#070d1e"
-    android:fillViewport="true">
+    android:orientation="vertical">
 
+    <!-- Header Fixo -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="16dp"
-        android:gravity="center_horizontal">
+        android:gravity="center_horizontal"
+        android:background="#0b1329">
 
-        <!-- Header: BYD Light HAL Diagnostic / Dolphin Plus -->
         <TextView
             android:id="@+id/txtHeaderTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="🔍 BYD LIGHT HAL DIAGNOSTIC"
-            android:textSize="22sp"
+            android:text="🔍 BYD DILINK CONTROLLER &amp; DIAGNOSTIC"
+            android:textSize="20sp"
             android:textStyle="bold"
             android:textColor="#00e5ff"
-            android:letterSpacing="0.05"
-            android:layout_marginTop="4dp" />
+            android:letterSpacing="0.03" />
 
         <TextView
             android:id="@+id/txtVehicleInfo"
@@ -32,193 +32,677 @@
             android:textSize="12sp"
             android:fontFamily="monospace"
             android:textColor="#94a3b8"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="12dp" />
 
-        <!-- 1️⃣ SEÇÃO 1: BYD LIGHT HAL DEEP INSPECTOR -->
+        <!-- NAVEGAÇÃO ENTRE ABAS -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:background="#0f172a"
-            android:padding="16dp"
-            android:layout_marginBottom="14dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="1️⃣ HAL LIGHT INSPECTION (STRICT SAFE READ-ONLY)"
-                android:textColor="#38bdf8"
-                android:textStyle="bold"
-                android:textSize="13sp"
-                android:layout_marginBottom="4dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Módulo de varredura profunda por reflexão da classe android.hardware.bydauto.light.BYDAutoLightDevice."
-                android:textColor="#94a3b8"
-                android:textSize="11sp"
-                android:layout_marginBottom="12dp" />
+            android:layout_height="48dp"
+            android:orientation="horizontal"
+            android:background="#1e293b"
+            android:padding="3dp">
 
             <Button
-                android:id="@+id/btnRunHalInspector"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="🔍 BYD LIGHT HAL DEEP INSPECTOR"
-                android:textSize="13sp"
+                android:id="@+id/btnTabDiagnostic"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="📋 DIAGNÓSTICO"
+                android:textSize="12sp"
                 android:textStyle="bold"
                 android:textColor="#ffffff"
                 android:backgroundTint="#0284c7" />
-        </LinearLayout>
 
-        <!-- 2️⃣ SEÇÃO 2: VERIFICAÇÃO DE PERMISSÕES DA CENTRAL -->
+            <Button
+                android:id="@+id/btnTabControls"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="🎛️ CONTROLES"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#94a3b8"
+                android:backgroundTint="#334155" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- ABA 1: DIAGNÓSTICO -->
+    <ScrollView
+        android:id="@+id/layoutTabDiagnostic"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:visibility="visible">
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:background="#0f172a"
-            android:padding="16dp"
-            android:layout_marginBottom="14dp">
+            android:padding="16dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="2️⃣ PERMISSÕES DA CENTRAL DILINK"
-                android:textColor="#10b981"
-                android:textStyle="bold"
-                android:textSize="13sp"
-                android:layout_marginBottom="4dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Verificação de permissões do sistema sem escrita (CAR_POWERTRAIN, REAL_GET_TASKS, BYD_LIGHT, etc)."
-                android:textColor="#94a3b8"
-                android:textSize="11sp"
-                android:layout_marginBottom="12dp" />
-
-            <Button
-                android:id="@+id/btnCheckPermissions"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="🛡️ VERIFICAÇÃO DE PERMISSÕES DA CENTRAL"
-                android:textSize="13sp"
-                android:textStyle="bold"
-                android:textColor="#ffffff"
-                android:backgroundTint="#059669" />
-        </LinearLayout>
-
-        <!-- 3️⃣ SEÇÃO 3: EXPORTAR RELATÓRIO COMPLETO -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:background="#0f172a"
-            android:padding="16dp"
-            android:layout_marginBottom="14dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="3️⃣ EXPORTAÇÃO DE RELATÓRIO DIAGNÓSTICO"
-                android:textColor="#a855f7"
-                android:textStyle="bold"
-                android:textSize="13sp"
-                android:layout_marginBottom="4dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Opções para cópia integral, divisão em partes (~30k chars), exportação em arquivo TXT e compartilhamento direto."
-                android:textColor="#94a3b8"
-                android:textSize="11sp"
-                android:layout_marginBottom="12dp" />
-
-            <Button
-                android:id="@+id/btnExportReport"
-                android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:text="📋 COPIAR RELATÓRIO INTEGRAL"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:textColor="#ffffff"
-                android:backgroundTint="#7c3aed"
-                android:layout_marginBottom="8dp" />
-
-            <Button
-                android:id="@+id/btnCopyInParts"
-                android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:text="🧩 COPIAR EM PARTES (~30K CHARS)"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:textColor="#ffffff"
-                android:backgroundTint="#6d28d9"
-                android:layout_marginBottom="8dp" />
-
+            <!-- 1️⃣ SEÇÃO 1: HAL DEEP INSPECTOR -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:orientation="vertical"
+                android:background="#0f172a"
+                android:padding="16dp"
+                android:layout_marginBottom="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="1️⃣ INSPEÇÃO PROFUNDA POR REFLEXÃO"
+                    android:textColor="#38bdf8"
+                    android:textStyle="bold"
+                    android:textSize="13sp"
+                    android:layout_marginBottom="4dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Módulo de varredura profunda de BYDAutoSettingDevice, BodyworkDevice e LightDevice (STRICT READ-ONLY)."
+                    android:textColor="#94a3b8"
+                    android:textSize="11sp"
+                    android:layout_marginBottom="12dp" />
 
                 <Button
-                    android:id="@+id/btnExportTxt"
-                    android:layout_width="0dp"
-                    android:layout_height="52dp"
-                    android:layout_weight="1"
-                    android:text="💾 EXPORTAR TXT"
-                    android:textSize="12sp"
+                    android:id="@+id/btnRunHalInspector"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:text="🔍 EXECUTAR DIAGNÓSTICO COMPLETO"
+                    android:textSize="13sp"
                     android:textStyle="bold"
                     android:textColor="#ffffff"
-                    android:backgroundTint="#059669"
-                    android:layout_marginEnd="4dp" />
-
-                <Button
-                    android:id="@+id/btnShareTxt"
-                    android:layout_width="0dp"
-                    android:layout_height="52dp"
-                    android:layout_weight="1"
-                    android:text="📤 COMPARTILHAR"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                    android:textColor="#ffffff"
-                    android:backgroundTint="#0284c7"
-                    android:layout_marginStart="4dp" />
+                    android:backgroundTint="#0284c7" />
             </LinearLayout>
+
+            <!-- 2️⃣ SEÇÃO 2: PERMISSÕES -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#0f172a"
+                android:padding="16dp"
+                android:layout_marginBottom="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="2️⃣ PERMISSÕES DA CENTRAL DILINK"
+                    android:textColor="#10b981"
+                    android:textStyle="bold"
+                    android:textSize="13sp"
+                    android:layout_marginBottom="4dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Verificação de permissões declaradas e no contexto em tempo de execução."
+                    android:textColor="#94a3b8"
+                    android:textSize="11sp"
+                    android:layout_marginBottom="12dp" />
+
+                <Button
+                    android:id="@+id/btnCheckPermissions"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:text="🛡️ VERIFICAÇÃO DE PERMISSÕES DA CENTRAL"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#059669" />
+            </LinearLayout>
+
+            <!-- 3️⃣ SEÇÃO 3: EXPORTAÇÃO -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#0f172a"
+                android:padding="16dp"
+                android:layout_marginBottom="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="3️⃣ EXPORTAÇÃO DE RELATÓRIO DIAGNÓSTICO"
+                    android:textColor="#a855f7"
+                    android:textStyle="bold"
+                    android:textSize="13sp"
+                    android:layout_marginBottom="4dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Opções para cópia integral, divisão em partes (~30k chars), exportação em TXT e compartilhamento."
+                    android:textColor="#94a3b8"
+                    android:textSize="11sp"
+                    android:layout_marginBottom="12dp" />
+
+                <Button
+                    android:id="@+id/btnExportReport"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:text="📋 COPIAR RELATÓRIO INTEGRAL"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#7c3aed"
+                    android:layout_marginBottom="8dp" />
+
+                <Button
+                    android:id="@+id/btnCopyInParts"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:text="🧩 COPIAR EM PARTES (~30K CHARS)"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#6d28d9"
+                    android:layout_marginBottom="8dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnExportTxt"
+                        android:layout_width="0dp"
+                        android:layout_height="52dp"
+                        android:layout_weight="1"
+                        android:text="💾 EXPORTAR TXT"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textColor="#ffffff"
+                        android:backgroundTint="#059669"
+                        android:layout_marginEnd="4dp" />
+
+                    <Button
+                        android:id="@+id/btnShareTxt"
+                        android:layout_width="0dp"
+                        android:layout_height="52dp"
+                        android:layout_weight="1"
+                        android:text="📤 COMPARTILHAR"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textColor="#ffffff"
+                        android:backgroundTint="#0284c7"
+                        android:layout_marginStart="4dp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/txtActiveTransport"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Modo: STRICT SAFE READ-ONLY (Sem escrita)"
+                android:textColor="#38bdf8"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:id="@+id/txtLiveLogs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="#030712"
+                android:padding="12dp"
+                android:text="Aguardando execução do diagnóstico..."
+                android:textColor="#34d399"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:lineSpacingExtra="3dp" />
         </LinearLayout>
+    </ScrollView>
 
-        <!-- STATUS DO TRANSPORTE / DIAGNÓSTICO -->
-        <TextView
-            android:id="@+id/txtActiveTransport"
+    <!-- ABA 2: CONTROLES -->
+    <ScrollView
+        android:id="@+id/layoutTabControls"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:visibility="gone">
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Modo: STRICT SAFE READ-ONLY (Sem escrita)"
-            android:textColor="#38bdf8"
-            android:textSize="11sp"
-            android:fontFamily="monospace"
-            android:layout_marginBottom="8dp" />
+            android:orientation="vertical"
+            android:padding="16dp">
 
-        <!-- FEEDBACK E LOGS EM TEMPO REAL -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="FEEDBACK VISUAL &amp; LOGS DE DIAGNÓSTICO:"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:textColor="#64748b"
-            android:layout_marginBottom="4dp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="⚠️ PAINEL DE TESTES DE HARDWARE REAL BYD"
+                android:textColor="#f59e0b"
+                android:textStyle="bold"
+                android:textSize="13sp"
+                android:layout_marginBottom="2dp" />
 
-        <TextView
-            android:id="@+id/txtLiveLogs"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="#030712"
-            android:padding="12dp"
-            android:text="Selecione uma das 3 opções acima para iniciar a verificação técnica na central DiLink..."
-            android:textColor="#34d399"
-            android:textSize="11sp"
-            android:fontFamily="monospace"
-            android:lineSpacingExtra="3dp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Os comandos físicos só são habilitados (PRONTO) quando a API e seus parâmetros reais foram descobertos no dispositivo. Cada acionamento exige confirmação de segurança prévia."
+                android:textColor="#94a3b8"
+                android:textSize="11sp"
+                android:layout_marginBottom="14dp" />
 
-    </LinearLayout>
-</ScrollView>
+            <!-- CARD 1: PERSIANA DO TETO -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#0f172a"
+                android:padding="14dp"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="4dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="1. PERSIANA DO TETO"
+                        android:textColor="#ffffff"
+                        android:textStyle="bold"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/txtStatusSunshade"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="STATUS"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:paddingHorizontal="8dp"
+                        android:paddingVertical="3dp"
+                        android:textColor="#ffffff"
+                        android:background="#334155" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/txtDetailsSunshade"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Detalhes da API e status..."
+                    android:textColor="#94a3b8"
+                    android:textSize="11sp"
+                    android:fontFamily="monospace"
+                    android:layout_marginBottom="10dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnSunshadeOpen"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="ABRIR"
+                        android:textSize="11sp"
+                        android:layout_marginEnd="4dp" />
+
+                    <Button
+                        android:id="@+id/btnSunshadeClose"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="FECHAR"
+                        android:textSize="11sp"
+                        android:layout_marginHorizontal="2dp" />
+
+                    <Button
+                        android:id="@+id/btnSunshadeStop"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="PARAR"
+                        android:textSize="11sp"
+                        android:layout_marginStart="4dp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- CARD 2: TETO SOLAR -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#0f172a"
+                android:padding="14dp"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="4dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="2. TETO SOLAR"
+                        android:textColor="#ffffff"
+                        android:textStyle="bold"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/txtStatusMoonroof"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="STATUS"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:paddingHorizontal="8dp"
+                        android:paddingVertical="3dp"
+                        android:textColor="#ffffff"
+                        android:background="#334155" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/txtDetailsMoonroof"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Detalhes da API e status..."
+                    android:textColor="#94a3b8"
+                    android:textSize="11sp"
+                    android:fontFamily="monospace"
+                    android:layout_marginBottom="10dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnMoonroofOpen"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="ABRIR"
+                        android:textSize="11sp"
+                        android:layout_marginEnd="4dp" />
+
+                    <Button
+                        android:id="@+id/btnMoonroofClose"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="FECHAR"
+                        android:textSize="11sp"
+                        android:layout_marginHorizontal="2dp" />
+
+                    <Button
+                        android:id="@+id/btnMoonroofStop"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="PARAR"
+                        android:textSize="11sp"
+                        android:layout_marginStart="4dp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- CARD 3: VIDRO MOTORISTA -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#0f172a"
+                android:padding="14dp"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="4dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="3. VIDRO MOTORISTA"
+                        android:textColor="#ffffff"
+                        android:textStyle="bold"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/txtStatusDriverWindow"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="STATUS"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:paddingHorizontal="8dp"
+                        android:paddingVertical="3dp"
+                        android:textColor="#ffffff"
+                        android:background="#334155" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/txtDetailsDriverWindow"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Detalhes da API e status..."
+                    android:textColor="#94a3b8"
+                    android:textSize="11sp"
+                    android:fontFamily="monospace"
+                    android:layout_marginBottom="10dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnDriverWindowOpen"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="ABRIR"
+                        android:textSize="11sp"
+                        android:layout_marginEnd="4dp" />
+
+                    <Button
+                        android:id="@+id/btnDriverWindowClose"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="FECHAR"
+                        android:textSize="11sp"
+                        android:layout_marginHorizontal="2dp" />
+
+                    <Button
+                        android:id="@+id/btnDriverWindowStop"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="PARAR"
+                        android:textSize="11sp"
+                        android:layout_marginStart="4dp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- CARD 4: AR-CONDICIONADO -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#0f172a"
+                android:padding="14dp"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="4dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="4. AR-CONDICIONADO"
+                        android:textColor="#ffffff"
+                        android:textStyle="bold"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/txtStatusAC"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="STATUS"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:paddingHorizontal="8dp"
+                        android:paddingVertical="3dp"
+                        android:textColor="#ffffff"
+                        android:background="#334155" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/txtDetailsAC"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Detalhes da API e status..."
+                    android:textColor="#94a3b8"
+                    android:textSize="11sp"
+                    android:fontFamily="monospace"
+                    android:layout_marginBottom="10dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnAcOn"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="LIGAR AR"
+                        android:textSize="11sp"
+                        android:layout_marginEnd="4dp" />
+
+                    <Button
+                        android:id="@+id/btnAcOff"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="DESLIGAR AR"
+                        android:textSize="11sp"
+                        android:layout_marginStart="4dp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- CARD 5: LUZ INTERNA -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#0f172a"
+                android:padding="14dp"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="4dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="5. LUZ INTERNA (TETO/CORTESIA)"
+                        android:textColor="#ffffff"
+                        android:textStyle="bold"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/txtStatusInteriorLight"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="BLOQUEADO"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:paddingHorizontal="8dp"
+                        android:paddingVertical="3dp"
+                        android:textColor="#ffffff"
+                        android:background="#dc2626" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/txtDetailsInteriorLight"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Ainda não identificamos com segurança a API da luz de teto/cortesia. Não usar LIGHT_FOOT nem faróis como substituição."
+                    android:textColor="#f87171"
+                    android:textSize="11sp"
+                    android:fontFamily="monospace"
+                    android:layout_marginBottom="10dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnInteriorLightOn"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="LIGAR LUZ"
+                        android:textSize="11sp"
+                        android:enabled="false"
+                        android:layout_marginEnd="4dp" />
+
+                    <Button
+                        android:id="@+id/btnInteriorLightOff"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="DESLIGAR LUZ"
+                        android:textSize="11sp"
+                        android:enabled="false"
+                        android:layout_marginStart="4dp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- REGISTRO DE EXECUÇÃO -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="HISTÓRICO DE ACIONAMENTOS E EXECUÇÕES:"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="#64748b"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:id="@+id/txtControlLogs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="#030712"
+                android:padding="12dp"
+                android:text="Nenhum comando acionado ainda nesta sessão..."
+                android:textColor="#38bdf8"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:lineSpacingExtra="3dp" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

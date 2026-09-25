@@ -133,23 +133,64 @@ class BYDBodyworkInspector(
         var instanceMethodUsed = "NONE"
 
         if (bodyworkClass != null) {
-            // Try getInstance overloads
-            val candidateMethods = listOf(
-                Pair("getInstance(Context)", arrayOf<Class<*>>(Context::class.java)),
-                Pair("getInstance()", emptyArray<Class<*>>())
-            )
+            // Step 1: getMethod("getInstance", Context)
+            try {
+                val m = bodyworkClass.getMethod("getInstance", Context::class.java)
+                m.isAccessible = true
+                bodyworkInstance = m.invoke(null, context)
+                if (bodyworkInstance != null) instanceMethodUsed = "getMethod(getInstance, Context)"
+            } catch (_: Throwable) {}
 
-            for (cand in candidateMethods) {
+            // Step 2: getMethod("getInstance")
+            if (bodyworkInstance == null) {
                 try {
-                    val m = bodyworkClass.getDeclaredMethod("getInstance", *cand.second)
+                    val m = bodyworkClass.getMethod("getInstance")
                     m.isAccessible = true
-                    val args = if (cand.second.isNotEmpty()) arrayOf<Any>(context) else emptyArray()
-                    bodyworkInstance = m.invoke(null, *args)
-                    if (bodyworkInstance != null) {
-                        instanceMethodUsed = cand.first
-                        break
-                    }
+                    bodyworkInstance = m.invoke(null)
+                    if (bodyworkInstance != null) instanceMethodUsed = "getMethod(getInstance)"
                 } catch (_: Throwable) {}
+            }
+
+            // Step 3: getDeclaredMethod("getInstance", Context)
+            if (bodyworkInstance == null) {
+                try {
+                    val m = bodyworkClass.getDeclaredMethod("getInstance", Context::class.java)
+                    m.isAccessible = true
+                    bodyworkInstance = m.invoke(null, context)
+                    if (bodyworkInstance != null) instanceMethodUsed = "getDeclaredMethod(getInstance, Context)"
+                } catch (_: Throwable) {}
+            }
+
+            // Step 4: getDeclaredMethod("getInstance")
+            if (bodyworkInstance == null) {
+                try {
+                    val m = bodyworkClass.getDeclaredMethod("getInstance")
+                    m.isAccessible = true
+                    bodyworkInstance = m.invoke(null)
+                    if (bodyworkInstance != null) instanceMethodUsed = "getDeclaredMethod(getInstance)"
+                } catch (_: Throwable) {}
+            }
+
+            // Step 5: Constructor with Context or no-arg
+            if (bodyworkInstance == null) {
+                for (c in bodyworkClass.declaredConstructors) {
+                    try {
+                        c.isAccessible = true
+                        if (c.parameterTypes.size == 1 && c.parameterTypes[0].isAssignableFrom(Context::class.java)) {
+                            bodyworkInstance = c.newInstance(context)
+                            if (bodyworkInstance != null) {
+                                instanceMethodUsed = "Constructor(Context)"
+                                break
+                            }
+                        } else if (c.parameterTypes.isEmpty()) {
+                            bodyworkInstance = c.newInstance()
+                            if (bodyworkInstance != null) {
+                                instanceMethodUsed = "Constructor()"
+                                break
+                            }
+                        }
+                    } catch (_: Throwable) {}
+                }
             }
 
             if (bodyworkInstance != null) {
