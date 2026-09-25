@@ -9,19 +9,21 @@ import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.byd.carcontrol.discovery.BYDBodyworkInspector
 import com.byd.carcontrol.discovery.BYDLightHalInspector
 import com.byd.carcontrol.discovery.PermissionDiscovery
 import org.json.JSONObject
 
 /**
- * Atividade Principal do BYD Light HAL Diagnostic.
- * Interface limpa e objetiva focada no diagnóstico de iluminação da central BYD DiLink 3.0/4.0.
+ * Atividade Principal do BYD Light & Bodywork HAL Diagnostic.
+ * Interface limpa e objetiva focada no diagnóstico de iluminação interna / cortesia / teto.
  * Operação 100% STRICT SAFE READ-ONLY (Sem comandos de escrita no veículo nesta etapa).
  */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var commManager: BYDCommunicationManager
     private lateinit var halInspector: BYDLightHalInspector
+    private lateinit var bodyworkInspector: BYDBodyworkInspector
     private lateinit var permissionDiscovery: PermissionDiscovery
 
     private lateinit var txtVehicleInfo: TextView
@@ -56,6 +58,7 @@ class MainActivity : AppCompatActivity() {
 
             commManager = BYDCommunicationManager.getInstance(this)
             halInspector = BYDLightHalInspector(this, commManager.repository)
+            bodyworkInspector = BYDBodyworkInspector(this, commManager.repository)
             permissionDiscovery = PermissionDiscovery(this, commManager.repository)
 
             txtVehicleInfo = findViewById(R.id.txtVehicleInfo)
@@ -68,26 +71,26 @@ class MainActivity : AppCompatActivity() {
 
             updateHeaderInfo()
 
-            // 1️⃣ OPÇÃO 1: BYD LIGHT HAL DEEP INSPECTOR
+            // 1️⃣ OPÇÃO 1: EXECUTAR DIAGNÓSTICO (BYD INTERIOR LIGHT & BODYWORK DISCOVERY)
             btnRunHalInspector.setOnClickListener {
                 appendLog("==================================================")
-                appendLog("🔍 INICIANDO INSPEÇÃO PROFUNDA DA BYD LIGHT HAL...")
-                appendLog("Alvo: android.hardware.bydauto.light.BYDAutoLightDevice")
+                appendLog("🔍 INICIANDO DIAGNÓSTICO DA LUZ INTERNA DE CORTESIA...")
+                appendLog("Alvo Principal: android.hardware.bydauto.bodywork.BYDAutoBodyworkDevice")
                 appendLog("Modo: STRICT SAFE READ-ONLY (Métodos de escrita identificados mas NÃO executados)")
                 appendLog("==================================================")
-                Toast.makeText(this, "Iniciando varredura por reflexão...", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Iniciando varredura por reflexão em Bodywork...", Toast.LENGTH_SHORT).show()
 
                 Thread {
                     try {
-                        val report = halInspector.runExhaustiveInspection()
+                        val report = bodyworkInspector.runDiscovery()
                         lastInspectionReport = report
                         runOnUiThread {
-                            appendLog("=== RESULTADO DA INSPEÇÃO DA LIGHT HAL ===\n$report")
-                            Toast.makeText(this@MainActivity, "Inspeção HAL concluída!", Toast.LENGTH_SHORT).show()
+                            appendLog("=== RESULTADO DA INVESTIGAÇÃO DE LUZ INTERNA ===\n$report")
+                            Toast.makeText(this@MainActivity, "Diagnóstico de iluminação concluído!", Toast.LENGTH_SHORT).show()
                         }
                     } catch (t: Throwable) {
                         runOnUiThread {
-                            appendLog("❌ Falha na inspeção HAL: ${t.javaClass.simpleName} - ${t.message}")
+                            appendLog("❌ Falha na inspeção: ${t.javaClass.simpleName} - ${t.message}")
                         }
                     }
                 }.start()
@@ -139,7 +142,7 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    val clip = ClipData.newPlainText("BYD_Light_HAL_Report", fullReport)
+                    val clip = ClipData.newPlainText("BYD_Interior_Light_Report", fullReport)
                     clipboard.setPrimaryClip(clip)
 
                     appendLog("==================================================")
