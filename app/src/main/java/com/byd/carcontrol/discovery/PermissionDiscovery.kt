@@ -40,6 +40,14 @@ class PermissionDiscovery(
         )
     }
 
+    fun checkPermissionGranted(permissionName: String): Boolean {
+        return try {
+            context.checkSelfPermission(permissionName) == PackageManager.PERMISSION_GRANTED
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun runDiscovery(): List<PermissionEntity> {
         val results = mutableListOf<PermissionEntity>()
         val pm = context.packageManager
