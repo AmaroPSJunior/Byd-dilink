@@ -129,7 +129,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Gera relatório completo JSON/Texto para análise técnica com cópia direta para a área de transferência."
+                android:text="Opções para cópia integral, divisão em partes (~30k chars), exportação em arquivo TXT e compartilhamento direto."
                 android:textColor="#94a3b8"
                 android:textSize="11sp"
                 android:layout_marginBottom="12dp" />
@@ -137,12 +137,54 @@
             <Button
                 android:id="@+id/btnExportReport"
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="📋 EXPORTAR RELATÓRIO COMPLETO"
-                android:textSize="13sp"
+                android:layout_height="52dp"
+                android:text="📋 COPIAR RELATÓRIO INTEGRAL"
+                android:textSize="12sp"
                 android:textStyle="bold"
                 android:textColor="#ffffff"
-                android:backgroundTint="#7c3aed" />
+                android:backgroundTint="#7c3aed"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/btnCopyInParts"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="🧩 COPIAR EM PARTES (~30K CHARS)"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#ffffff"
+                android:backgroundTint="#6d28d9"
+                android:layout_marginBottom="8dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnExportTxt"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_weight="1"
+                    android:text="💾 EXPORTAR TXT"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#059669"
+                    android:layout_marginEnd="4dp" />
+
+                <Button
+                    android:id="@+id/btnShareTxt"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_weight="1"
+                    android:text="📤 COMPARTILHAR"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#0284c7"
+                    android:layout_marginStart="4dp" />
+            </LinearLayout>
         </LinearLayout>
 
         <!-- STATUS DO TRANSPORTE / DIAGNÓSTICO -->
