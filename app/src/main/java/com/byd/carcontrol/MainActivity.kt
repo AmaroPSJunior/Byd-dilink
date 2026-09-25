@@ -19,6 +19,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import com.byd.carcontrol.discovery.BYDBodyworkInspector
 import com.byd.carcontrol.discovery.BYDLightHalInspector
+import com.byd.carcontrol.discovery.BYDSettingInspector
 import com.byd.carcontrol.discovery.PermissionDiscovery
 import org.json.JSONObject
 import java.io.File
@@ -45,6 +46,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var commManager: BYDCommunicationManager
     private lateinit var halInspector: BYDLightHalInspector
     private lateinit var bodyworkInspector: BYDBodyworkInspector
+    private lateinit var settingInspector: BYDSettingInspector
     private lateinit var permissionDiscovery: PermissionDiscovery
 
     private lateinit var txtVehicleInfo: TextView
@@ -83,6 +85,7 @@ class MainActivity : AppCompatActivity() {
             commManager = BYDCommunicationManager.getInstance(this)
             halInspector = BYDLightHalInspector(this, commManager.repository)
             bodyworkInspector = BYDBodyworkInspector(this, commManager.repository)
+            settingInspector = BYDSettingInspector(this, commManager.repository)
             permissionDiscovery = PermissionDiscovery(this, commManager.repository)
 
             txtVehicleInfo = findViewById(R.id.txtVehicleInfo)
@@ -98,22 +101,22 @@ class MainActivity : AppCompatActivity() {
 
             updateHeaderInfo()
 
-            // 1️⃣ OPÇÃO 1: EXECUTAR DIAGNÓSTICO (BYD INTERIOR LIGHT & BODYWORK DISCOVERY)
+            // 1️⃣ OPÇÃO 1: EXECUTAR DIAGNÓSTICO (BYD SETTING DEVICE & INTERIOR LIGHT DISCOVERY)
             btnRunHalInspector.setOnClickListener {
                 appendLog("==================================================")
-                appendLog("🔍 INICIANDO DIAGNÓSTICO DA LUZ INTERNA DE CORTESIA...")
-                appendLog("Alvo Principal: android.hardware.bydauto.bodywork.BYDAutoBodyworkDevice")
+                appendLog("🔍 INICIANDO DIAGNÓSTICO PROFUNDO EM SETTING DEVICE...")
+                appendLog("Alvo Principal: android.hardware.bydauto.setting.BYDAutoSettingDevice")
                 appendLog("Modo: STRICT SAFE READ-ONLY (Métodos de escrita identificados mas NÃO executados)")
                 appendLog("==================================================")
-                Toast.makeText(this, "Iniciando varredura por reflexão em Bodywork...", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Iniciando varredura por reflexão em BYDAutoSettingDevice...", Toast.LENGTH_SHORT).show()
 
                 Thread {
                     try {
-                        val report = bodyworkInspector.runDiscovery()
+                        val report = settingInspector.runDiscovery()
                         lastInspectionReport = report
                         runOnUiThread {
-                            appendLog("=== RESULTADO DA INVESTIGAÇÃO DE LUZ INTERNA ===\n$report")
-                            Toast.makeText(this@MainActivity, "Diagnóstico de iluminação concluído!", Toast.LENGTH_SHORT).show()
+                            appendLog("=== RESULTADO DA INVESTIGAÇÃO SETTING DEVICE ===\n$report")
+                            Toast.makeText(this@MainActivity, "Diagnóstico Setting Device concluído!", Toast.LENGTH_SHORT).show()
                         }
                     } catch (t: Throwable) {
                         runOnUiThread {
