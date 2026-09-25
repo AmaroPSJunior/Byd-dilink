@@ -278,7 +278,7 @@ class MainActivity : AppCompatActivity() {
                         val isGranted = try {
                             checkSelfPermission(perm) == android.content.pm.PackageManager.PERMISSION_GRANTED
                         } catch (_: Throwable) {
-                            permissionDiscovery.checkPermissionGranted(perm)
+                            false
                         }
                         if (isGranted) grantedCount++
                         val statusStr = if (isGranted) "GRANTED ✅" else "DENIED ❌"
