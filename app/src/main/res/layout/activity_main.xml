@@ -439,7 +439,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:layout_marginBottom="10dp"
-                    android:text="Comando BYD para ligar ou desligar a luz interna do teto. O retorno confirma aceitação do comando; a ROM deste veículo ainda não fornece uma leitura confiável do estado físico da lâmpada."
+                    android:text="Usa os métodos OEM de luz interna e informa o retorno e os valores brutos lidos depois. O estado bruto ainda não foi mapeado como confirmação física nesta versão do veículo."
                     android:textColor="#cbd5e1"
                     android:textSize="12sp" />
 
