@@ -114,7 +114,6 @@ class MainActivity : AppCompatActivity() {
     private val sunshadeCommandExecutor = Executors.newSingleThreadExecutor()
     private var climateTemperatureMaxCelsius = 33.0
     private var climateTemperatureStepCelsius = 1.0
-    private val climateCommandExecutor = Executors.newSingleThreadExecutor()
     private val windowCommandExecutor = Executors.newSingleThreadExecutor()
 
     private data class WindowUi(
@@ -507,15 +506,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshClimateAdjustmentState() {
-        Thread {
-            val result = runCatching { BydClimateAdjustment.read(this) }
-            runOnUiThread {
-                result.onSuccess(::renderClimateAdjustmentState)
-                    .onFailure { error ->
-                        txtClimateAdjustmentStatus.text = "Leitura HVAC indisponível: ${error.cause?.message ?: error.message}"
-                    }
+        runCatching { BydClimateAdjustment.read(this) }
+            .onSuccess(::renderClimateAdjustmentState)
+            .onFailure { error ->
+                txtClimateAdjustmentStatus.text = "Leitura HVAC indisponível: ${error.cause?.message ?: error.message}"
             }
-        }.start()
     }
 
     private fun refreshWindowStates() {
@@ -555,15 +550,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun requestClimateAdjustment(pendingMessage: String, command: () -> String) {
         txtClimateAdjustmentStatus.text = pendingMessage
-        climateCommandExecutor.execute {
-            val result = runCatching { command() }
-            val snapshot = runCatching { BydClimateAdjustment.read(this) }
-            runOnUiThread {
-                result.onSuccess { txtClimateAdjustmentStatus.text = it }
-                    .onFailure { error -> txtClimateAdjustmentStatus.text = "Comando HVAC falhou: ${error.cause?.message ?: error.message}" }
-                snapshot.onSuccess(::renderClimateAdjustmentState)
-            }
-        }
+        val result = runCatching { command() }
+        val snapshot = runCatching { BydClimateAdjustment.read(this) }
+        result.onSuccess { txtClimateAdjustmentStatus.text = it }
+            .onFailure { error -> txtClimateAdjustmentStatus.text = "Comando HVAC falhou: ${error.cause?.message ?: error.message}" }
+        snapshot.onSuccess(::renderClimateAdjustmentState)
+            .onFailure { error -> txtClimateAdjustmentStatus.text += " Leitura: ${error.cause?.message ?: error.message}" }
     }
 
     private fun renderClimateAdjustmentState(snapshot: BydClimateAdjustment.Snapshot) {
