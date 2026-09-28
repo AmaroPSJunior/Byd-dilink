@@ -30,7 +30,7 @@ data class ControlInfo(
     val id: String,
     val title: String,
     val description: String,
-    val targetClass: String,
+    var targetClass: String,
     val requiredPermission: String,
     var status: ControlStatus,
     var statusReason: String,
@@ -551,7 +551,7 @@ class BYDControlManager(
             repository.saveDiscovery(
                 category = "BYD_HARDWARE_CONTROL_EXECUTION",
                 name = "${controlId}_$timeStamp",
-                status = if (success) com.byd.carcontrol.discovery.DiscoveryStatus.VALIDATED else com.byd.carcontrol.discovery.DiscoveryStatus.EXECUTION_FAILED,
+                status = if (success) com.byd.carcontrol.discovery.DiscoveryStatus.VALIDATED else com.byd.carcontrol.discovery.DiscoveryStatus.FAILED,
                 evidenceJson = JSONObject().apply {
                     put("controlTitle", controlTitle)
                     put("targetClass", targetClass)
