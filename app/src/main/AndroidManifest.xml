@@ -19,6 +19,7 @@
     <uses-permission android:name="android.permission.BYDAUTO_LIGHT_SET" />
     <uses-permission android:name="android.permission.BYDAUTO_BODYWORK_GET" />
     <uses-permission android:name="android.permission.BYDAUTO_BODYWORK_SET" />
+    <uses-permission android:name="android.permission.BYDAUTO_SPEED_GET" />
     <uses-permission android:name="android.permission.BYDAUTO_SETTING_GET" />
     <uses-permission android:name="android.permission.BYDAUTO_SETTING_SET" />
     <uses-permission android:name="android.permission.BYDAUTO_AC_GET" />

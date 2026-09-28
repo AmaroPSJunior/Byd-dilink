@@ -413,7 +413,7 @@ class MainActivity : AppCompatActivity() {
                 txtSunshadeStatus.text = result.fold(
                     onSuccess = { response ->
                         when {
-                            !response.accepted -> "Abertura bloqueada pela condição reportada pelo veículo. ${response.detail}"
+                            !response.accepted -> "Abertura bloqueada pela velocidade ou condição reportada pelo veículo. ${response.detail}"
                             response.percent == 100 -> "API executou a abertura e a leitura mostra 100% aberto. ${response.detail}"
                             else -> "API executou a chamada, mas a abertura ainda não foi confirmada pela leitura. ${response.detail}"
                         }
