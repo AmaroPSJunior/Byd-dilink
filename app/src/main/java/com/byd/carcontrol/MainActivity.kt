@@ -20,6 +20,7 @@ import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.ScrollView
+import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -92,6 +93,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var txtInteriorLightProbe: TextView
     private lateinit var txtClimateCommandStatus: TextView
     private lateinit var btnOpenSunshade: Button
+    private lateinit var btnCloseSunshade: Button
+    private lateinit var btnApplySunshadePosition: Button
+    private lateinit var seekSunshadePosition: SeekBar
+    private lateinit var txtSunshadePercent: TextView
     private lateinit var txtSunshadeStatus: TextView
 
     private val logHistory = mutableListOf<String>()
@@ -169,6 +174,10 @@ class MainActivity : AppCompatActivity() {
         txtInteriorLightProbe = findViewById(R.id.txtInteriorLightProbe)
         txtClimateCommandStatus = findViewById(R.id.txtClimateCommandStatus)
         btnOpenSunshade = findViewById(R.id.btnOpenSunshade)
+        btnCloseSunshade = findViewById(R.id.btnCloseSunshade)
+        btnApplySunshadePosition = findViewById(R.id.btnApplySunshadePosition)
+        seekSunshadePosition = findViewById(R.id.seekSunshadePosition)
+        txtSunshadePercent = findViewById(R.id.txtSunshadePercent)
         txtSunshadeStatus = findViewById(R.id.txtSunshadeStatus)
     }
 
@@ -391,38 +400,62 @@ class MainActivity : AppCompatActivity() {
         }
         btnInteriorLightOn.setOnClickListener { requestInteriorLightPower(true) }
         btnInteriorLightOff.setOnClickListener { requestInteriorLightPower(false) }
-        btnOpenSunshade.setOnClickListener { confirmAndOpenSunshade() }
+        btnOpenSunshade.setOnClickListener { confirmSunshadePosition(100) }
+        btnCloseSunshade.setOnClickListener { confirmSunshadePosition(0) }
+        seekSunshadePosition.max = 100
+        seekSunshadePosition.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
+                txtSunshadePercent.text = "POSIÇÃO DESEJADA: $progress%"
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
+            override fun onStopTrackingTouch(seekBar: SeekBar) = Unit
+        })
+        btnApplySunshadePosition.setOnClickListener {
+            confirmSunshadePosition(seekSunshadePosition.progress)
+        }
     }
 
-    private fun confirmAndOpenSunshade() {
+    private fun confirmSunshadePosition(percent: Int) {
+        val action = when (percent) {
+            0 -> "Fechar a persiana completamente?"
+            100 -> "Abrir a persiana completamente?"
+            else -> "Mover a persiana para $percent%?"
+        }
         androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("Abrir a persiana do teto?")
-            .setMessage("Confirme apenas se o veículo estiver totalmente parado, em local seguro, e se a área do teto estiver livre.")
+            .setTitle(action)
+            .setMessage("Confirme apenas com o veículo totalmente parado, em P, em local seguro e com a área do teto livre.")
             .setNegativeButton("CANCELAR", null)
-            .setPositiveButton("ABRIR") { _, _ -> requestSunshadeOpen() }
+            .setPositiveButton("CONFIRMAR") { _, _ -> requestSunshadePosition(percent) }
             .show()
     }
 
-    private fun requestSunshadeOpen() {
-        btnOpenSunshade.isEnabled = false
-        txtSunshadeStatus.text = "Solicitando abertura pela API OEM…"
+    private fun requestSunshadePosition(percent: Int) {
+        setSunshadeControlsEnabled(false)
+        txtSunshadeStatus.text = "Solicitando posição $percent% pela API OEM…"
         Thread {
-            val result = runCatching { BydSunshadeControl.open(this) }
+            val result = runCatching { BydSunshadeControl.setPosition(this, percent) }
             runOnUiThread {
-                btnOpenSunshade.isEnabled = true
+                setSunshadeControlsEnabled(true)
                 txtSunshadeStatus.text = result.fold(
                     onSuccess = { response ->
-                        when {
-                            !response.accepted -> "Abertura bloqueada pela velocidade, marcha ou condição reportada pelo veículo. ${response.detail}"
-                            response.percent == 100 -> "API executou a abertura e a leitura mostra 100% aberto. ${response.detail}"
-                            else -> "API executou a chamada, mas a abertura ainda não foi confirmada pela leitura. ${response.detail}"
+                        response.observedPercent?.let { observed ->
+                            seekSunshadePosition.progress = observed
+                            txtSunshadePercent.text = "POSIÇÃO LIDA: $observed%"
                         }
+                        response.detail
                     },
-                    onFailure = { error -> "Falha ao abrir a persiana: ${error.cause?.javaClass?.simpleName ?: error.javaClass.simpleName}: ${error.cause?.message ?: error.message}" }
+                    onFailure = { error -> "Falha ao mover a persiana: ${error.cause?.javaClass?.simpleName ?: error.javaClass.simpleName}: ${error.cause?.message ?: error.message}" }
                 )
                 appendLog(txtSunshadeStatus.text.toString())
             }
         }.start()
+    }
+
+    private fun setSunshadeControlsEnabled(enabled: Boolean) {
+        btnOpenSunshade.isEnabled = enabled
+        btnCloseSunshade.isEnabled = enabled
+        seekSunshadePosition.isEnabled = enabled
+        btnApplySunshadePosition.isEnabled = enabled
     }
 
     private fun requestInteriorLightPower(turnOn: Boolean) {
