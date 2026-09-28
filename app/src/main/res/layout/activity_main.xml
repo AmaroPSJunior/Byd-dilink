@@ -418,6 +418,50 @@
                     android:textSize="12sp" />
             </LinearLayout>
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#0f172a"
+                android:padding="16dp"
+                android:layout_marginBottom="14dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="DIAGNÓSTICO DE LUZ INTERNA"
+                    android:textColor="#38bdf8"
+                    android:textStyle="bold"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:layout_marginBottom="10dp"
+                    android:text="Consulta somente sinais de presença, estado da luz da porta e lâmpadas de leitura no HAL BYD. Nenhum comando será enviado."
+                    android:textColor="#cbd5e1"
+                    android:textSize="12sp" />
+
+                <Button
+                    android:id="@+id/btnReadInteriorLights"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:text="CONSULTAR SINAIS DE LUZ INTERNA"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#0369a1" />
+
+                <TextView
+                    android:id="@+id/txtInteriorLightProbe"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Sinais ainda não consultados."
+                    android:textColor="#94a3b8"
+                    android:textSize="11sp"
+                    android:fontFamily="monospace" />
+            </LinearLayout>
+
             <!-- REGISTRO DE EXECUÇÃO -->
             <TextView
                 android:layout_width="match_parent"

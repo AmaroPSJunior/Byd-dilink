@@ -87,6 +87,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnHvacOff: Button
     private lateinit var btnReadSeatbelt: Button
     private lateinit var txtSeatbeltAccessStatus: TextView
+    private lateinit var btnReadInteriorLights: Button
+    private lateinit var txtInteriorLightProbe: TextView
     private lateinit var txtClimateCommandStatus: TextView
 
     private val logHistory = mutableListOf<String>()
@@ -159,6 +161,8 @@ class MainActivity : AppCompatActivity() {
         btnHvacOff = findViewById(R.id.btnHvacOff)
         btnReadSeatbelt = findViewById(R.id.btnReadSeatbelt)
         txtSeatbeltAccessStatus = findViewById(R.id.txtSeatbeltAccessStatus)
+        btnReadInteriorLights = findViewById(R.id.btnReadInteriorLights)
+        txtInteriorLightProbe = findViewById(R.id.txtInteriorLightProbe)
         txtClimateCommandStatus = findViewById(R.id.txtClimateCommandStatus)
     }
 
@@ -378,6 +382,18 @@ class MainActivity : AppCompatActivity() {
         btnHvacOff.setOnClickListener { requestHvacPower(false) }
         btnReadSeatbelt.setOnClickListener {
             readAndRenderSeatbeltState()
+        }
+        btnReadInteriorLights.setOnClickListener {
+            txtInteriorLightProbe.text = "Consultando somente estados de luz interna…"
+            Thread {
+                val result = runCatching { BydInteriorLightReader.read(this) }
+                runOnUiThread {
+                    txtInteriorLightProbe.text = result.fold(
+                        onSuccess = { values -> values.joinToString("\n") },
+                        onFailure = { error -> "Falha: ${error.cause?.message ?: error.message}" }
+                    )
+                }
+            }.start()
         }
     }
 

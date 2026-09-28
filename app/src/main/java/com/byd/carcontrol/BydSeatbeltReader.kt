@@ -51,24 +51,25 @@ object BydSeatbeltReader {
         return statuses to constants
     }
 
-    /** Satisfies the SDK's local BYDAUTO permission precheck for this getter only. */
-    private class BydAutoReadContext(base: Context) : ContextWrapper(base) {
-        override fun checkCallingOrSelfPermission(permission: String): Int =
-            if (permission.startsWith("android.permission.BYDAUTO_")) PackageManager.PERMISSION_GRANTED
-            else super.checkCallingOrSelfPermission(permission)
+}
 
-        override fun checkPermission(permission: String, pid: Int, uid: Int): Int =
-            if (permission.startsWith("android.permission.BYDAUTO_")) PackageManager.PERMISSION_GRANTED
-            else super.checkPermission(permission, pid, uid)
+/** Satisfies only the SDK's local BYDAUTO permission precheck; backend authorization remains in force. */
+internal class BydAutoReadContext(base: Context) : ContextWrapper(base) {
+    override fun checkCallingOrSelfPermission(permission: String): Int =
+        if (permission.startsWith("android.permission.BYDAUTO_")) PackageManager.PERMISSION_GRANTED
+        else super.checkCallingOrSelfPermission(permission)
 
-        override fun enforceCallingOrSelfPermission(permission: String, message: String?) {
-            if (!permission.startsWith("android.permission.BYDAUTO_"))
-                super.enforceCallingOrSelfPermission(permission, message)
-        }
+    override fun checkPermission(permission: String, pid: Int, uid: Int): Int =
+        if (permission.startsWith("android.permission.BYDAUTO_")) PackageManager.PERMISSION_GRANTED
+        else super.checkPermission(permission, pid, uid)
 
-        override fun enforcePermission(permission: String, pid: Int, uid: Int, message: String?) {
-            if (!permission.startsWith("android.permission.BYDAUTO_"))
-                super.enforcePermission(permission, pid, uid, message)
-        }
+    override fun enforceCallingOrSelfPermission(permission: String, message: String?) {
+        if (!permission.startsWith("android.permission.BYDAUTO_"))
+            super.enforceCallingOrSelfPermission(permission, message)
+    }
+
+    override fun enforcePermission(permission: String, pid: Int, uid: Int, message: String?) {
+        if (!permission.startsWith("android.permission.BYDAUTO_"))
+            super.enforcePermission(permission, pid, uid, message)
     }
 }
