@@ -70,6 +70,7 @@ class MainActivity : AppCompatActivity() {
 
     // Diagnostic tab buttons
     private lateinit var btnRunHalInspector: Button
+    private lateinit var btnReadDrivingState: Button
     private lateinit var btnCheckPermissions: Button
     private lateinit var btnExportReport: Button
     private lateinit var btnCopyInParts: Button
@@ -159,6 +160,7 @@ class MainActivity : AppCompatActivity() {
         layoutTabControls = findViewById(R.id.layoutTabControls)
 
         btnRunHalInspector = findViewById(R.id.btnRunHalInspector)
+        btnReadDrivingState = findViewById(R.id.btnReadDrivingState)
         btnCheckPermissions = findViewById(R.id.btnCheckPermissions)
         btnExportReport = findViewById(R.id.btnExportReport)
         btnCopyInParts = findViewById(R.id.btnCopyInParts)
@@ -221,6 +223,30 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupDiagnosticListeners() {
+        // Direct read-only call through BYD AppServer's exported AIDL provider.
+        btnReadDrivingState.setOnClickListener {
+            appendLog("Lendo getDrivingState() pelo provider IPC BYD (somente leitura)...")
+            Thread {
+                try {
+                    val rawState = BydDrivingStateReader.readRawState(this)
+                    runOnUiThread {
+                        appendLog(
+                            "Leitura real recebida: getDrivingState() = $rawState. " +
+                                "Enumeração ainda não mapeada; nenhum significado foi presumido."
+                        )
+                    }
+                } catch (t: Throwable) {
+                    Log.e("BydDrivingStateReader", "Falha na leitura AIDL", t)
+                    runOnUiThread {
+                        appendLog(
+                            "Leitura AIDL falhou: ${t.javaClass.simpleName}: ${t.message}. " +
+                                "Nenhum comando de escrita foi enviado."
+                        )
+                    }
+                }
+            }.start()
+        }
+
         // 1️⃣ OPÇÃO 1: EXECUTAR DIAGNÓSTICO
         btnRunHalInspector.setOnClickListener {
             appendLog("==================================================")
@@ -233,7 +259,6 @@ class MainActivity : AppCompatActivity() {
                 try {
                     val report = settingInspector.runDiscovery()
                     lastInspectionReport = report
-                    controlManager.probeAllControls()
                     runOnUiThread {
                         appendLog("=== RESULTADO DO DIAGNÓSTICO ===\n$report")
                         updateControlsUI()

@@ -32,6 +32,7 @@
 
     <!-- Visibilidade de pacotes Android 11+ -->
     <queries>
+        <provider android:authorities="com.byd.car.server.provider.CarServiceProvider" />
         <package android:name="cc.omycar.magicmanager" />
         <package android:name="cc.omycar.magicsentry" />
         <package android:name="com.byd.bluetoothprovider" />

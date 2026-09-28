@@ -72,10 +72,10 @@ class BYDControlManager(
 
     private val controlLogs = mutableListOf<ControlLogEntry>()
     val controlsMap = mutableMapOf<String, ControlInfo>()
+    private val physicallyValidatedWriteControls = emptySet<String>()
 
     init {
         initializeControlsMap()
-        probeAllControls()
     }
 
     private fun initializeControlsMap() {
@@ -86,7 +86,7 @@ class BYDControlManager(
             targetClass = BODYWORK_CLASS,
             requiredPermission = "android.permission.BYDAUTO_BODYWORK_SET",
             status = ControlStatus.BLOQUEADO,
-            statusReason = "Probing em andamento..."
+            statusReason = "Bloqueado: argumentos e efeito físico ainda não foram validados no veículo."
         )
 
         controlsMap["MOONROOF"] = ControlInfo(
@@ -96,7 +96,7 @@ class BYDControlManager(
             targetClass = BODYWORK_CLASS,
             requiredPermission = "android.permission.BYDAUTO_BODYWORK_SET",
             status = ControlStatus.BLOQUEADO,
-            statusReason = "Probing em andamento..."
+            statusReason = "Bloqueado: argumentos e efeito físico ainda não foram validados no veículo."
         )
 
         controlsMap["DRIVER_WINDOW"] = ControlInfo(
@@ -106,7 +106,7 @@ class BYDControlManager(
             targetClass = BODYWORK_CLASS,
             requiredPermission = "android.permission.BYDAUTO_BODYWORK_SET",
             status = ControlStatus.BLOQUEADO,
-            statusReason = "Probing em andamento..."
+            statusReason = "Bloqueado: argumentos e efeito físico ainda não foram validados no veículo."
         )
 
         controlsMap["AC"] = ControlInfo(
@@ -116,7 +116,7 @@ class BYDControlManager(
             targetClass = AC_CLASS_1,
             requiredPermission = "android.permission.BYDAUTO_AC_SET",
             status = ControlStatus.BLOQUEADO,
-            statusReason = "Probing em andamento..."
+            statusReason = "Bloqueado: argumentos e efeito físico ainda não foram validados no veículo."
         )
 
         controlsMap["INTERIOR_LIGHT"] = ControlInfo(
@@ -131,22 +131,8 @@ class BYDControlManager(
     }
 
     fun probeAllControls() {
-        val bodyworkInstance = getDeviceInstance(BODYWORK_CLASS)
-        val bodyworkClass = try { Class.forName(BODYWORK_CLASS) } catch (_: Throwable) { null }
-
-        // 1. PROBE SUNSHADE (PERSIANA DO TETO)
-        probeSunshade(bodyworkClass, bodyworkInstance)
-
-        // 2. PROBE MOONROOF (TETO SOLAR)
-        probeMoonroof(bodyworkClass, bodyworkInstance)
-
-        // 3. PROBE DRIVER WINDOW (VIDRO MOTORISTA)
-        probeDriverWindow(bodyworkClass, bodyworkInstance)
-
-        // 4. PROBE AC (AR-CONDICIONADO)
-        probeAC()
-
-        // 5. INTERIOR LIGHT remains BLOQUEADO as instructed
+        // A method signature alone cannot authorize a physical command.
+        initializeControlsMap()
     }
 
     private fun probeSunshade(clazz: Class<*>?, instance: Any?) {
@@ -316,8 +302,8 @@ class BYDControlManager(
         val ctrl = controlsMap[controlId] ?: return "Controle $controlId não encontrado."
         val timeStamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
 
-        if (ctrl.status == ControlStatus.BLOQUEADO) {
-            val msg = "Ação bloqueada: ${ctrl.statusReason}"
+        if (ctrl.status != ControlStatus.PRONTO || controlId !in physicallyValidatedWriteControls) {
+            val msg = "Ação bloqueada: nenhum comando físico foi validado para $controlId neste veículo."
             recordLog(
                 timeStamp = timeStamp,
                 controlId = controlId,
