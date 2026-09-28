@@ -429,7 +429,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="DIAGNÓSTICO DE LUZ INTERNA"
+                    android:text="LUZ INTERNA DO TETO / SALÃO"
                     android:textColor="#38bdf8"
                     android:textStyle="bold"
                     android:textSize="14sp" />
@@ -439,24 +439,33 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:layout_marginBottom="10dp"
-                    android:text="Consulta somente sinais de presença, estado da luz da porta e lâmpadas de leitura no HAL BYD. Nenhum comando será enviado."
+                    android:text="Comando BYD para ligar ou desligar a luz interna do teto. O retorno confirma aceitação do comando; a ROM deste veículo ainda não fornece uma leitura confiável do estado físico da lâmpada."
                     android:textColor="#cbd5e1"
                     android:textSize="12sp" />
 
                 <Button
-                    android:id="@+id/btnReadInteriorLights"
+                    android:id="@+id/btnInteriorLightOn"
                     android:layout_width="match_parent"
                     android:layout_height="52dp"
-                    android:text="CONSULTAR SINAIS DE LUZ INTERNA"
+                    android:text="LIGAR LUZ INTERNA"
                     android:textColor="#ffffff"
-                    android:backgroundTint="#0369a1" />
+                    android:backgroundTint="#059669" />
+
+                <Button
+                    android:id="@+id/btnInteriorLightOff"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="8dp"
+                    android:text="DESLIGAR LUZ INTERNA"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#b91c1c" />
 
                 <TextView
                     android:id="@+id/txtInteriorLightProbe"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="Sinais ainda não consultados."
+                    android:text="Nenhum comando de luz interna enviado nesta sessão."
                     android:textColor="#94a3b8"
                     android:textSize="11sp"
                     android:fontFamily="monospace" />

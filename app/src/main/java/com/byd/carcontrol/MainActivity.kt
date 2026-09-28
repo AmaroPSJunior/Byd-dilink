@@ -87,7 +87,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnHvacOff: Button
     private lateinit var btnReadSeatbelt: Button
     private lateinit var txtSeatbeltAccessStatus: TextView
-    private lateinit var btnReadInteriorLights: Button
+    private lateinit var btnInteriorLightOn: Button
+    private lateinit var btnInteriorLightOff: Button
     private lateinit var txtInteriorLightProbe: TextView
     private lateinit var txtClimateCommandStatus: TextView
 
@@ -161,7 +162,8 @@ class MainActivity : AppCompatActivity() {
         btnHvacOff = findViewById(R.id.btnHvacOff)
         btnReadSeatbelt = findViewById(R.id.btnReadSeatbelt)
         txtSeatbeltAccessStatus = findViewById(R.id.txtSeatbeltAccessStatus)
-        btnReadInteriorLights = findViewById(R.id.btnReadInteriorLights)
+        btnInteriorLightOn = findViewById(R.id.btnInteriorLightOn)
+        btnInteriorLightOff = findViewById(R.id.btnInteriorLightOff)
         txtInteriorLightProbe = findViewById(R.id.txtInteriorLightProbe)
         txtClimateCommandStatus = findViewById(R.id.txtClimateCommandStatus)
     }
@@ -383,18 +385,35 @@ class MainActivity : AppCompatActivity() {
         btnReadSeatbelt.setOnClickListener {
             readAndRenderSeatbeltState()
         }
-        btnReadInteriorLights.setOnClickListener {
-            txtInteriorLightProbe.text = "Consultando somente estados de luz interna…"
-            Thread {
-                val result = runCatching { BydInteriorLightReader.read(this) }
-                runOnUiThread {
-                    txtInteriorLightProbe.text = result.fold(
-                        onSuccess = { values -> values.joinToString("\n") },
-                        onFailure = { error -> "Falha: ${error.cause?.message ?: error.message}" }
-                    )
-                }
-            }.start()
-        }
+        btnInteriorLightOn.setOnClickListener { requestInteriorLightPower(true) }
+        btnInteriorLightOff.setOnClickListener { requestInteriorLightPower(false) }
+    }
+
+    private fun requestInteriorLightPower(turnOn: Boolean) {
+        val action = if (turnOn) "ligar" else "desligar"
+        txtInteriorLightProbe.text = "Enviando comando para $action a luz interna…"
+        btnInteriorLightOn.isEnabled = false
+        btnInteriorLightOff.isEnabled = false
+        Thread {
+            val result = runCatching { BydInteriorLightControl.setPower(this, turnOn) }
+            runOnUiThread {
+                btnInteriorLightOn.isEnabled = true
+                btnInteriorLightOff.isEnabled = true
+                txtInteriorLightProbe.text = result.fold(
+                    onSuccess = { response ->
+                        if (response.accepted) {
+                            "Comando $action aceito pelo HAL BYD (${response.detail}). Estado físico da lâmpada não confirmado por telemetria."
+                        } else {
+                            "O HAL BYD recusou o comando para $action (${response.detail})."
+                        }
+                    },
+                    onFailure = { error ->
+                        "Falha ao $action a luz interna: ${error.cause?.javaClass?.simpleName ?: error.javaClass.simpleName}: ${error.cause?.message ?: error.message}"
+                    }
+                )
+                appendLog(txtInteriorLightProbe.text.toString())
+            }
+        }.start()
     }
 
     private fun openOemPanel(intent: Intent, successMessage: String) {
