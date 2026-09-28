@@ -1,6 +1,7 @@
 package com.byd.carcontrol
 
 import android.content.ClipData
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.ClipboardManager
 import android.content.ContentValues
 import android.content.Context
@@ -10,6 +11,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.view.accessibility.AccessibilityManager
+import android.provider.Settings
 import android.provider.MediaStore
 import android.util.Log
 import android.view.View
@@ -80,6 +83,9 @@ class MainActivity : AppCompatActivity() {
     // Controls tab: launch official OEM panels; no unsupported writes.
     private lateinit var btnControlOpenHvac: Button
     private lateinit var btnControlOpenLighting: Button
+    private lateinit var btnHvacOn: Button
+    private lateinit var btnHvacOff: Button
+    private lateinit var txtClimateCommandStatus: TextView
 
     private val logHistory = mutableListOf<String>()
     private var lastInspectionReport: String? = null
@@ -146,6 +152,9 @@ class MainActivity : AppCompatActivity() {
 
         btnControlOpenHvac = findViewById(R.id.btnControlOpenHvac)
         btnControlOpenLighting = findViewById(R.id.btnControlOpenLighting)
+        btnHvacOn = findViewById(R.id.btnHvacOn)
+        btnHvacOff = findViewById(R.id.btnHvacOff)
+        txtClimateCommandStatus = findViewById(R.id.txtClimateCommandStatus)
     }
 
     private fun setupTabs() {
@@ -358,6 +367,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupControlsListeners() {
+        btnHvacOn.setOnClickListener { requestHvacPower(true) }
+        btnHvacOff.setOnClickListener { requestHvacPower(false) }
         btnControlOpenHvac.setOnClickListener {
             openOemPanel(
                 Intent("OPEN_AIR_CONDITIONING").setPackage("com.byd.airconditioning"),
@@ -385,9 +396,61 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun requestHvacPower(turnOn: Boolean) {
+        if (!isClimateAccessibilityEnabled()) {
+            AlertDialog.Builder(this)
+                .setTitle("Ative o serviço de acessibilidade")
+                .setMessage(
+                    "Para controlar o HVAC, o serviço restrito do BYD Controller precisa ser ativado em " +
+                        "Acessibilidade. Ele só processa comandos quando o painel oficial com.byd.airconditioning está aberto."
+                )
+                .setNegativeButton("Agora não", null)
+                .setPositiveButton("Abrir configurações") { _, _ ->
+                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                }
+                .show()
+            return
+        }
+
+        getSharedPreferences(ClimateAccessibilityService.PREFS_NAME, MODE_PRIVATE).edit()
+            .putInt(ClimateAccessibilityService.KEY_PENDING_POWER, if (turnOn) 1 else 0)
+            .putLong(ClimateAccessibilityService.KEY_REQUEST_TIME, System.currentTimeMillis())
+            .putString(ClimateAccessibilityService.KEY_RESULT, "Comando enviado ao painel OEM; aguardando confirmação…")
+            .apply()
+        updateClimateCommandStatus()
+        openOemPanel(
+            Intent("OPEN_AIR_CONDITIONING").setPackage("com.byd.airconditioning"),
+            "Painel OEM aberto para ${if (turnOn) "ligar" else "desligar"} o ar-condicionado."
+        )
+    }
+
+    private fun isClimateAccessibilityEnabled(): Boolean {
+        val manager = getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
+        return manager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
+            .any { info ->
+                info.resolveInfo?.serviceInfo?.let { service ->
+                    service.packageName == packageName && service.name == ClimateAccessibilityService::class.java.name
+                } == true
+            }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::txtClimateCommandStatus.isInitialized) updateClimateCommandStatus()
+    }
+
+    private fun updateClimateCommandStatus() {
+        val prefs = getSharedPreferences(ClimateAccessibilityService.PREFS_NAME, MODE_PRIVATE)
+        txtClimateCommandStatus.text = prefs.getString(
+            ClimateAccessibilityService.KEY_RESULT,
+            "Nenhum comando de climatização confirmado nesta sessão."
+        )
+    }
+
     private fun updateControlsUI() {
+        updateClimateCommandStatus()
         txtControlLogs.text = "Ações disponíveis: abrir painel OEM de climatização e ajustes OEM de iluminação.\n" +
-            "HVAC, luz do teto e estado físico do cinto ainda requerem acesso BYDAuto privilegiado."
+            "HVAC usa a interface OEM; luz do teto e estado físico do cinto requerem acesso BYDAuto privilegiado."
     }
 
     private fun getRawReportText(): String {

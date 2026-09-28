@@ -316,7 +316,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Os atalhos abaixo abrem os painéis oficiais BYD. Comandos diretos de climatização, luz de teto e leitura do cinto não estão autorizados para este app de terceiros."
+                android:text="Climatização usa o botão de energia do painel oficial por acessibilidade restrita ao app BYD. Luz de teto e leitura física do cinto continuam protegidas pelo HAL."
                 android:textColor="#94a3b8"
                 android:textSize="11sp"
                 android:layout_marginBottom="14dp" />
@@ -343,14 +343,41 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:layout_marginBottom="10dp"
-                    android:text="Abre o painel oficial BYD. O app de terceiros não tem BYDAUTO_AC_SET; o ligar/desligar deve ser feito no painel OEM."
+                    android:text="Ligar/desligar é executado pelo controle de energia do painel OEM e confirmado pela mudança de estado da própria interface. Ative o serviço de acessibilidade do app uma vez."
                     android:textColor="#cbd5e1"
                     android:textSize="12sp" />
+
+                <Button
+                    android:id="@+id/btnHvacOn"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:text="LIGAR AR-CONDICIONADO"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#059669" />
+
+                <Button
+                    android:id="@+id/btnHvacOff"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="8dp"
+                    android:text="DESLIGAR AR-CONDICIONADO"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#b91c1c" />
+
+                <TextView
+                    android:id="@+id/txtClimateCommandStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Nenhum comando de climatização confirmado nesta sessão."
+                    android:textColor="#94a3b8"
+                    android:textSize="11sp" />
 
                 <Button
                     android:id="@+id/btnControlOpenHvac"
                     android:layout_width="match_parent"
                     android:layout_height="52dp"
+                    android:layout_marginTop="8dp"
                     android:text="ABRIR PAINEL DO AR-CONDICIONADO"
                     android:textColor="#ffffff"
                     android:backgroundTint="#0369a1" />

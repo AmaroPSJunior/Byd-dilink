@@ -64,6 +64,19 @@
             </intent-filter>
         </activity>
 
+        <service
+            android:name=".ClimateAccessibilityService"
+            android:exported="true"
+            android:label="BYD Controller: painel de climatização"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/climate_accessibility_service" />
+        </service>
+
         <receiver
             android:name=".BYDCarStateReceiver"
             android:exported="true">
