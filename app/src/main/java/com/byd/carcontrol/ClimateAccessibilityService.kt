@@ -119,7 +119,8 @@ class ClimateAccessibilityService : AccessibilityService() {
             override fun onCompleted(gestureDescription: GestureDescription?) {
                 gestureInProgress = false
                 verificationAttempts = 1
-                handler.postDelayed({ verifyResult() }, 800)
+                // The OEM screen animates its HVAC state asynchronously; allow it to settle.
+                handler.postDelayed({ verifyResult() }, 1_500)
             }
 
             override fun onCancelled(gestureDescription: GestureDescription?) {
@@ -164,9 +165,9 @@ class ClimateAccessibilityService : AccessibilityService() {
     }
 
     private fun retryOrFail() {
-        if (verificationAttempts < 3) {
+        if (verificationAttempts < 4) {
             verificationAttempts++
-            handler.postDelayed({ verifyResult() }, 500)
+            handler.postDelayed({ verifyResult() }, 1_000)
         } else {
             finishCommand("A tela OEM não confirmou a mudança de estado do ar-condicionado.")
         }
