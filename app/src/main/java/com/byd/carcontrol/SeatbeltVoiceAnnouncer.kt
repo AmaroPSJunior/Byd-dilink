@@ -32,16 +32,9 @@ class SeatbeltVoiceAnnouncer(context: Context) {
 
     private fun playNext() {
         if (player != null || pending.isEmpty()) return
-        val next = runCatching { MediaPlayer.create(appContext, pending.removeFirst()) }.getOrNull()
-        if (next == null) {
-            playNext()
-            return
-        }
+        val resource = pending.removeFirst()
+        val next = MediaPlayer()
         player = next
-        next.setAudioAttributes(AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-            .build())
         next.setOnCompletionListener { completed ->
             completed.release()
             player = null
@@ -53,7 +46,17 @@ class SeatbeltVoiceAnnouncer(context: Context) {
             playNext()
             true
         }
-        runCatching { next.start() }.onFailure {
+        runCatching {
+            next.setAudioAttributes(AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build())
+            appContext.resources.openRawResourceFd(resource).use { audio ->
+                next.setDataSource(audio.fileDescriptor, audio.startOffset, audio.length)
+            }
+            next.setOnPreparedListener { it.start() }
+            next.prepareAsync()
+        }.onFailure {
             next.release()
             player = null
             playNext()
