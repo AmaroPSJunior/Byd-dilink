@@ -11,6 +11,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.view.accessibility.AccessibilityManager
 import android.provider.Settings
 import android.provider.MediaStore
@@ -89,6 +91,9 @@ class MainActivity : AppCompatActivity() {
 
     private val logHistory = mutableListOf<String>()
     private var lastInspectionReport: String? = null
+    private val seatbeltHandler = Handler(Looper.getMainLooper())
+    private var seatbeltPolling = false
+    private var activityResumed = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -159,6 +164,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupTabs() {
         btnTabDiagnostic.setOnClickListener {
+            stopSeatbeltPolling()
             layoutTabDiagnostic.visibility = View.VISIBLE
             layoutTabControls.visibility = View.GONE
             btnTabDiagnostic.setBackgroundColor(Color.parseColor("#0284c7"))
@@ -175,6 +181,7 @@ class MainActivity : AppCompatActivity() {
             btnTabDiagnostic.setBackgroundColor(Color.parseColor("#334155"))
             btnTabDiagnostic.setTextColor(Color.parseColor("#94a3b8"))
             updateControlsUI()
+            startSeatbeltPolling()
         }
     }
 
@@ -370,25 +377,7 @@ class MainActivity : AppCompatActivity() {
         btnHvacOn.setOnClickListener { requestHvacPower(true) }
         btnHvacOff.setOnClickListener { requestHvacPower(false) }
         btnReadSeatbelt.setOnClickListener {
-            txtSeatbeltAccessStatus.text = "Consultando o sensor do veículo…"
-            Thread {
-                try {
-                    val (statuses, constants) = BydSeatbeltReader.readRawStatuses(this)
-                    val summary = statuses.joinToString(", ") { "área ${it.first}=${it.second}" }
-                    val constantSummary = constants.takeIf { it.isNotEmpty() }?.joinToString(", ")
-                        ?: "nenhuma constante pública encontrada"
-                    runOnUiThread {
-                        txtSeatbeltAccessStatus.text =
-                            "BYDAutoSafetyBeltDevice: $summary. Constantes: $constantSummary"
-                    }
-                } catch (t: Throwable) {
-                    val cause = t.cause ?: t
-                    runOnUiThread {
-                        txtSeatbeltAccessStatus.text =
-                            "Leitura do sensor indisponível: ${cause.javaClass.simpleName}: ${cause.message}"
-                    }
-                }
-            }.start()
+            readAndRenderSeatbeltState()
         }
     }
 
@@ -441,7 +430,62 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        activityResumed = true
         if (::txtClimateCommandStatus.isInitialized) updateClimateCommandStatus()
+        if (::layoutTabControls.isInitialized && layoutTabControls.visibility == View.VISIBLE) {
+            startSeatbeltPolling()
+        }
+    }
+
+    override fun onPause() {
+        activityResumed = false
+        stopSeatbeltPolling()
+        super.onPause()
+    }
+
+    private val seatbeltPoll = object : Runnable {
+        override fun run() {
+            if (!seatbeltPolling || !activityResumed || layoutTabControls.visibility != View.VISIBLE) return
+            readAndRenderSeatbeltState()
+            seatbeltHandler.postDelayed(this, 2000L)
+        }
+    }
+
+    private fun startSeatbeltPolling() {
+        if (!activityResumed || !::layoutTabControls.isInitialized || layoutTabControls.visibility != View.VISIBLE) return
+        if (seatbeltPolling) return
+        seatbeltPolling = true
+        seatbeltHandler.post(seatbeltPoll)
+    }
+
+    private fun stopSeatbeltPolling() {
+        seatbeltPolling = false
+        seatbeltHandler.removeCallbacks(seatbeltPoll)
+    }
+
+    private fun readAndRenderSeatbeltState() {
+        Thread {
+            val result = runCatching { BydSeatbeltReader.readDriverState(this) }
+            runOnUiThread {
+                result.onSuccess { state ->
+                    txtSeatbeltAccessStatus.text = when (state.raw) {
+                        state.unlocked -> "⚠️ CINTO DO MOTORISTA DESAFIVELADO"
+                        state.locked -> "✓ Cinto do motorista afivelado"
+                        state.invalid -> "Estado do cinto indisponível (SDK retornou INVALID)."
+                        else -> "Estado do cinto desconhecido: ${state.raw}"
+                    }
+                    txtSeatbeltAccessStatus.setTextColor(
+                        if (state.raw == state.unlocked) Color.parseColor("#fca5a5")
+                        else Color.parseColor("#fde68a")
+                    )
+                }.onFailure { error ->
+                    val cause = error.cause ?: error
+                    txtSeatbeltAccessStatus.text =
+                        "Leitura do sensor indisponível: ${cause.javaClass.simpleName}: ${cause.message}"
+                    txtSeatbeltAccessStatus.setTextColor(Color.parseColor("#fde68a"))
+                }
+            }
+        }.start()
     }
 
     private fun updateClimateCommandStatus() {

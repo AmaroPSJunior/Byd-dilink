@@ -8,6 +8,27 @@ import android.content.pm.PackageManager
 object BydSeatbeltReader {
     private const val DEVICE_CLASS = "android.hardware.bydauto.safetybelt.BYDAutoSafetyBeltDevice"
 
+    data class DriverState(val raw: Int, val locked: Int, val unlocked: Int, val invalid: Int)
+
+    fun readDriverState(context: Context): DriverState {
+        val deviceClass = Class.forName(DEVICE_CLASS)
+        val sdkContext = BydAutoReadContext(context.applicationContext)
+        val instance = deviceClass.getMethod("getInstance", Context::class.java)
+            .invoke(null, sdkContext)
+            ?: error("BYDAutoSafetyBeltDevice.getInstance retornou null")
+        fun constant(name: String): Int = deviceClass.getField(name).getInt(null)
+        val mainArea = constant("SAFETY_BELT_AREA_MAIN")
+        val getter = deviceClass.getMethod("getSafetyBeltStatus", Int::class.javaPrimitiveType)
+        val raw = (getter.invoke(instance, mainArea) as? Number)?.toInt()
+            ?: error("getSafetyBeltStatus não retornou um número")
+        return DriverState(
+            raw = raw,
+            locked = constant("SAFETY_BELT_STATE_LOCK"),
+            unlocked = constant("SAFETY_BELT_STATE_UNLOCK"),
+            invalid = constant("SAFETY_BELT_STATE_INVALID")
+        )
+    }
+
     fun readRawStatuses(context: Context): Pair<List<Pair<Int, String>>, List<String>> {
         val deviceClass = Class.forName(DEVICE_CLASS)
         val sdkContext = BydAutoReadContext(context.applicationContext)
