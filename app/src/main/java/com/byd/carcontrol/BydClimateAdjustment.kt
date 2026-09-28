@@ -31,7 +31,7 @@ object BydClimateAdjustment {
             if (unit == 0) value else (value - 32.0) * 5.0 / 9.0
         }?.coerceIn(17.0, maxC.toDouble())
         val unitName = if (unit == 0) "°C" else "°F (convertido para °C na interface)"
-        Snapshot(wind, celsius, maxC, step,
+        return Snapshot(wind, celsius, maxC, step,
             "getWindLevel=$wind; temperatura OEM=${displayedTemperature ?: "indisponível"} $unitName; resolução=${step}°C; aquecimento=$hasHeating")
     }
 
