@@ -307,8 +307,8 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="⚠️ PAINEL DE TESTES DE HARDWARE REAL BYD"
-                android:textColor="#f59e0b"
+                android:text="PAINÉIS OEM E ACESSO AOS CONTROLES"
+                android:textColor="#38bdf8"
                 android:textStyle="bold"
                 android:textSize="13sp"
                 android:layout_marginBottom="2dp" />
@@ -316,7 +316,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Os comandos físicos só são habilitados (PRONTO) quando a API e seus parâmetros reais foram descobertos no dispositivo. Cada acionamento exige confirmação de segurança prévia."
+                android:text="Os atalhos abaixo abrem os painéis oficiais BYD. Comandos diretos de climatização, luz de teto e leitura do cinto não estão autorizados para este app de terceiros."
                 android:textColor="#94a3b8"
                 android:textSize="11sp"
                 android:layout_marginBottom="14dp" />
