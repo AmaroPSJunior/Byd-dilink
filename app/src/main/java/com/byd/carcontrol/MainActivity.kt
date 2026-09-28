@@ -6,8 +6,6 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
-import android.media.AudioAttributes
-import android.speech.tts.TextToSpeech
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -129,8 +127,7 @@ class MainActivity : AppCompatActivity() {
     private val seatbeltHandler = Handler(Looper.getMainLooper())
     private var seatbeltPolling = false
     private var activityResumed = false
-    private var seatbeltTts: TextToSpeech? = null
-    private var ttsReady = false
+    private var seatbeltVoiceAnnouncer: SeatbeltVoiceAnnouncer? = null
     private var previouslyUnbuckled = emptySet<String>()
     @Volatile private var seatbeltReadInFlight = false
     private var hvacCommandStatus = "Climatização aguardando comando."
@@ -165,15 +162,7 @@ class MainActivity : AppCompatActivity() {
             setupTabs()
             setupDiagnosticListeners()
             setupControlsListeners()
-            seatbeltTts = TextToSpeech(this) { status ->
-                ttsReady = status == TextToSpeech.SUCCESS
-                if (ttsReady) {
-                    seatbeltTts?.language = Locale("pt", "BR")
-                    seatbeltTts?.setAudioAttributes(AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
-                }
-            }
+            seatbeltVoiceAnnouncer = SeatbeltVoiceAnnouncer(this)
 
             updateHeaderInfo()
             updateControlsUI()
@@ -781,9 +770,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        seatbeltTts?.stop()
-        seatbeltTts?.shutdown()
-        seatbeltTts = null
+        seatbeltVoiceAnnouncer?.release()
+        seatbeltVoiceAnnouncer = null
         super.onDestroy()
     }
 
@@ -823,15 +811,11 @@ class MainActivity : AppCompatActivity() {
                         if (unbuckled.isEmpty()) append("✓ Nenhum cinto detectado como desafivelado.")
                         else append("⚠ Desafivelados: ${unbuckled.joinToString { it.label }}.")
                         if (unavailable.isNotEmpty()) append(" Estado indisponível: ${unavailable.joinToString { it.label }}.")
-                        append(if (ttsReady) " Avisos por voz ativos." else " Voz inicializando/indisponível.")
+                        append(" Avisos de voz em português ativos.")
                     }
                     txtSeatbeltAccessStatus.setTextColor(if (unbuckled.isEmpty()) Color.parseColor("#86efac") else Color.parseColor("#fca5a5"))
                     val newWarnings = unbuckled.filter { it.key !in previouslyUnbuckled }
-                    newWarnings.forEach { seat ->
-                        if (ttsReady) seatbeltTts?.speak(
-                            "Atenção. ${seatbeltVoiceLabel(seat.label)} não está afivelado. Por favor, afivele o cinto.",
-                            TextToSpeech.QUEUE_ADD, null, "seatbelt-${seat.key}")
-                    }
+                    seatbeltVoiceAnnouncer?.announce(newWarnings)
                     previouslyUnbuckled = unbuckled.map { it.key }.toSet()
                 }.onFailure { error ->
                     val cause = error.cause ?: error
@@ -841,15 +825,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }.start()
-    }
-
-    private fun seatbeltVoiceLabel(label: String): String = when (label) {
-        "Motorista" -> "o cinto do motorista"
-        "Passageiro dianteiro" -> "o cinto do passageiro dianteiro"
-        "Traseiro esquerdo" -> "o cinto do passageiro traseiro do lado esquerdo"
-        "Traseiro central" -> "o cinto do passageiro do meio no banco traseiro"
-        "Traseiro direito" -> "o cinto do passageiro traseiro do lado direito"
-        else -> "o cinto do assento ${label.lowercase(Locale("pt", "BR"))}"
     }
 
     private fun updateClimateCommandStatus() {

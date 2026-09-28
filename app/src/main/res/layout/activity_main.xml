@@ -591,7 +591,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:layout_marginBottom="10dp"
-                    android:text="Leitura periódica somente pelo BYDAutoSafetyBeltDevice. Verde: afivelado; vermelho: desafivelado; cinza: sem leitura. Avisos de voz são emitidos quando um cinto passa para desafivelado."
+                    android:text="Leitura periódica somente pelo BYDAutoSafetyBeltDevice. Verde: afivelado; vermelho: desafivelado; cinza: sem leitura. Uma mensagem de voz em português será reproduzida quando um cinto passar para desafivelado."
                     android:textColor="#cbd5e1"
                     android:textSize="12sp" />
 
