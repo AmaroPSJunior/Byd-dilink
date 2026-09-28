@@ -478,7 +478,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:layout_marginBottom="10dp"
-                    android:text="Ligar/desligar usa diretamente o AirConditioningManager OEM e consulta o estado após o comando. Não requer serviço de acessibilidade."
+                    android:text="Tenta primeiro a API OEM. Se a permissão de sistema bloquear, abre o painel oficial; o serviço de acessibilidade do app, quando já estiver ativo, conclui o toque automaticamente. O app não abre as configurações."
                     android:textColor="#cbd5e1"
                     android:textSize="12sp" />
 

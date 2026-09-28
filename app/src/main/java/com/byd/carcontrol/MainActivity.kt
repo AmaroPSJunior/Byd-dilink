@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
@@ -16,6 +17,7 @@ import android.os.SystemClock
 import android.provider.MediaStore
 import android.util.Log
 import android.view.View
+import android.view.accessibility.AccessibilityManager
 import android.widget.Button
 import android.widget.ScrollView
 import android.widget.SeekBar
@@ -741,17 +743,52 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestHvacPower(turnOn: Boolean) {
-        hvacCommandStatus = runCatching { BydClimateAdjustment.setPower(this, turnOn) }
-            .getOrElse { error -> "Comando HVAC falhou: ${error.cause?.message ?: error.message}" }
-        updateClimateCommandStatus()
-        seatbeltHandler.postDelayed({
-            val state = runCatching { BydClimateAdjustment.readPowerState(this) }
-            hvacCommandStatus += state.fold(
-                { "; estado OEM após comando=$it." },
-                { "; não foi possível confirmar o estado: ${it.cause?.message ?: it.message}" }
-            )
+        val direct = runCatching { BydClimateAdjustment.setPower(this, turnOn) }
+        if (direct.isSuccess) {
+            hvacCommandStatus = direct.getOrThrow()
             updateClimateCommandStatus()
-        }, 500)
+            seatbeltHandler.postDelayed({
+                val state = runCatching { BydClimateAdjustment.readPowerState(this) }
+                hvacCommandStatus += state.fold(
+                    { "; estado OEM após comando=$it." },
+                    { "; não foi possível confirmar o estado: ${it.cause?.message ?: it.message}" }
+                )
+                updateClimateCommandStatus()
+            }, 500)
+            return
+        }
+
+        val reason = direct.exceptionOrNull()?.let { it.cause?.message ?: it.message } ?: "sem detalhe"
+        val panelIntent = Intent("OPEN_AIR_CONDITIONING").setPackage("com.byd.airconditioning")
+        if (isClimateAccessibilityEnabled()) {
+            getSharedPreferences(ClimateAccessibilityService.PREFS_NAME, MODE_PRIVATE).edit()
+                .putInt(ClimateAccessibilityService.KEY_PENDING_POWER, if (turnOn) 1 else 0)
+                .putLong(ClimateAccessibilityService.KEY_REQUEST_TIME, System.currentTimeMillis())
+                .putString(ClimateAccessibilityService.KEY_RESULT, "API direta recusada ($reason); aguardando confirmação da tela OEM…")
+                .apply()
+            hvacCommandStatus = "API direta sem permissão; usando o controle OEM já autorizado, sem abrir configurações."
+            openOemPanel(panelIntent, "Painel OEM aberto para concluir o comando HVAC com o serviço já ativo.")
+            seatbeltHandler.postDelayed({
+                val result = getSharedPreferences(ClimateAccessibilityService.PREFS_NAME, MODE_PRIVATE)
+                    .getString(ClimateAccessibilityService.KEY_RESULT, null)
+                if (!result.isNullOrBlank()) hvacCommandStatus = result
+                updateClimateCommandStatus()
+            }, 2_000)
+        } else {
+            hvacCommandStatus = "API direta recusada ($reason). Abrindo painel oficial para controle manual; nenhuma tela de configurações será aberta."
+            openOemPanel(panelIntent, "Painel oficial HVAC aberto; a permissão do sistema impede o controle direto pelo app.")
+        }
+        updateClimateCommandStatus()
+    }
+
+    private fun isClimateAccessibilityEnabled(): Boolean {
+        val manager = getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
+        return manager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
+            .any { info ->
+                info.resolveInfo?.serviceInfo?.let { service ->
+                    service.packageName == packageName && service.name == ClimateAccessibilityService::class.java.name
+                } == true
+            }
     }
 
     override fun onResume() {
