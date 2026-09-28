@@ -37,8 +37,8 @@
     </section>
     <section>
       <h2>Persiana do teto</h2>
-      <label>Posição: <span class="value" id="shadeLabel">0%</span></label><input id="shade" type="range" min="0" max="100" step="1" value="0" oninput="shadeLabel.textContent=this.value+'%'">
-      <div class="row wrap"><button class="green" onclick="command('/api/sunshade',{position:100})">Abrir</button><button class="red" onclick="command('/api/sunshade',{position:0})">Fechar</button><button class="gray" onclick="command('/api/sunshade/stop',{})">Parar</button><button onclick="command('/api/sunshade',{position:+shade.value})">Aplicar posição</button></div>
+      <label>Posição: <span class="value" id="shadeLabel">0%</span></label><input id="shade" type="range" min="0" max="100" step="1" value="0" onpointerdown="markDirty('shade')" onfocus="markDirty('shade')" oninput="shadeLabel.textContent=this.value+'%'">
+      <div class="row wrap"><button class="green" onclick="shadeCommand(100)">Abrir</button><button class="red" onclick="shadeCommand(0)">Fechar</button><button class="gray" onclick="command('/api/sunshade/stop',{})">Parar</button><button onclick="applyShade()">Aplicar posição</button></div>
       <p class="muted">O controle OEM exige veículo parado em P.</p><p id="shadeStatus" class="status"></p>
     </section>
     <section>
@@ -57,19 +57,23 @@
   </div>
   <script>
     const names={driver_front:'Motorista · dianteiro esquerdo',passenger_front:'Passageiro · dianteiro direito',driver_rear:'Motorista · traseiro esquerdo',passenger_rear:'Passageiro · traseiro direito'};
-    const byId=id=>document.getElementById(id),fan=byId('fan'),fanLabel=byId('fanLabel'),temp=byId('temp'),tempLabel=byId('tempLabel'),shade=byId('shade'),shadeLabel=byId('shadeLabel'),beltAudio=byId('beltAudio'),beltSpeed=byId('beltSpeed');
+    const byId=id=>document.getElementById(id),fan=byId('fan'),fanLabel=byId('fanLabel'),temp=byId('temp'),tempLabel=byId('tempLabel'),shade=byId('shade'),shadeLabel=byId('shadeLabel'),beltAudio=byId('beltAudio'),beltSpeed=byId('beltSpeed'),dirtyControls=new Set();
+    function markDirty(id){dirtyControls.add(id)}
     const tokenFromUrl=new URLSearchParams(location.search).get('token');if(tokenFromUrl){localStorage.setItem('byd-local-token',tokenFromUrl);history.replaceState({},'',location.pathname)}
     const token=localStorage.getItem('byd-local-token');
     const setStatus=(id,msg,ok=true)=>{const el=document.getElementById(id);el.textContent=msg||'';el.className='status '+(msg?(ok?'ok':'err'):'')};
     async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:{'Authorization':'Bearer '+(token||''),'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined,cache:'no-store'});const data=await r.json();if(!r.ok||data.ok===false)throw new Error(data.error||data.message||('HTTP '+r.status));return data}
-    async function command(path,body){const id=path.includes('climate')?'climateStatus':path.includes('sunshade')?'shadeStatus':path.includes('windows')?'windowStatus':'lightStatus';try{const r=await api(path,body);setStatus(id,r.message||'Comando aceito.',true);await refresh()}catch(e){setStatus(id,e.message,false)}}
-    function createWindows(){const root=document.getElementById('windows');root.innerHTML=Object.entries(names).map(([key,name])=>`<div class="window"><label>${name} · <span class="value" id="label-${key}">0%</span></label><input id="slider-${key}" type="range" min="0" max="100" step="1" value="0" oninput="document.getElementById('label-${key}').textContent=this.value+'%'"/><div class="row"><button class="red" onclick="command('/api/windows/${key}',{position:0})">Fechar</button><button class="green" onclick="command('/api/windows/${key}',{position:100})">Abrir</button><button onclick="applyWindow('${key}')">Aplicar</button></div></div>`).join('')}
-    async function applyWindow(key){const n=+document.getElementById('slider-'+key).value;const preset=n<25?0:n<75?50:100;command('/api/windows/'+key,{position:preset})}
+    async function command(path,body){const id=path.includes('climate')?'climateStatus':path.includes('sunshade')?'shadeStatus':path.includes('windows')?'windowStatus':'lightStatus';try{const r=await api(path,body);setStatus(id,r.message||'Comando aceito.',true);await refresh();return true}catch(e){setStatus(id,e.message,false);return false}}
+    function createWindows(){const root=document.getElementById('windows');root.innerHTML=Object.entries(names).map(([key,name])=>`<div class="window"><label>${name} · <span class="value" id="label-${key}">0%</span></label><input id="slider-${key}" type="range" min="0" max="100" step="1" value="0" onpointerdown="markDirty('slider-${key}')" onfocus="markDirty('slider-${key}')" oninput="document.getElementById('label-${key}').textContent=this.value+'%'"/><div class="row"><button class="red" onclick="windowCommand('${key}',0)">Fechar</button><button class="green" onclick="windowCommand('${key}',100)">Abrir</button><button onclick="applyWindow('${key}')">Aplicar</button></div></div>`).join('')}
+    async function applyWindow(key){const id='slider-'+key,n=+document.getElementById(id).value,preset=n<25?0:n<75?50:100;if(await command('/api/windows/'+key,{position:preset}))dirtyControls.delete(id)}
+    async function windowCommand(key,position){dirtyControls.delete('slider-'+key);await command('/api/windows/'+key,{position})}
+    async function applyShade(){if(await command('/api/sunshade',{position:+shade.value}))dirtyControls.delete('shade')}
+    async function shadeCommand(position){dirtyControls.delete('shade');await command('/api/sunshade',{position})}
     async function saveBeltPrefs(){const speed=+beltSpeed.value;try{const r=await api('/api/belt-alerts',{enabled:beltAudio.checked,speedKmh:speed});setStatus('beltStatus',r.message,true)}catch(e){setStatus('beltStatus',e.message,false)}}
     async function refresh(){try{const s=await api('/api/state');document.getElementById('connection').textContent='central conectada';
       if(s.climate){fan.value=s.climate.fanLevel||1;fanLabel.textContent=s.climate.fanLevel===0?'desligada':s.climate.fanLevel+'/7';temp.max=s.climate.maxTemperatureCelsius||33;temp.step=s.climate.stepCelsius||1;if(s.climate.temperatureCelsius!=null){temp.value=s.climate.temperatureCelsius;tempLabel.textContent=s.climate.temperatureCelsius+' °C'}}
-      if(s.sunshade.position!=null){shade.value=s.sunshade.position;shadeLabel.textContent=s.sunshade.position+'%'}
-      for(const [key,w] of Object.entries(s.windows||{})){if(w.position!=null){const el=document.getElementById('slider-'+key);if(el){el.value=w.position;document.getElementById('label-'+key).textContent=w.position+'%'}}}
+      if(s.sunshade.position!=null&&!dirtyControls.has('shade')){shade.value=s.sunshade.position;shadeLabel.textContent=s.sunshade.position+'%'}
+      for(const [key,w] of Object.entries(s.windows||{})){if(w.position!=null&&!dirtyControls.has('slider-'+key)){const el=document.getElementById('slider-'+key);if(el){el.value=w.position;document.getElementById('label-'+key).textContent=w.position+'%'}}}
       document.getElementById('beltState').textContent=s.belt?.status||'indisponível';document.getElementById('speedState').textContent=s.speedKmh==null?'indisponível':Math.round(s.speedKmh)+' km/h';
       if(s.beltAlert){document.getElementById('beltAudio').checked=s.beltAlert.enabled;document.getElementById('beltSpeed').value=s.beltAlert.speedKmh}
     }catch(e){document.getElementById('connection').textContent='sem conexão';setStatus('beltStatus',e.message,false)}}
