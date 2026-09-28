@@ -103,10 +103,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var txtClimateAdjustmentStatus: TextView
     private lateinit var btnOpenSunshade: Button
     private lateinit var btnCloseSunshade: Button
-    private lateinit var btnApplySunshadePosition: Button
     private lateinit var seekSunshadePosition: SeekBar
     private lateinit var txtSunshadePercent: TextView
     private lateinit var txtSunshadeStatus: TextView
+    private lateinit var txtWindowCommandStatus: TextView
+    private lateinit var windowViews: List<WindowUi>
     private var sunshadeMotion: SunshadeMotion? = null
     private var sunshadePosition = 0
     private var sunshadeCommandId = 0
@@ -114,6 +115,15 @@ class MainActivity : AppCompatActivity() {
     private var climateTemperatureMaxCelsius = 33.0
     private var climateTemperatureStepCelsius = 1.0
     private val climateCommandExecutor = Executors.newSingleThreadExecutor()
+    private val windowCommandExecutor = Executors.newSingleThreadExecutor()
+
+    private data class WindowUi(
+        val window: BydWindowControl.Window,
+        val label: TextView,
+        val seek: SeekBar,
+        val open: Button,
+        val close: Button
+    )
 
     private val logHistory = mutableListOf<String>()
     private var lastInspectionReport: String? = null
@@ -194,9 +204,15 @@ class MainActivity : AppCompatActivity() {
         seekClimateTemperature = findViewById(R.id.seekClimateTemperature)
         txtClimateTemperatureValue = findViewById(R.id.txtClimateTemperatureValue)
         txtClimateAdjustmentStatus = findViewById(R.id.txtClimateAdjustmentStatus)
+        txtWindowCommandStatus = findViewById(R.id.txtWindowCommandStatus)
+        windowViews = listOf(
+            WindowUi(BydWindowControl.Window.DRIVER_FRONT, findViewById(R.id.txtWindowDriverFront), findViewById(R.id.seekWindowDriverFront), findViewById(R.id.btnWindowDriverFrontOpen), findViewById(R.id.btnWindowDriverFrontClose)),
+            WindowUi(BydWindowControl.Window.PASSENGER_FRONT, findViewById(R.id.txtWindowPassengerFront), findViewById(R.id.seekWindowPassengerFront), findViewById(R.id.btnWindowPassengerFrontOpen), findViewById(R.id.btnWindowPassengerFrontClose)),
+            WindowUi(BydWindowControl.Window.DRIVER_REAR, findViewById(R.id.txtWindowDriverRear), findViewById(R.id.seekWindowDriverRear), findViewById(R.id.btnWindowDriverRearOpen), findViewById(R.id.btnWindowDriverRearClose)),
+            WindowUi(BydWindowControl.Window.PASSENGER_REAR, findViewById(R.id.txtWindowPassengerRear), findViewById(R.id.seekWindowPassengerRear), findViewById(R.id.btnWindowPassengerRearOpen), findViewById(R.id.btnWindowPassengerRearClose))
+        )
         btnOpenSunshade = findViewById(R.id.btnOpenSunshade)
         btnCloseSunshade = findViewById(R.id.btnCloseSunshade)
-        btnApplySunshadePosition = findViewById(R.id.btnApplySunshadePosition)
         seekSunshadePosition = findViewById(R.id.seekSunshadePosition)
         txtSunshadePercent = findViewById(R.id.txtSunshadePercent)
         txtSunshadeStatus = findViewById(R.id.txtSunshadeStatus)
@@ -224,6 +240,7 @@ class MainActivity : AppCompatActivity() {
             startSeatbeltPolling()
             refreshSunshadePosition()
             refreshClimateAdjustmentState()
+            refreshWindowStates()
         }
     }
 
@@ -436,19 +453,29 @@ class MainActivity : AppCompatActivity() {
         seekSunshadePosition.max = 100
         seekSunshadePosition.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
-                txtSunshadePercent.text = "POSIÇÃO DESEJADA: $progress%"
+                if (fromUser) txtSunshadePercent.text = "POSIÇÃO DESEJADA: $progress%"
             }
             override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
-            override fun onStopTrackingTouch(seekBar: SeekBar) = Unit
-        })
-        btnApplySunshadePosition.setOnClickListener {
-            val target = seekSunshadePosition.progress
-            val motion = when {
-                target > sunshadePosition -> SunshadeMotion.OPENING
-                target < sunshadePosition -> SunshadeMotion.CLOSING
-                else -> null
+            override fun onStopTrackingTouch(seekBar: SeekBar) {
+                val target = seekBar.progress
+                val motion = when {
+                    target > sunshadePosition -> SunshadeMotion.OPENING
+                    target < sunshadePosition -> SunshadeMotion.CLOSING
+                    else -> null
+                }
+                requestSunshadePosition(target, motion)
             }
-            requestSunshadePosition(target, motion)
+        })
+        windowViews.forEach { ui ->
+            ui.open.setOnClickListener { sendWindowTarget(ui, 100) }
+            ui.close.setOnClickListener { sendWindowTarget(ui, 0) }
+            ui.seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
+                    if (fromUser) ui.label.text = "${ui.window.label}: alvo $progress%"
+                }
+                override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
+                override fun onStopTrackingTouch(seekBar: SeekBar) { sendWindowTarget(ui, seekBar.progress) }
+            })
         }
         updateSunshadeButtons()
 
@@ -489,6 +516,39 @@ class MainActivity : AppCompatActivity() {
                     }
             }
         }.start()
+    }
+
+    private fun refreshWindowStates() {
+        windowViews.forEach { ui ->
+            Thread {
+                val result = runCatching { BydWindowControl.read(this, ui.window) }
+                runOnUiThread {
+                    result.onSuccess { state ->
+                        val percent = state.percent
+                        ui.label.text = when {
+                            state.initialized != 1 -> "${ui.window.label}: indisponível (inicialização=${state.initialized ?: "?"})"
+                            percent != null -> "${ui.window.label}: ${percent}%"
+                            else -> "${ui.window.label}: posição indisponível"
+                        }
+                        if (percent != null && !ui.seek.isPressed) ui.seek.progress = percent
+                    }.onFailure { error ->
+                        ui.label.text = "${ui.window.label}: leitura falhou (${error.cause?.message ?: error.message})"
+                    }
+                }
+            }.start()
+        }
+    }
+
+    private fun sendWindowTarget(ui: WindowUi, target: Int) {
+        txtWindowCommandStatus.text = "Enviando posição ${target}% para ${ui.window.label}…"
+        windowCommandExecutor.execute {
+            val result = runCatching { BydWindowControl.setPosition(this, ui.window, target) }
+            runOnUiThread {
+                result.onSuccess { txtWindowCommandStatus.text = it }
+                    .onFailure { error -> txtWindowCommandStatus.text = "Comando recusado/falhou: ${error.cause?.message ?: error.message}" }
+                refreshWindowStates()
+            }
+        }
     }
 
     private fun requestClimateAdjustment(pendingMessage: String, command: () -> String) {

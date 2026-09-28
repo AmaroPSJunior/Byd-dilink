@@ -390,14 +390,6 @@
                     android:progress="0"
                     android:contentDescription="Posição desejada da persiana, de zero a cem por cento" />
 
-                <Button
-                    android:id="@+id/btnApplySunshadePosition"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:text="APLICAR POSIÇÃO"
-                    android:textColor="#ffffff"
-                    android:backgroundTint="#0369a1" />
-
                 <TextView
                     android:id="@+id/txtSunshadeStatus"
                     android:layout_width="match_parent"
@@ -406,6 +398,62 @@
                     android:text="API identificada; nenhum comando de persiana enviado nesta sessão."
                     android:textColor="#94a3b8"
                     android:textSize="11sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#0f172a"
+                android:padding="16dp"
+                android:layout_marginBottom="14dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="VIDROS"
+                    android:textColor="#38bdf8"
+                    android:textStyle="bold"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:layout_marginBottom="8dp"
+                    android:text="Controles individuais e posição de 0 a 100%. A posição é enviada ao soltar a barra. Requer velocidade zero e P."
+                    android:textColor="#cbd5e1"
+                    android:textSize="12sp" />
+
+                <TextView android:id="@+id/txtWindowDriverFront" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Motorista — dianteiro esquerdo: leitura…" android:textColor="#e2e8f0" android:textStyle="bold" android:textSize="12sp" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                    <Button android:id="@+id/btnWindowDriverFrontClose" android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1" android:text="FECHAR" android:textColor="#ffffff" android:backgroundTint="#b91c1c" />
+                    <Button android:id="@+id/btnWindowDriverFrontOpen" android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1" android:layout_marginStart="8dp" android:text="ABRIR" android:textColor="#ffffff" android:backgroundTint="#059669" />
+                </LinearLayout>
+                <SeekBar android:id="@+id/seekWindowDriverFront" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="100" android:contentDescription="Posição do vidro dianteiro do motorista" />
+
+                <TextView android:id="@+id/txtWindowPassengerFront" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="Passageiro — dianteiro direito: leitura…" android:textColor="#e2e8f0" android:textStyle="bold" android:textSize="12sp" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                    <Button android:id="@+id/btnWindowPassengerFrontClose" android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1" android:text="FECHAR" android:textColor="#ffffff" android:backgroundTint="#b91c1c" />
+                    <Button android:id="@+id/btnWindowPassengerFrontOpen" android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1" android:layout_marginStart="8dp" android:text="ABRIR" android:textColor="#ffffff" android:backgroundTint="#059669" />
+                </LinearLayout>
+                <SeekBar android:id="@+id/seekWindowPassengerFront" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="100" android:contentDescription="Posição do vidro dianteiro do passageiro" />
+
+                <TextView android:id="@+id/txtWindowDriverRear" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="Motorista — traseiro esquerdo: leitura…" android:textColor="#e2e8f0" android:textStyle="bold" android:textSize="12sp" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                    <Button android:id="@+id/btnWindowDriverRearClose" android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1" android:text="FECHAR" android:textColor="#ffffff" android:backgroundTint="#b91c1c" />
+                    <Button android:id="@+id/btnWindowDriverRearOpen" android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1" android:layout_marginStart="8dp" android:text="ABRIR" android:textColor="#ffffff" android:backgroundTint="#059669" />
+                </LinearLayout>
+                <SeekBar android:id="@+id/seekWindowDriverRear" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="100" android:contentDescription="Posição do vidro traseiro do motorista" />
+
+                <TextView android:id="@+id/txtWindowPassengerRear" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="Passageiro — traseiro direito: leitura…" android:textColor="#e2e8f0" android:textStyle="bold" android:textSize="12sp" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                    <Button android:id="@+id/btnWindowPassengerRearClose" android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1" android:text="FECHAR" android:textColor="#ffffff" android:backgroundTint="#b91c1c" />
+                    <Button android:id="@+id/btnWindowPassengerRearOpen" android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1" android:layout_marginStart="8dp" android:text="ABRIR" android:textColor="#ffffff" android:backgroundTint="#059669" />
+                </LinearLayout>
+                <SeekBar android:id="@+id/seekWindowPassengerRear" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="100" android:contentDescription="Posição do vidro traseiro do passageiro" />
+
+                <TextView android:id="@+id/txtWindowCommandStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="Nenhum comando dos vidros enviado nesta sessão." android:textColor="#94a3b8" android:textSize="11sp" />
             </LinearLayout>
 
             <!-- Atalhos oficiais OEM e estado de acesso real -->
