@@ -467,14 +467,14 @@ class MainActivity : AppCompatActivity() {
             }
         })
         windowViews.forEach { ui ->
-            ui.open.setOnClickListener { sendWindowTarget(ui, 100) }
-            ui.close.setOnClickListener { sendWindowTarget(ui, 0) }
+            ui.open.setOnClickListener { sendWindowCommand(ui, target = 100, fullTravel = true) }
+            ui.close.setOnClickListener { sendWindowCommand(ui, target = 0, fullTravel = true) }
             ui.seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
                     if (fromUser) ui.label.text = "${ui.window.label}: alvo $progress%"
                 }
                 override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
-                override fun onStopTrackingTouch(seekBar: SeekBar) { sendWindowTarget(ui, seekBar.progress) }
+                override fun onStopTrackingTouch(seekBar: SeekBar) { sendWindowCommand(ui, seekBar.progress, fullTravel = false) }
             })
         }
         updateSunshadeButtons()
@@ -526,8 +526,7 @@ class MainActivity : AppCompatActivity() {
                     result.onSuccess { state ->
                         val percent = state.percent
                         ui.label.text = when {
-                            state.initialized != 1 -> "${ui.window.label}: indisponível (inicialização=${state.initialized ?: "?"})"
-                            percent != null -> "${ui.window.label}: ${percent}%"
+                            percent != null -> "${ui.window.label}: ${percent}% · estado=${state.state} · permissão=${state.permit}"
                             else -> "${ui.window.label}: posição indisponível"
                         }
                         if (percent != null && !ui.seek.isPressed) ui.seek.progress = percent
@@ -539,10 +538,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun sendWindowTarget(ui: WindowUi, target: Int) {
+    private fun sendWindowCommand(ui: WindowUi, target: Int, fullTravel: Boolean) {
         txtWindowCommandStatus.text = "Enviando posição ${target}% para ${ui.window.label}…"
         windowCommandExecutor.execute {
-            val result = runCatching { BydWindowControl.setPosition(this, ui.window, target) }
+            val result = runCatching {
+                if (fullTravel) BydWindowControl.setFullyOpenOrClosed(this, ui.window, target == 100)
+                else BydWindowControl.setPosition(this, ui.window, target)
+            }
             runOnUiThread {
                 result.onSuccess { txtWindowCommandStatus.text = it }
                     .onFailure { error -> txtWindowCommandStatus.text = "Comando recusado/falhou: ${error.cause?.message ?: error.message}" }
