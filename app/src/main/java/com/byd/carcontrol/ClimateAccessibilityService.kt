@@ -108,7 +108,8 @@ class ClimateAccessibilityService : AccessibilityService() {
         val y = bounds.exactCenterY()
         val path = Path().apply {
             moveTo(x, y)
-            lineTo(x, y)
+            // A zero-length stroke can be accepted by dispatchGesture but inject no tap.
+            lineTo(x + 1f, y)
         }
         val gesture = GestureDescription.Builder()
             .addStroke(GestureDescription.StrokeDescription(path, 0, 90))
