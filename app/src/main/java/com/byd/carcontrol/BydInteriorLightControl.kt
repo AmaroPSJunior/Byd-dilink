@@ -12,6 +12,7 @@ object BydInteriorLightControl {
         val requestedState: Int,
         val observedState: Int?,
         val doorState: Int?,
+        val lightReadings: List<String>,
         val detail: String
     )
 
@@ -37,14 +38,17 @@ object BydInteriorLightControl {
         val doorState = runCatching {
             (deviceClass.getMethod("getInsideLightDoorState").invoke(instance) as? Number)?.toInt()
         }.getOrNull()
+        val lightReadings = BydInteriorLightReader.read(context)
         return Result(
             accepted,
             state,
             observedState,
             doorState,
+            lightReadings,
             "$methodName retorno=${result ?: "void"}; " +
                 "leitura bruta 0x42e0002d=${observedState ?: "indisponível"}; " +
-                "getInsideLightDoorState=${doorState ?: "indisponível"}"
+                "getInsideLightDoorState=${doorState ?: "indisponível"}; " +
+                "leituras após comando=${lightReadings.joinToString()}"
         )
     }
 
