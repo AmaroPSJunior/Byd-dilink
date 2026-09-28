@@ -300,6 +300,12 @@ private class LocalCarHttpServer(private val context: Context) : AutoCloseable {
     }
 
     private fun requestClimateAdjustment(kind: String, level: Int?, celsius: Double?): String {
+        if (kind == "fan") require(level != null && level in 1..7) { "A ventilação deve ficar entre 1 e 7." }
+        if (kind == "temperature") {
+            require(celsius != null && celsius.isFinite()) { "Temperatura inválida." }
+            val maxCelsius = BydClimateAdjustment.read(context).maxTemperatureCelsius.toDouble()
+            require(celsius in 17.0..maxCelsius) { "Temperatura permitida: 17–${maxCelsius.toInt()} °C." }
+        }
         val direct = runCatching {
             if (kind == "fan") BydClimateAdjustment.setWindLevel(context, requireNotNull(level))
             else BydClimateAdjustment.setTemperatureCelsius(context, requireNotNull(celsius))

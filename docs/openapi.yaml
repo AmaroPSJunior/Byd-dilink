@@ -1,0 +1,343 @@
+openapi: 3.1.0
+info:
+  title: BYD DiLink Local Controls API
+  version: 1.0.0
+  description: >-
+    API local fornecida pela central DiLink para ler estado e enviar comandos aos
+    recursos implementados no app. O token de pareamento está no QR/endereço.
+    O servidor incluído fala HTTP na rede local, sem TLS.
+servers:
+  - url: http://{headUnitIp}:8765
+    description: IP atual da central mostrado no aplicativo.
+    variables:
+      headUnitIp:
+        default: 192.168.1.50
+        description: Substitua pelo IP atual fornecido no QR code.
+tags:
+  - name: Página
+  - name: Estado
+  - name: Climatização
+  - name: Carroceria
+  - name: Iluminação
+  - name: Alertas
+paths:
+  /:
+    get:
+      tags: [Página]
+      summary: Carrega o painel web
+      description: A página é servida sem autenticação; as rotas de API exigem token.
+      parameters:
+        - $ref: '#/components/parameters/PairingQuery'
+      responses:
+        '200':
+          description: HTML responsivo do painel.
+          content:
+            text/html:
+              schema: { type: string }
+  /index.html:
+    get:
+      tags: [Página]
+      summary: Alias da página web
+      parameters:
+        - $ref: '#/components/parameters/PairingQuery'
+      responses:
+        '200':
+          description: HTML responsivo do painel.
+          content:
+            text/html:
+              schema: { type: string }
+  /api/state:
+    get:
+      tags: [Estado]
+      summary: Lê o estado agregado disponível
+      security: [{ PairingToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PairingQuery'
+      responses:
+        '200':
+          description: Leitura atual; campos individuais podem conter erro ou null.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VehicleState' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/climate/power:
+    post:
+      tags: [Climatização]
+      summary: Solicita ligar ou desligar o ar-condicionado
+      description: Pode usar a interface OEM por acessibilidade se o manager direto for recusado.
+      security: [{ PairingToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PairingQuery'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [on]
+              properties:
+                on: { type: boolean }
+            example: { on: true }
+      responses:
+        '200': { $ref: '#/components/responses/CommandAccepted' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/CommandRejected' }
+  /api/climate/fan:
+    post:
+      tags: [Climatização]
+      summary: Define nível de ventilação
+      description: Faixa aceita 1–7; nível zero pode representar ventilação desligada e não é um alvo válido.
+      security: [{ PairingToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PairingQuery'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [level]
+              properties:
+                level: { type: integer, minimum: 1, maximum: 7 }
+            example: { level: 3 }
+      responses:
+        '200': { $ref: '#/components/responses/CommandAccepted' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/CommandRejected' }
+  /api/climate/temperature:
+    post:
+      tags: [Climatização]
+      summary: Define a temperatura do motorista em Celsius
+      description: Faixa de 17–33 °C ou 17–27 °C com aquecimento; passo OEM de 0,5 °C ou 1 °C. O firmware pode negar escrita direta por permissão.
+      security: [{ PairingToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PairingQuery'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [celsius]
+              properties:
+                celsius: { type: number, minimum: 17, maximum: 33 }
+            example: { celsius: 22 }
+      responses:
+        '200': { $ref: '#/components/responses/CommandAccepted' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/CommandRejected' }
+  /api/lights/interior:
+    post:
+      tags: [Iluminação]
+      summary: Solicita ligar/desligar a luz interna
+      description: accepted representa retorno do HAL; confirmed compara a leitura posterior quando disponível.
+      security: [{ PairingToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PairingQuery'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [on]
+              properties:
+                on: { type: boolean }
+            example: { on: true }
+      responses:
+        '200':
+          description: Resposta com aceitação e confirmação separadas.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CommandResult'
+                  - type: object
+                    properties:
+                      accepted: { type: boolean }
+                      confirmed: { type: boolean }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/CommandRejected' }
+  /api/sunshade:
+    post:
+      tags: [Carroceria]
+      summary: Solicita posição da persiana
+      description: Exige velocidade zero, P e estado/permissão OEM aptos. O slider não implica que o motor aceite qualquer percentagem.
+      security: [{ PairingToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PairingQuery'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [position]
+              properties:
+                position: { type: integer, minimum: 0, maximum: 100 }
+            example: { position: 100 }
+      responses:
+        '200':
+          description: Estado da solicitação e confirmação posterior.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CommandResult'
+                  - type: object
+                    properties:
+                      accepted: { type: boolean }
+                      confirmed: { type: boolean }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/CommandRejected' }
+  /api/sunshade/stop:
+    post:
+      tags: [Carroceria]
+      summary: Solicita a parada da persiana
+      description: Usa sentinel OEM 254 e mantém as verificações de velocidade e P.
+      security: [{ PairingToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PairingQuery'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { $ref: '#/components/responses/CommandAccepted' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/CommandRejected' }
+  /api/windows/{window}:
+    post:
+      tags: [Carroceria]
+      summary: Solicita um preset de posição de vidro
+      description: Exige velocidade zero, P e permit OEM liberado. São aceitos somente 0, 50 ou 100; correspondem a fechado, meia abertura e aberto.
+      security: [{ PairingToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PairingQuery'
+        - name: window
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [driver_front, passenger_front, driver_rear, passenger_rear]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [position]
+              properties:
+                position: { type: integer, enum: [0, 50, 100] }
+            example: { position: 0 }
+      responses:
+        '200': { $ref: '#/components/responses/CommandAccepted' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/CommandRejected' }
+  /api/belt-alerts:
+    post:
+      tags: [Alertas]
+      summary: Atualiza as preferências do alerta do cinto
+      description: Salva alerta de voz ligado/desligado e limiar de velocidade de 1–200 km/h. Somente o cinto do motorista tem leitura validada.
+      security: [{ PairingToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PairingQuery'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled, speedKmh]
+              properties:
+                enabled: { type: boolean }
+                speedKmh: { type: integer, minimum: 1, maximum: 200, default: 10 }
+            example: { enabled: true, speedKmh: 10 }
+      responses:
+        '200': { $ref: '#/components/responses/CommandAccepted' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/CommandRejected' }
+components:
+  securitySchemes:
+    PairingToken:
+      type: http
+      scheme: bearer
+      bearerFormat: 48-digit-hex-pair-token
+  parameters:
+    PairingQuery:
+      name: token
+      in: query
+      required: false
+      description: Alternativa de pareamento usada no endereço/QR. Prefira Bearer para clientes próprios.
+      schema: { type: string }
+  schemas:
+    CommandResult:
+      type: object
+      properties:
+        ok: { type: boolean }
+        message: { type: string }
+        accepted: { type: boolean }
+        confirmed: { type: boolean }
+    ApiError:
+      type: object
+      required: [ok, error]
+      properties:
+        ok: { const: false }
+        error: { type: string }
+    VehicleState:
+      type: object
+      required: [ok, climate, speedKmh, sunshade, windows, belt, beltAlert]
+      properties:
+        ok: { const: true }
+        climate:
+          type: object
+          properties:
+            powerState:
+              type: [integer, 'null']
+              description: Valor bruto do manager OEM; enumeração não normalizada.
+            fanLevel: { type: integer, minimum: 0, maximum: 7 }
+            temperatureCelsius: { type: [number, 'null'] }
+            maxTemperatureCelsius: { type: integer }
+            stepCelsius: { type: number }
+            error: { type: string }
+        speedKmh: { type: [number, 'null'] }
+        sunshade:
+          type: object
+          properties:
+            position: { type: [integer, 'null'], minimum: 0, maximum: 100 }
+        windows:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              position: { type: integer }
+              state: { type: integer, description: Estado bruto OEM; enumeração não normalizada. }
+              permit: { type: integer, description: Valor bruto de permissão OEM. }
+              error: { type: string }
+        belt:
+          type: object
+          properties:
+            status: { type: string, enum: [Afivelado, Desafivelado, Indisponível] }
+        beltAlert:
+          type: object
+          properties:
+            enabled: { type: boolean }
+            speedKmh: { type: integer }
+  responses:
+    CommandAccepted:
+      description: Solicitação aceita pela função local; a mensagem indica confirmação posterior quando disponível.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/CommandResult' }
+    Unauthorized:
+      description: Token ausente ou inválido.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    CommandRejected:
+      description: Validação, permissão, interlock ou HAL recusou o comando.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+
