@@ -402,7 +402,7 @@ class MainActivity : AppCompatActivity() {
                 txtInteriorLightProbe.text = result.fold(
                     onSuccess = { response ->
                         if (response.accepted) {
-                            "Comando $action aceito pelo HAL BYD (${response.detail}). Estado físico da lâmpada não confirmado por telemetria."
+                            "Comando $action aceito pelo HAL BYD (${response.detail}). A leitura é somente o valor bruto do FID de estado, sem interpretação presumida."
                         } else {
                             "O HAL BYD recusou o comando para $action (${response.detail})."
                         }
