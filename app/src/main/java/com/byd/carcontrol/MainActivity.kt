@@ -80,11 +80,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnExportTxt: Button
     private lateinit var btnShareTxt: Button
 
-    // Controls tab: launch official OEM panels; no unsupported writes.
-    private lateinit var btnControlOpenHvac: Button
-    private lateinit var btnControlOpenLighting: Button
+    // Verified HVAC power controls and read-only seat-belt probe.
     private lateinit var btnHvacOn: Button
     private lateinit var btnHvacOff: Button
+    private lateinit var btnReadSeatbelt: Button
+    private lateinit var txtSeatbeltAccessStatus: TextView
     private lateinit var txtClimateCommandStatus: TextView
 
     private val logHistory = mutableListOf<String>()
@@ -150,10 +150,10 @@ class MainActivity : AppCompatActivity() {
         btnExportTxt = findViewById(R.id.btnExportTxt)
         btnShareTxt = findViewById(R.id.btnShareTxt)
 
-        btnControlOpenHvac = findViewById(R.id.btnControlOpenHvac)
-        btnControlOpenLighting = findViewById(R.id.btnControlOpenLighting)
         btnHvacOn = findViewById(R.id.btnHvacOn)
         btnHvacOff = findViewById(R.id.btnHvacOff)
+        btnReadSeatbelt = findViewById(R.id.btnReadSeatbelt)
+        txtSeatbeltAccessStatus = findViewById(R.id.txtSeatbeltAccessStatus)
         txtClimateCommandStatus = findViewById(R.id.txtClimateCommandStatus)
     }
 
@@ -369,21 +369,24 @@ class MainActivity : AppCompatActivity() {
     private fun setupControlsListeners() {
         btnHvacOn.setOnClickListener { requestHvacPower(true) }
         btnHvacOff.setOnClickListener { requestHvacPower(false) }
-        btnControlOpenHvac.setOnClickListener {
-            openOemPanel(
-                Intent("OPEN_AIR_CONDITIONING").setPackage("com.byd.airconditioning"),
-                "Painel oficial do ar-condicionado aberto. Use o botão de energia no painel OEM."
-            )
-        }
-        btnControlOpenLighting.setOnClickListener {
-            openOemPanel(
-                Intent("byd.intent.action.acsettings")
-                    .setPackage("com.byd.carsettings")
-                    .putExtra("FUNCTION_ID", "00300000000000")
-                    .putExtra("FROM", packageName)
-                    .putExtra("EXTRA_ACTION", -1),
-                "Ajustes OEM de iluminação abertos. A luz de teto não é acionada diretamente por este atalho."
-            )
+        btnReadSeatbelt.setOnClickListener {
+            txtSeatbeltAccessStatus.text = "Consultando o sensor do veículo…"
+            Thread {
+                try {
+                    val raw = BydSeatbeltReader.readDriverRawStatus(this)
+                    runOnUiThread {
+                        txtSeatbeltAccessStatus.text =
+                            "Sensor respondeu: getSafetyBeltStatus(0) = $raw. " +
+                                "O mapeamento afivelado/desafivelado ainda precisa ser validado no carro."
+                    }
+                } catch (t: Throwable) {
+                    val cause = t.cause ?: t
+                    runOnUiThread {
+                        txtSeatbeltAccessStatus.text =
+                            "Leitura do sensor indisponível: ${cause.javaClass.simpleName}: ${cause.message}"
+                    }
+                }
+            }.start()
         }
     }
 
@@ -449,8 +452,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateControlsUI() {
         updateClimateCommandStatus()
-        txtControlLogs.text = "Ações disponíveis: abrir painel OEM de climatização e ajustes OEM de iluminação.\n" +
-            "HVAC usa a interface OEM; luz do teto e estado físico do cinto requerem acesso BYDAuto privilegiado."
+        txtControlLogs.text = "Ar-condicionado: comandos ON/OFF confirmados pelo painel OEM.\n" +
+            "Cinto: leitura de diagnóstico somente; nenhum estado será inferido sem validação.\n" +
+            "Luz de teto: a API específica deste veículo ainda não foi confirmada."
     }
 
     private fun getRawReportText(): String {
