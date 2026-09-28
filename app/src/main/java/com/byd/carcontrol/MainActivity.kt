@@ -24,8 +24,6 @@ import com.byd.carcontrol.discovery.BYDBodyworkInspector
 import com.byd.carcontrol.discovery.BYDControlManager
 import com.byd.carcontrol.discovery.BYDLightHalInspector
 import com.byd.carcontrol.discovery.BYDSettingInspector
-import com.byd.carcontrol.discovery.ControlAction
-import com.byd.carcontrol.discovery.ControlStatus
 import com.byd.carcontrol.discovery.PermissionDiscovery
 import org.json.JSONObject
 import java.io.File
@@ -79,34 +77,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnExportTxt: Button
     private lateinit var btnShareTxt: Button
 
-    // Controls tab views
-    private lateinit var txtStatusSunshade: TextView
-    private lateinit var txtDetailsSunshade: TextView
-    private lateinit var btnSunshadeOpen: Button
-    private lateinit var btnSunshadeClose: Button
-    private lateinit var btnSunshadeStop: Button
-
-    private lateinit var txtStatusMoonroof: TextView
-    private lateinit var txtDetailsMoonroof: TextView
-    private lateinit var btnMoonroofOpen: Button
-    private lateinit var btnMoonroofClose: Button
-    private lateinit var btnMoonroofStop: Button
-
-    private lateinit var txtStatusDriverWindow: TextView
-    private lateinit var txtDetailsDriverWindow: TextView
-    private lateinit var btnDriverWindowOpen: Button
-    private lateinit var btnDriverWindowClose: Button
-    private lateinit var btnDriverWindowStop: Button
-
-    private lateinit var txtStatusAC: TextView
-    private lateinit var txtDetailsAC: TextView
-    private lateinit var btnAcOn: Button
-    private lateinit var btnAcOff: Button
-
-    private lateinit var txtStatusInteriorLight: TextView
-    private lateinit var txtDetailsInteriorLight: TextView
-    private lateinit var btnInteriorLightOn: Button
-    private lateinit var btnInteriorLightOff: Button
+    // Controls tab: launch official OEM panels; no unsupported writes.
+    private lateinit var btnControlOpenHvac: Button
+    private lateinit var btnControlOpenLighting: Button
 
     private val logHistory = mutableListOf<String>()
     private var lastInspectionReport: String? = null
@@ -171,38 +144,8 @@ class MainActivity : AppCompatActivity() {
         btnExportTxt = findViewById(R.id.btnExportTxt)
         btnShareTxt = findViewById(R.id.btnShareTxt)
 
-        // Sunshade
-        txtStatusSunshade = findViewById(R.id.txtStatusSunshade)
-        txtDetailsSunshade = findViewById(R.id.txtDetailsSunshade)
-        btnSunshadeOpen = findViewById(R.id.btnSunshadeOpen)
-        btnSunshadeClose = findViewById(R.id.btnSunshadeClose)
-        btnSunshadeStop = findViewById(R.id.btnSunshadeStop)
-
-        // Moonroof
-        txtStatusMoonroof = findViewById(R.id.txtStatusMoonroof)
-        txtDetailsMoonroof = findViewById(R.id.txtDetailsMoonroof)
-        btnMoonroofOpen = findViewById(R.id.btnMoonroofOpen)
-        btnMoonroofClose = findViewById(R.id.btnMoonroofClose)
-        btnMoonroofStop = findViewById(R.id.btnMoonroofStop)
-
-        // Driver window
-        txtStatusDriverWindow = findViewById(R.id.txtStatusDriverWindow)
-        txtDetailsDriverWindow = findViewById(R.id.txtDetailsDriverWindow)
-        btnDriverWindowOpen = findViewById(R.id.btnDriverWindowOpen)
-        btnDriverWindowClose = findViewById(R.id.btnDriverWindowClose)
-        btnDriverWindowStop = findViewById(R.id.btnDriverWindowStop)
-
-        // AC
-        txtStatusAC = findViewById(R.id.txtStatusAC)
-        txtDetailsAC = findViewById(R.id.txtDetailsAC)
-        btnAcOn = findViewById(R.id.btnAcOn)
-        btnAcOff = findViewById(R.id.btnAcOff)
-
-        // Interior light
-        txtStatusInteriorLight = findViewById(R.id.txtStatusInteriorLight)
-        txtDetailsInteriorLight = findViewById(R.id.txtDetailsInteriorLight)
-        btnInteriorLightOn = findViewById(R.id.btnInteriorLightOn)
-        btnInteriorLightOff = findViewById(R.id.btnInteriorLightOff)
+        btnControlOpenHvac = findViewById(R.id.btnControlOpenHvac)
+        btnControlOpenLighting = findViewById(R.id.btnControlOpenLighting)
     }
 
     private fun setupTabs() {
@@ -415,118 +358,36 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupControlsListeners() {
-        // 1. Sunshade
-        btnSunshadeOpen.setOnClickListener { confirmAndExecute("SUNSHADE", ControlAction.ABRIR) }
-        btnSunshadeClose.setOnClickListener { confirmAndExecute("SUNSHADE", ControlAction.FECHAR) }
-        btnSunshadeStop.setOnClickListener { confirmAndExecute("SUNSHADE", ControlAction.PARAR) }
-
-        // 2. Moonroof
-        btnMoonroofOpen.setOnClickListener { confirmAndExecute("MOONROOF", ControlAction.ABRIR) }
-        btnMoonroofClose.setOnClickListener { confirmAndExecute("MOONROOF", ControlAction.FECHAR) }
-        btnMoonroofStop.setOnClickListener { confirmAndExecute("MOONROOF", ControlAction.PARAR) }
-
-        // 3. Driver Window
-        btnDriverWindowOpen.setOnClickListener { confirmAndExecute("DRIVER_WINDOW", ControlAction.ABRIR) }
-        btnDriverWindowClose.setOnClickListener { confirmAndExecute("DRIVER_WINDOW", ControlAction.FECHAR) }
-        btnDriverWindowStop.setOnClickListener { confirmAndExecute("DRIVER_WINDOW", ControlAction.PARAR) }
-
-        // 4. AC
-        btnAcOn.setOnClickListener { confirmAndExecute("AC", ControlAction.LIGAR) }
-        btnAcOff.setOnClickListener { confirmAndExecute("AC", ControlAction.DESLIGAR) }
-
-        // 5. Interior Light (Blocked)
-        btnInteriorLightOn.setOnClickListener {
-            Toast.makeText(this, "Controle de luz interna mantido bloqueado por segurança.", Toast.LENGTH_LONG).show()
+        btnControlOpenHvac.setOnClickListener {
+            openOemPanel(
+                Intent("OPEN_AIR_CONDITIONING").setPackage("com.byd.airconditioning"),
+                "Painel oficial do ar-condicionado aberto. Use o botão de energia no painel OEM."
+            )
         }
-        btnInteriorLightOff.setOnClickListener {
-            Toast.makeText(this, "Controle de luz interna mantido bloqueado por segurança.", Toast.LENGTH_LONG).show()
+        btnControlOpenLighting.setOnClickListener {
+            openOemPanel(
+                Intent("byd.intent.action.acsettings")
+                    .setPackage("com.byd.carsettings")
+                    .putExtra("FUNCTION_ID", "00300000000000")
+                    .putExtra("FROM", packageName)
+                    .putExtra("EXTRA_ACTION", -1),
+                "Ajustes OEM de iluminação abertos. A luz de teto não é acionada diretamente por este atalho."
+            )
         }
     }
 
-    private fun confirmAndExecute(controlId: String, action: ControlAction) {
-        val ctrl = controlManager.controlsMap[controlId] ?: return
-
-        if (ctrl.status == ControlStatus.BLOQUEADO) {
-            AlertDialog.Builder(this)
-                .setTitle("Controle Bloqueado")
-                .setMessage("Este controle está BLOQUEADO pelo sistema.\n\nMotivo: ${ctrl.statusReason}")
-                .setPositiveButton("OK", null)
-                .show()
-            return
+    private fun openOemPanel(intent: Intent, successMessage: String) {
+        try {
+            startActivity(intent)
+            appendLog(successMessage)
+        } catch (t: Throwable) {
+            appendLog("Painel OEM indisponível: ${t.javaClass.simpleName}: ${t.message}")
         }
-
-        AlertDialog.Builder(this)
-            .setTitle("⚠️ Confirmação de Teste Físico")
-            .setMessage("Veículo parado e em condição segura para executar este teste?\n\nControle: ${ctrl.title}\nAção: ${action.name}\nMétodo: ${ctrl.detectedMethod}")
-            .setNegativeButton("Cancelar", null)
-            .setPositiveButton("Executar") { _, _ ->
-                val result = controlManager.executeControlAction(controlId, action)
-                updateControlsUI()
-                Toast.makeText(this, result, Toast.LENGTH_LONG).show()
-            }
-            .show()
     }
 
     private fun updateControlsUI() {
-        controlManager.controlsMap["SUNSHADE"]?.let {
-            applyControlToUI(it, txtStatusSunshade, txtDetailsSunshade, listOf(btnSunshadeOpen, btnSunshadeClose, btnSunshadeStop))
-        }
-
-        controlManager.controlsMap["MOONROOF"]?.let {
-            applyControlToUI(it, txtStatusMoonroof, txtDetailsMoonroof, listOf(btnMoonroofOpen, btnMoonroofClose, btnMoonroofStop))
-        }
-
-        controlManager.controlsMap["DRIVER_WINDOW"]?.let {
-            applyControlToUI(it, txtStatusDriverWindow, txtDetailsDriverWindow, listOf(btnDriverWindowOpen, btnDriverWindowClose, btnDriverWindowStop))
-        }
-
-        controlManager.controlsMap["AC"]?.let {
-            applyControlToUI(it, txtStatusAC, txtDetailsAC, listOf(btnAcOn, btnAcOff))
-        }
-
-        controlManager.controlsMap["INTERIOR_LIGHT"]?.let {
-            applyControlToUI(it, txtStatusInteriorLight, txtDetailsInteriorLight, listOf(btnInteriorLightOn, btnInteriorLightOff))
-        }
-
-        txtControlLogs.text = controlManager.getControlLogsReport()
-    }
-
-    private fun applyControlToUI(
-        ctrl: com.byd.carcontrol.discovery.ControlInfo,
-        txtStatus: TextView,
-        txtDetails: TextView,
-        buttons: List<Button>
-    ) {
-        txtStatus.text = ctrl.status.name
-        when (ctrl.status) {
-            ControlStatus.PRONTO -> {
-                txtStatus.setBackgroundColor(Color.parseColor("#10b981"))
-                buttons.forEach { it.isEnabled = true }
-            }
-            ControlStatus.BLOQUEADO -> {
-                txtStatus.setBackgroundColor(Color.parseColor("#dc2626"))
-                buttons.forEach { it.isEnabled = false }
-            }
-            ControlStatus.ERRO -> {
-                txtStatus.setBackgroundColor(Color.parseColor("#f59e0b"))
-                buttons.forEach { it.isEnabled = true }
-            }
-        }
-
-        val detailsSb = StringBuilder()
-        detailsSb.append("Classe Target: ${ctrl.targetClass}\n")
-        detailsSb.append("Permissão: ${ctrl.requiredPermission}\n")
-        if (ctrl.detectedMethod != null) {
-            detailsSb.append("API Descoberta: ${ctrl.detectedMethod}\n")
-        }
-        if (ctrl.detectedArgsDesc != null) {
-            detailsSb.append("Parâmetros: ${ctrl.detectedArgsDesc}\n")
-        }
-        detailsSb.append("Status: ${ctrl.statusReason}\n")
-        if (ctrl.lastExecutionTime != null) {
-            detailsSb.append("Última Execução (${ctrl.lastExecutionTime}): ${ctrl.lastResult}")
-        }
-        txtDetails.text = detailsSb.toString()
+        txtControlLogs.text = "Ações disponíveis: abrir painel OEM de climatização e ajustes OEM de iluminação.\n" +
+            "HVAC, luz do teto e estado físico do cinto ainda requerem acesso BYDAuto privilegiado."
     }
 
     private fun getRawReportText(): String {

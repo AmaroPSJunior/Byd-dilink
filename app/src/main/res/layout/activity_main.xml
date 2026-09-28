@@ -321,405 +321,106 @@
                 android:textSize="11sp"
                 android:layout_marginBottom="14dp" />
 
-            <!-- CARD 1: PERSIANA DO TETO -->
+            <!-- Atalhos oficiais OEM e estado de acesso real -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:background="#0f172a"
-                android:padding="14dp"
-                android:layout_marginBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="4dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="1. PERSIANA DO TETO"
-                        android:textColor="#ffffff"
-                        android:textStyle="bold"
-                        android:textSize="14sp" />
-
-                    <TextView
-                        android:id="@+id/txtStatusSunshade"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="STATUS"
-                        android:textSize="11sp"
-                        android:textStyle="bold"
-                        android:paddingHorizontal="8dp"
-                        android:paddingVertical="3dp"
-                        android:textColor="#ffffff"
-                        android:background="#334155" />
-                </LinearLayout>
+                android:padding="16dp"
+                android:layout_marginBottom="14dp">
 
                 <TextView
-                    android:id="@+id/txtDetailsSunshade"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Detalhes da API e status..."
-                    android:textColor="#94a3b8"
-                    android:textSize="11sp"
-                    android:fontFamily="monospace"
-                    android:layout_marginBottom="10dp" />
+                    android:text="CLIMATIZAÇÃO"
+                    android:textColor="#38bdf8"
+                    android:textStyle="bold"
+                    android:textSize="14sp" />
 
-                <LinearLayout
+                <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                    android:layout_marginTop="6dp"
+                    android:layout_marginBottom="10dp"
+                    android:text="Abre o painel oficial BYD. O app de terceiros não tem BYDAUTO_AC_SET; o ligar/desligar deve ser feito no painel OEM."
+                    android:textColor="#cbd5e1"
+                    android:textSize="12sp" />
 
-                    <Button
-                        android:id="@+id/btnSunshadeOpen"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:text="ABRIR"
-                        android:textSize="11sp"
-                        android:layout_marginEnd="4dp" />
-
-                    <Button
-                        android:id="@+id/btnSunshadeClose"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:text="FECHAR"
-                        android:textSize="11sp"
-                        android:layout_marginHorizontal="2dp" />
-
-                    <Button
-                        android:id="@+id/btnSunshadeStop"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:text="PARAR"
-                        android:textSize="11sp"
-                        android:layout_marginStart="4dp" />
-                </LinearLayout>
+                <Button
+                    android:id="@+id/btnControlOpenHvac"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:text="ABRIR PAINEL DO AR-CONDICIONADO"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#0369a1" />
             </LinearLayout>
 
-            <!-- CARD 2: TETO SOLAR -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:background="#0f172a"
-                android:padding="14dp"
-                android:layout_marginBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="4dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="2. TETO SOLAR"
-                        android:textColor="#ffffff"
-                        android:textStyle="bold"
-                        android:textSize="14sp" />
-
-                    <TextView
-                        android:id="@+id/txtStatusMoonroof"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="STATUS"
-                        android:textSize="11sp"
-                        android:textStyle="bold"
-                        android:paddingHorizontal="8dp"
-                        android:paddingVertical="3dp"
-                        android:textColor="#ffffff"
-                        android:background="#334155" />
-                </LinearLayout>
+                android:padding="16dp"
+                android:layout_marginBottom="14dp">
 
                 <TextView
-                    android:id="@+id/txtDetailsMoonroof"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Detalhes da API e status..."
-                    android:textColor="#94a3b8"
-                    android:textSize="11sp"
-                    android:fontFamily="monospace"
-                    android:layout_marginBottom="10dp" />
+                    android:text="LUZ DE TETO / CORTESIA"
+                    android:textColor="#fbbf24"
+                    android:textStyle="bold"
+                    android:textSize="14sp" />
 
-                <LinearLayout
+                <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                    android:layout_marginTop="6dp"
+                    android:layout_marginBottom="10dp"
+                    android:text="A API BYDAUTO_LIGHT_SET exige assinatura de sistema. O painel de iluminação OEM foi localizado, mas não oferece o comando da lâmpada de teto para este app."
+                    android:textColor="#cbd5e1"
+                    android:textSize="12sp" />
 
-                    <Button
-                        android:id="@+id/btnMoonroofOpen"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:text="ABRIR"
-                        android:textSize="11sp"
-                        android:layout_marginEnd="4dp" />
-
-                    <Button
-                        android:id="@+id/btnMoonroofClose"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:text="FECHAR"
-                        android:textSize="11sp"
-                        android:layout_marginHorizontal="2dp" />
-
-                    <Button
-                        android:id="@+id/btnMoonroofStop"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:text="PARAR"
-                        android:textSize="11sp"
-                        android:layout_marginStart="4dp" />
-                </LinearLayout>
+                <Button
+                    android:id="@+id/btnControlOpenLighting"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:text="ABRIR AJUSTES OEM DE ILUMINAÇÃO"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#92400e" />
             </LinearLayout>
 
-            <!-- CARD 3: VIDRO MOTORISTA -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="#0f172a"
-                android:padding="14dp"
-                android:layout_marginBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="4dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="3. VIDRO MOTORISTA"
-                        android:textColor="#ffffff"
-                        android:textStyle="bold"
-                        android:textSize="14sp" />
-
-                    <TextView
-                        android:id="@+id/txtStatusDriverWindow"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="STATUS"
-                        android:textSize="11sp"
-                        android:textStyle="bold"
-                        android:paddingHorizontal="8dp"
-                        android:paddingVertical="3dp"
-                        android:textColor="#ffffff"
-                        android:background="#334155" />
-                </LinearLayout>
+                android:background="#1c1917"
+                android:padding="16dp"
+                android:layout_marginBottom="14dp">
 
                 <TextView
-                    android:id="@+id/txtDetailsDriverWindow"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Detalhes da API e status..."
-                    android:textColor="#94a3b8"
-                    android:textSize="11sp"
-                    android:fontFamily="monospace"
-                    android:layout_marginBottom="10dp" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <Button
-                        android:id="@+id/btnDriverWindowOpen"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:text="ABRIR"
-                        android:textSize="11sp"
-                        android:layout_marginEnd="4dp" />
-
-                    <Button
-                        android:id="@+id/btnDriverWindowClose"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:text="FECHAR"
-                        android:textSize="11sp"
-                        android:layout_marginHorizontal="2dp" />
-
-                    <Button
-                        android:id="@+id/btnDriverWindowStop"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:text="PARAR"
-                        android:textSize="11sp"
-                        android:layout_marginStart="4dp" />
-                </LinearLayout>
-            </LinearLayout>
-
-            <!-- CARD 4: AR-CONDICIONADO -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="#0f172a"
-                android:padding="14dp"
-                android:layout_marginBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="4dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="4. AR-CONDICIONADO"
-                        android:textColor="#ffffff"
-                        android:textStyle="bold"
-                        android:textSize="14sp" />
-
-                    <TextView
-                        android:id="@+id/txtStatusAC"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="STATUS"
-                        android:textSize="11sp"
-                        android:textStyle="bold"
-                        android:paddingHorizontal="8dp"
-                        android:paddingVertical="3dp"
-                        android:textColor="#ffffff"
-                        android:background="#334155" />
-                </LinearLayout>
+                    android:text="ALERTA DE CINTO"
+                    android:textColor="#fbbf24"
+                    android:textStyle="bold"
+                    android:textSize="14sp" />
 
                 <TextView
-                    android:id="@+id/txtDetailsAC"
+                    android:id="@+id/txtSeatbeltAccessStatus"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Detalhes da API e status..."
-                    android:textColor="#94a3b8"
-                    android:textSize="11sp"
-                    android:fontFamily="monospace"
-                    android:layout_marginBottom="10dp" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <Button
-                        android:id="@+id/btnAcOn"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:text="LIGAR AR"
-                        android:textSize="11sp"
-                        android:layout_marginEnd="4dp" />
-
-                    <Button
-                        android:id="@+id/btnAcOff"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:text="DESLIGAR AR"
-                        android:textSize="11sp"
-                        android:layout_marginStart="4dp" />
-                </LinearLayout>
-            </LinearLayout>
-
-            <!-- CARD 5: LUZ INTERNA -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="#0f172a"
-                android:padding="14dp"
-                android:layout_marginBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="4dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="5. LUZ INTERNA (TETO/CORTESIA)"
-                        android:textColor="#ffffff"
-                        android:textStyle="bold"
-                        android:textSize="14sp" />
-
-                    <TextView
-                        android:id="@+id/txtStatusInteriorLight"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="BLOQUEADO"
-                        android:textSize="11sp"
-                        android:textStyle="bold"
-                        android:paddingHorizontal="8dp"
-                        android:paddingVertical="3dp"
-                        android:textColor="#ffffff"
-                        android:background="#dc2626" />
-                </LinearLayout>
-
-                <TextView
-                    android:id="@+id/txtDetailsInteriorLight"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Ainda não identificamos com segurança a API da luz de teto/cortesia. Não usar LIGHT_FOOT nem faróis como substituição."
-                    android:textColor="#f87171"
-                    android:textSize="11sp"
-                    android:fontFamily="monospace"
-                    android:layout_marginBottom="10dp" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <Button
-                        android:id="@+id/btnInteriorLightOn"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:text="LIGAR LUZ"
-                        android:textSize="11sp"
-                        android:enabled="false"
-                        android:layout_marginEnd="4dp" />
-
-                    <Button
-                        android:id="@+id/btnInteriorLightOff"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:text="DESLIGAR LUZ"
-                        android:textSize="11sp"
-                        android:enabled="false"
-                        android:layout_marginStart="4dp" />
-                </LinearLayout>
+                    android:layout_marginTop="6dp"
+                    android:text="Estado do cinto indisponível: BYDAUTO_SAFETY_BELT_GET é uma permissão de assinatura. Nenhum estado de ocupante/cinto será presumido."
+                    android:textColor="#fde68a"
+                    android:textSize="12sp" />
             </LinearLayout>
 
             <!-- REGISTRO DE EXECUÇÃO -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="HISTÓRICO DE ACIONAMENTOS E EXECUÇÕES:"
+                android:text="ACESSO DIRETO AOS RECURSOS:"
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:textColor="#64748b"
@@ -731,7 +432,7 @@
                 android:layout_height="wrap_content"
                 android:background="#030712"
                 android:padding="12dp"
-                android:text="Nenhum comando acionado ainda nesta sessão..."
+                android:text="Os comandos diretos aguardam permissões OEM de sistema."
                 android:textColor="#38bdf8"
                 android:textSize="11sp"
                 android:fontFamily="monospace"
