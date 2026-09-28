@@ -4,25 +4,30 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.PackageManager
 
-/** Read-only probe for the BYD instrument SDK's seat-belt getter. */
+/** Read-only probe for the BYD safety-belt SDK getter. */
 object BydSeatbeltReader {
-    private const val DEVICE_CLASS = "android.hardware.bydauto.instrument.BYDAutoInstrumentDevice"
+    private const val DEVICE_CLASS = "android.hardware.bydauto.safetybelt.BYDAutoSafetyBeltDevice"
 
-    fun readRawStatuses(context: Context): List<Pair<Int, String>> {
+    fun readRawStatuses(context: Context): Pair<List<Pair<Int, String>>, List<String>> {
         val deviceClass = Class.forName(DEVICE_CLASS)
         val sdkContext = BydAutoReadContext(context.applicationContext)
         val instance = deviceClass.getMethod("getInstance", Context::class.java)
             .invoke(null, sdkContext)
-            ?: error("BYDAutoInstrumentDevice.getInstance retornou null")
+            ?: error("BYDAutoSafetyBeltDevice.getInstance retornou null")
         val getter = deviceClass.getMethod("getSafetyBeltStatus", Int::class.javaPrimitiveType)
-        return (0..8).map { index ->
+        val statuses = (1..5).map { area ->
             val value = try {
-                (getter.invoke(instance, index) as? Number)?.toInt()?.toString() ?: "sem valor numérico"
+                (getter.invoke(instance, area) as? Number)?.toInt()?.toString() ?: "sem valor numérico"
             } catch (t: Throwable) {
                 "${(t.cause ?: t).javaClass.simpleName}"
             }
-            index to value
+            area to value
         }
+        val constants = deviceClass.fields
+            .filter { it.name.contains("SAFETY_BELT", ignoreCase = true) && it.type == Int::class.javaPrimitiveType }
+            .mapNotNull { field -> runCatching { "${field.name}=${field.getInt(null)}" }.getOrNull() }
+            .sorted()
+        return statuses to constants
     }
 
     /** Satisfies the SDK's local BYDAUTO permission precheck for this getter only. */

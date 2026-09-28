@@ -373,12 +373,13 @@ class MainActivity : AppCompatActivity() {
             txtSeatbeltAccessStatus.text = "Consultando o sensor do veículo…"
             Thread {
                 try {
-                    val statuses = BydSeatbeltReader.readRawStatuses(this)
-                    val summary = statuses.joinToString(", ") { "${it.first}=${it.second}" }
+                    val (statuses, constants) = BydSeatbeltReader.readRawStatuses(this)
+                    val summary = statuses.joinToString(", ") { "área ${it.first}=${it.second}" }
+                    val constantSummary = constants.takeIf { it.isNotEmpty() }?.joinToString(", ")
+                        ?: "nenhuma constante pública encontrada"
                     runOnUiThread {
                         txtSeatbeltAccessStatus.text =
-                            "getSafetyBeltStatus por índice: $summary. " +
-                                "-2147482645 é COMMAND_INVALID_VALUE; estados ainda não mapeados."
+                            "BYDAutoSafetyBeltDevice: $summary. Constantes: $constantSummary"
                     }
                 } catch (t: Throwable) {
                     val cause = t.cause ?: t
