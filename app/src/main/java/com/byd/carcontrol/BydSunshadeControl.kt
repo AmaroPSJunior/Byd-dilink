@@ -29,13 +29,12 @@ object BydSunshadeControl {
         val instance = deviceClass.getMethod("getInstance", Context::class.java)
             .invoke(null, sdkContext) ?: error("BYDAutoBodyworkDevice.getInstance retornou null")
 
-        // OEM CarSettings disables opening when window operation is disallowed or
-        // the shade has not completed initialization. Both getters return state 1
-        // when true, as used by its SunRoofPresenter.
+        // OEM CarSettings calls state 1 blocked and state 0 allowed for the
+        // window-operation permit: when true it disables both sunshade buttons.
         val permit = (deviceClass.getMethod("getWindowPermitState").invoke(instance) as Number).toInt()
         val initialized = (deviceClass.getMethod("getWindoblindInitState").invoke(instance) as Number).toInt()
-        if (permit != 1 || initialized != 1) {
-            return Result(false, readPercent(deviceClass, instance), speed, gear, "A API OEM bloqueia abertura: permissão=$permit, inicialização=$initialized.")
+        if (permit == 1 || initialized != 1) {
+            return Result(false, readPercent(deviceClass, instance), speed, gear, "A API OEM bloqueia abertura: bloqueio=$permit, inicialização=$initialized.")
         }
 
         val method = deviceClass.getMethod("setSunshadeState", Int::class.javaPrimitiveType)
