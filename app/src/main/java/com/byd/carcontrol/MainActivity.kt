@@ -36,6 +36,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.Executors
 
 data class ExportedFileInfo(
     val fileName: String,
@@ -53,6 +54,8 @@ data class ExportedFileInfo(
  * - CONTROLES: Painel de acionamento permanente para APIs reais descobertas com confirmação prévia de segurança.
  */
 class MainActivity : AppCompatActivity() {
+
+    private enum class SunshadeMotion { OPENING, CLOSING }
 
     private lateinit var commManager: BYDCommunicationManager
     private lateinit var halInspector: BYDLightHalInspector
@@ -98,6 +101,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var seekSunshadePosition: SeekBar
     private lateinit var txtSunshadePercent: TextView
     private lateinit var txtSunshadeStatus: TextView
+    private var sunshadeMotion: SunshadeMotion? = null
+    private var sunshadePosition = 0
+    private var sunshadeCommandId = 0
+    private val sunshadeCommandExecutor = Executors.newSingleThreadExecutor()
 
     private val logHistory = mutableListOf<String>()
     private var lastInspectionReport: String? = null
@@ -401,8 +408,14 @@ class MainActivity : AppCompatActivity() {
         }
         btnInteriorLightOn.setOnClickListener { requestInteriorLightPower(true) }
         btnInteriorLightOff.setOnClickListener { requestInteriorLightPower(false) }
-        btnOpenSunshade.setOnClickListener { confirmSunshadePosition(100) }
-        btnCloseSunshade.setOnClickListener { confirmSunshadePosition(0) }
+        btnOpenSunshade.setOnClickListener {
+            if (sunshadeMotion == SunshadeMotion.OPENING) requestSunshadeStop()
+            else requestSunshadePosition(100, SunshadeMotion.OPENING)
+        }
+        btnCloseSunshade.setOnClickListener {
+            if (sunshadeMotion == SunshadeMotion.CLOSING) requestSunshadeStop()
+            else requestSunshadePosition(0, SunshadeMotion.CLOSING)
+        }
         seekSunshadePosition.max = 100
         seekSunshadePosition.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
@@ -412,8 +425,15 @@ class MainActivity : AppCompatActivity() {
             override fun onStopTrackingTouch(seekBar: SeekBar) = Unit
         })
         btnApplySunshadePosition.setOnClickListener {
-            confirmSunshadePosition(seekSunshadePosition.progress)
+            val target = seekSunshadePosition.progress
+            val motion = when {
+                target > sunshadePosition -> SunshadeMotion.OPENING
+                target < sunshadePosition -> SunshadeMotion.CLOSING
+                else -> null
+            }
+            requestSunshadePosition(target, motion)
         }
+        updateSunshadeButtons()
     }
 
     private fun refreshSunshadePosition() {
@@ -421,54 +441,105 @@ class MainActivity : AppCompatActivity() {
             val percent = BydSunshadeControl.readPosition(this)
             runOnUiThread {
                 if (percent != null && !seekSunshadePosition.isPressed) {
-                    seekSunshadePosition.progress = percent
-                    txtSunshadePercent.text = "POSIÇÃO LIDA: $percent%"
+                    renderSunshadePosition(percent)
                 }
             }
         }.start()
     }
 
-    private fun confirmSunshadePosition(percent: Int) {
-        val action = when (percent) {
-            0 -> "Fechar a persiana completamente?"
-            100 -> "Abrir a persiana completamente?"
-            else -> "Mover a persiana para $percent%?"
-        }
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle(action)
-            .setMessage("Confirme apenas com o veículo totalmente parado, em P, em local seguro e com a área do teto livre.")
-            .setNegativeButton("CANCELAR", null)
-            .setPositiveButton("CONFIRMAR") { _, _ -> requestSunshadePosition(percent) }
-            .show()
+    private fun requestSunshadeStop() {
+        val previousMotion = sunshadeMotion
+        sunshadeMotion = null
+        updateSunshadeButtons()
+        executeSunshadeCommand(stop = true, requestedMotion = null, previousMotion = previousMotion)
     }
 
-    private fun requestSunshadePosition(percent: Int) {
-        setSunshadeControlsEnabled(false)
-        txtSunshadeStatus.text = "Solicitando posição $percent% pela API OEM…"
-        Thread {
-            val result = runCatching { BydSunshadeControl.setPosition(this, percent) }
+    private fun requestSunshadePosition(percent: Int, motion: SunshadeMotion?) {
+        val previousMotion = sunshadeMotion
+        sunshadeMotion = motion
+        updateSunshadeButtons()
+        executeSunshadeCommand(stop = false, percent = percent, requestedMotion = motion, previousMotion = previousMotion)
+    }
+
+    private fun executeSunshadeCommand(
+        stop: Boolean,
+        percent: Int = sunshadePosition,
+        requestedMotion: SunshadeMotion?,
+        previousMotion: SunshadeMotion? = null
+    ) {
+        val commandId = ++sunshadeCommandId
+        txtSunshadeStatus.text = if (stop) "Enviando parada imediata pela API OEM…"
+            else "Solicitando posição $percent% pela API OEM…"
+        sunshadeCommandExecutor.execute {
+            val result = runCatching {
+                if (stop) BydSunshadeControl.stop(this) else BydSunshadeControl.setPosition(this, percent)
+            }
             runOnUiThread {
-                setSunshadeControlsEnabled(true)
-                txtSunshadeStatus.text = result.fold(
-                    onSuccess = { response ->
-                        response.observedPercent?.let { observed ->
-                            seekSunshadePosition.progress = observed
-                            txtSunshadePercent.text = "POSIÇÃO LIDA: $observed%"
+                if (commandId == sunshadeCommandId) {
+                    txtSunshadeStatus.text = result.fold(
+                        onSuccess = { response ->
+                            response.observedPercent?.let(::renderSunshadePosition)
+                            if (!response.accepted) {
+                                sunshadeMotion = previousMotion
+                                updateSunshadeButtons()
+                            }
+                            response.detail
+                        },
+                        onFailure = { error ->
+                            sunshadeMotion = previousMotion
+                            updateSunshadeButtons()
+                            "Falha ao mover a persiana: ${error.cause?.javaClass?.simpleName ?: error.javaClass.simpleName}: ${error.cause?.message ?: error.message}"
                         }
-                        response.detail
-                    },
-                    onFailure = { error -> "Falha ao mover a persiana: ${error.cause?.javaClass?.simpleName ?: error.javaClass.simpleName}: ${error.cause?.message ?: error.message}" }
-                )
-                appendLog(txtSunshadeStatus.text.toString())
+                    )
+                    appendLog(txtSunshadeStatus.text.toString())
+                    if (result.getOrNull()?.accepted == true) {
+                        pollSunshadePosition(commandId, if (stop) null else percent, requestedMotion)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun pollSunshadePosition(commandId: Int, target: Int?, requestedMotion: SunshadeMotion?) {
+        Thread {
+            repeat(40) {
+                Thread.sleep(250L)
+                val position = BydSunshadeControl.readPosition(this) ?: return@repeat
+                runOnUiThread {
+                    if (commandId == sunshadeCommandId) {
+                        renderSunshadePosition(position)
+                        if (target != null && kotlin.math.abs(position - target) <= 2) {
+                            sunshadeMotion = null
+                            updateSunshadeButtons()
+                            txtSunshadeStatus.text = "Posição $position% alcançada."
+                        }
+                    }
+                }
+                if (commandId != sunshadeCommandId) return@Thread
+                if (target != null && kotlin.math.abs(position - target) <= 2) return@Thread
+                if (target == null && it >= 3) {
+                    runOnUiThread {
+                        if (commandId == sunshadeCommandId) {
+                            sunshadeMotion = null
+                            updateSunshadeButtons()
+                            txtSunshadeStatus.text = "Comando de parada enviado; posição atual ${position}%."
+                        }
+                    }
+                    return@Thread
+                }
             }
         }.start()
     }
 
-    private fun setSunshadeControlsEnabled(enabled: Boolean) {
-        btnOpenSunshade.isEnabled = enabled
-        btnCloseSunshade.isEnabled = enabled
-        seekSunshadePosition.isEnabled = enabled
-        btnApplySunshadePosition.isEnabled = enabled
+    private fun renderSunshadePosition(percent: Int) {
+        sunshadePosition = percent.coerceIn(0, 100)
+        if (!seekSunshadePosition.isPressed) seekSunshadePosition.progress = sunshadePosition
+        txtSunshadePercent.text = "POSIÇÃO LIDA: $sunshadePosition%"
+    }
+
+    private fun updateSunshadeButtons() {
+        btnOpenSunshade.text = if (sunshadeMotion == SunshadeMotion.OPENING) "PARAR ABERTURA" else "ABRIR"
+        btnCloseSunshade.text = if (sunshadeMotion == SunshadeMotion.CLOSING) "PARAR FECHAMENTO" else "FECHAR"
     }
 
     private fun requestInteriorLightPower(turnOn: Boolean) {

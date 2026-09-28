@@ -1,7 +1,6 @@
 package com.byd.carcontrol
 
 import android.content.Context
-import android.os.SystemClock
 import kotlin.math.abs
 
 /** Uses BYDAutoBodyworkDevice as called by the OEM sunshade screen. */
@@ -13,9 +12,8 @@ object BydSunshadeControl {
     private const val SUNSHADE_AREA = 6
     private const val PARK_GEAR = 3 // Confirmed from CarSettings P-only checks.
     private const val OPEN_OPERATION_BLOCKED = 1
-    private const val POSITION_WAIT_MS = 12_000L
-    private const val POSITION_POLL_MS = 500L
     private const val POSITION_TOLERANCE = 2
+    private const val STOP_COMMAND = 254 // OEM ISunRoofModel.MOONROOF_STOP.
 
     data class Result(
         val accepted: Boolean,
@@ -37,15 +35,24 @@ object BydSunshadeControl {
 
     fun setPosition(context: Context, percent: Int): Result {
         require(percent in 0..100) { "A posição deve ficar entre 0 e 100%." }
+        return sendCommand(context, percent)
+    }
+
+    /** Uses the same dedicated stop sentinel as the OEM SunShadeFragment. */
+    fun stop(context: Context): Result = sendCommand(context, STOP_COMMAND)
+
+    private fun sendCommand(context: Context, command: Int): Result {
+        val isStop = command == STOP_COMMAND
+        val requestedPercent = if (isStop) readPosition(context) ?: 0 else command
         val sdkContext = BydAutoReadContext(context.applicationContext)
         val speed = readSpeedKmh(sdkContext)
-            ?: return blocked(percent, null, null, "Leitura de velocidade indisponível; comando recusado.")
+            ?: return blocked(requestedPercent, null, null, "Leitura de velocidade indisponível; comando recusado.")
         if (!speed.isFinite() || abs(speed) > 0.5) {
-            return blocked(percent, speed, null, "Veículo em movimento ($speed km/h); comando recusado.")
+            return blocked(requestedPercent, speed, null, "Veículo em movimento ($speed km/h); comando recusado.")
         }
         val gear = readGear(sdkContext)
-            ?: return blocked(percent, speed, null, "Marcha indisponível; o comando exige P.")
-        if (gear != PARK_GEAR) return blocked(percent, speed, gear, "O comando exige P; marcha reportada=$gear.")
+            ?: return blocked(requestedPercent, speed, null, "Marcha indisponível; o comando exige P.")
+        if (gear != PARK_GEAR) return blocked(requestedPercent, speed, gear, "O comando exige P; marcha reportada=$gear.")
 
         val deviceClass = Class.forName(DEVICE_CLASS)
         val instance = deviceClass.getMethod("getInstance", Context::class.java)
@@ -56,35 +63,30 @@ object BydSunshadeControl {
         val initialized = (deviceClass.getMethod("getWindoblindInitState").invoke(instance) as Number).toInt()
         if (operationBlocked == OPEN_OPERATION_BLOCKED || initialized != 1) {
             return blocked(
-                percent, speed, gear,
+                requestedPercent, speed, gear,
                 "API OEM bloqueia a operação: bloqueio=$operationBlocked, inicialização=$initialized.",
                 readPercent(deviceClass, instance)
             )
         }
 
         val method = deviceClass.getMethod("setSunshadeState", Int::class.javaPrimitiveType)
-        val rawResult = method.invoke(instance, percent)
+        val rawResult = method.invoke(instance, command)
         val apiAccepted = rawResult is Number && rawResult.toInt() == 0
         if (!apiAccepted) {
-            return Result(false, percent, readPercent(deviceClass, instance), false, speed, gear,
-                "setSunshadeState($percent) retornou ${rawResult ?: "void"}; comando não confirmado como aceito.")
+            return Result(false, requestedPercent, readPercent(deviceClass, instance), false, speed, gear,
+                "setSunshadeState($command) retornou ${rawResult ?: "void"}; comando não confirmado como aceito.")
         }
 
-        // The BYD getter can lag behind the accepted command; poll it while the
-        // OEM motor moves, rather than showing a false failure from one instant read.
-        val started = SystemClock.elapsedRealtime()
-        var observed = readPercent(deviceClass, instance)
-        while (!matchesTarget(observed, percent) && SystemClock.elapsedRealtime() - started < POSITION_WAIT_MS) {
-            SystemClock.sleep(POSITION_POLL_MS)
-            observed = readPercent(deviceClass, instance)
-        }
-        val confirmed = matchesTarget(observed, percent)
-        val detail = if (confirmed) {
+        val observed = readPercent(deviceClass, instance)
+        val confirmed = !isStop && matchesTarget(observed, requestedPercent)
+        val detail = if (isStop) {
+            "Comando OEM de parada (254) aceito em P (velocidade ${speed} km/h); posição lida ${observed ?: "indisponível"}%."
+        } else if (confirmed) {
             "Posição ${observed}% confirmada em P (velocidade ${speed} km/h)."
         } else {
-            "API aceitou setSunshadeState($percent), mas a leitura ficou em ${observed ?: "indisponível"}% após ${POSITION_WAIT_MS / 1000}s."
+            "API aceitou setSunshadeState($command); movimento para ${requestedPercent}% iniciado, leitura atual ${observed ?: "indisponível"}%."
         }
-        return Result(true, percent, observed, confirmed, speed, gear, detail)
+        return Result(true, requestedPercent, observed, confirmed, speed, gear, detail)
     }
 
     private fun blocked(percent: Int, speed: Double?, gear: Int?, reason: String, current: Int? = null) =

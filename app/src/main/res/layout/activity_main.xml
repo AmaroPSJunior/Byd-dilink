@@ -342,7 +342,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:layout_marginBottom="10dp"
-                    android:text="API OEM de posição (0–100%). O comando só é enviado com velocidade zero e marcha P confirmadas."
+                    android:text="API OEM de posição (0–100%). Toque de novo no mesmo sentido para parar; o botão oposto inverte o movimento. Requer velocidade zero e P."
                     android:textColor="#cbd5e1"
                     android:textSize="12sp" />
 
