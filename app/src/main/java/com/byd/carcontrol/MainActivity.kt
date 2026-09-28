@@ -373,11 +373,12 @@ class MainActivity : AppCompatActivity() {
             txtSeatbeltAccessStatus.text = "Consultando o sensor do veículo…"
             Thread {
                 try {
-                    val raw = BydSeatbeltReader.readDriverRawStatus(this)
+                    val statuses = BydSeatbeltReader.readRawStatuses(this)
+                    val summary = statuses.joinToString(", ") { "${it.first}=${it.second}" }
                     runOnUiThread {
                         txtSeatbeltAccessStatus.text =
-                            "Sensor respondeu: getSafetyBeltStatus(0) = $raw. " +
-                                "O mapeamento afivelado/desafivelado ainda precisa ser validado no carro."
+                            "getSafetyBeltStatus por índice: $summary. " +
+                                "-2147482645 é COMMAND_INVALID_VALUE; estados ainda não mapeados."
                     }
                 } catch (t: Throwable) {
                     val cause = t.cause ?: t

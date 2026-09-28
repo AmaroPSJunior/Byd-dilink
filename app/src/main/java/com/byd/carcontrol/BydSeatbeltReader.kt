@@ -8,15 +8,21 @@ import android.content.pm.PackageManager
 object BydSeatbeltReader {
     private const val DEVICE_CLASS = "android.hardware.bydauto.instrument.BYDAutoInstrumentDevice"
 
-    fun readDriverRawStatus(context: Context): Int {
+    fun readRawStatuses(context: Context): List<Pair<Int, String>> {
         val deviceClass = Class.forName(DEVICE_CLASS)
         val sdkContext = BydAutoReadContext(context.applicationContext)
         val instance = deviceClass.getMethod("getInstance", Context::class.java)
             .invoke(null, sdkContext)
             ?: error("BYDAutoInstrumentDevice.getInstance retornou null")
         val getter = deviceClass.getMethod("getSafetyBeltStatus", Int::class.javaPrimitiveType)
-        return (getter.invoke(instance, 0) as? Number)?.toInt()
-            ?: error("getSafetyBeltStatus(0) não retornou um número")
+        return (0..8).map { index ->
+            val value = try {
+                (getter.invoke(instance, index) as? Number)?.toInt()?.toString() ?: "sem valor numérico"
+            } catch (t: Throwable) {
+                "${(t.cause ?: t).javaClass.simpleName}"
+            }
+            index to value
+        }
     }
 
     /** Satisfies the SDK's local BYDAUTO permission precheck for this getter only. */

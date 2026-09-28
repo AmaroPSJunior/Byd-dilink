@@ -396,7 +396,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:layout_marginBottom="10dp"
-                    android:text="Leitura somente. O app consulta o getter BYD getSafetyBeltStatus(0); o valor bruto será exibido até confirmarmos no carro qual valor significa afivelado."
+                    android:text="Leitura somente. O app consulta getSafetyBeltStatus nos índices 0–8. O valor -2147482645 é o sentinela COMMAND_INVALID_VALUE e não significa cinto aberto/fechado."
                     android:textColor="#cbd5e1"
                     android:textSize="12sp" />
 
