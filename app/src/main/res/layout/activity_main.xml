@@ -126,6 +126,17 @@
                     android:textStyle="bold"
                     android:textColor="#ffffff"
                     android:backgroundTint="#0f766e" />
+
+                <Button
+                    android:id="@+id/btnReadAccelerometer"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginTop="8dp"
+                    android:text="📐 LER ACELERÔMETRO DA CENTRAL"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#475569" />
             </LinearLayout>
 
             <!-- 2️⃣ SEÇÃO 2: PERMISSÕES -->

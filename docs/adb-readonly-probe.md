@@ -171,6 +171,69 @@ funcional até que a instalação autorizada conceda essas permissões. O provid
 chamando diretamente `setIALBrightness`, então atualizar uma linha SQLite não
 é prova de alteração física.
 
+## Magic Manager / Magic Sentry (28/09/2026)
+
+Os pacotes instalados são `cc.omycar.magicmanager` (2.8.08, UID 10088) e
+`cc.omycar.magicsentry` (2.8.08, UID 10089); ambos são apps comuns em
+`/data/app`, não apps de sistema. Compartilham a mesma assinatura. O Manager
+tem `cc.omycar.magiccore.permission.API` (dangerous) concedida; no Sentry ela
+está negada. O provider `cc.omycar.magicmanager.Provider` é exportado, mas
+exige `android.permission.INTERACT_ACROSS_USERS_FULL`; a concessão de API não
+remove essa exigência para um app externo.
+
+O código da tela Car Status no Magic Manager chama
+`window.androidFunction.getAllCarStatusData()` e atualiza categorias com
+`getACategoryCarStatusData(...)`; a tela repete a leitura a cada 1,5 s. O SDK
+MagicCore também declara os getters `getAllCarStatusValue()` e
+`getACarStatusValue(...)`. Isso confirma um caminho funcional dentro do
+Manager. Não copiamos nem contornamos sua proteção de provider para dar esse
+acesso ao UID do nosso app. Na tela do carro, a leitura mostrou estes valores
+brutos:
+
+- Carroceria: estado da trava da porta dianteira esquerda `1`; outras linhas
+  visíveis de portas/capô/porta-malas `0`; tampa de combustível `-1`.
+- Outros estados: direção do fluxo do ar `1`, limpador `1`, conexão do bocal
+  de carga `1`, estado MCU `1`, aquecimento dos dois bancos `1` e ventilação
+  dos bancos `-1`.
+- Iluminação: farol baixo `0`, farol alto `0`, neblina dianteira/traseira `0`,
+  e vários campos de setas/dupla indicação `1` ou `2`, conforme os rótulos.
+  Alguns campos vieram como `-27` ou `-1` (por exemplo, intensidade de
+  iluminação e estados marcados como “alguns modelos”); permanecem sem
+  interpretação.
+
+Os números são exatamente os que a UI exibiu; a enumeração ainda precisa ser
+validada com o painel. A tela não prova que todos os campos sejam sensores
+instantâneos: alguns podem ser eventos condicionais ou indisponíveis neste
+modelo.
+
+O `dumpsys sensorservice` registrou o processo do Magic Sentry
+(`cc.omycar.magicsentry.i`, UID 10089) usando acelerômetro e giroscópio Bosch
+em períodos de 10 ms durante sessões. O acelerômetro padrão `icm42670-accel`
+produziu aproximadamente `(0.00, 9.80, 0.00) m/s²` em amostras consecutivas
+da central. Isso é leitura inercial do head unit, útil para movimento/
+orientação, mas não é velocidade, marcha ou telemetria CAN.
+
+## Controle reversível verificado pela interface do veículo
+
+Com temperatura `24 °C` e ventilador `0` visíveis inicialmente, usamos uma
+vez a seta `+` da barra HVAC nativa: o valor passou a `1` e o primeiro segmento
+da ventoinha acendeu. Em seguida abrimos o painel HVAC e desligamos a ventoinha;
+a tela confirmou `OFF`, nível `0` e temperatura `24 °C`. O ventilador voltou
+ao nível inicial. Nenhum ajuste de temperatura, trava, janela, iluminação,
+marcha ou movimento foi enviado. A verificação usou a interface OEM do carro,
+sem uma escrita Binder especulativa.
+
+## Integração no app deste projeto
+
+O APK agora inclui uma leitura única do sensor Android `TYPE_ACCELEROMETER`,
+com timestamp monotônico e remoção do listener após a primeira amostra. O
+diagnóstico identifica explicitamente que esse sensor pertence à central e
+não deve ser apresentado como velocidade ou marcha. O getter BYD de estado de
+condução continua disponível como valor bruto. A tela Car Status do Magic
+Manager é, por enquanto, o caminho autorizado confirmado para estados de
+portas e iluminação; o provider dela continua protegido para o UID do nosso
+app.
+
 ## Referências locais da análise
 
 - `byd_analysis/decompiled/appserver/resources/AndroidManifest.xml`

@@ -71,6 +71,7 @@ class MainActivity : AppCompatActivity() {
     // Diagnostic tab buttons
     private lateinit var btnRunHalInspector: Button
     private lateinit var btnReadDrivingState: Button
+    private lateinit var btnReadAccelerometer: Button
     private lateinit var btnCheckPermissions: Button
     private lateinit var btnExportReport: Button
     private lateinit var btnCopyInParts: Button
@@ -161,6 +162,7 @@ class MainActivity : AppCompatActivity() {
 
         btnRunHalInspector = findViewById(R.id.btnRunHalInspector)
         btnReadDrivingState = findViewById(R.id.btnReadDrivingState)
+        btnReadAccelerometer = findViewById(R.id.btnReadAccelerometer)
         btnCheckPermissions = findViewById(R.id.btnCheckPermissions)
         btnExportReport = findViewById(R.id.btnExportReport)
         btnCopyInParts = findViewById(R.id.btnCopyInParts)
@@ -223,6 +225,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupDiagnosticListeners() {
+        btnReadAccelerometer.setOnClickListener {
+            appendLog("Lendo acelerômetro inercial Android da central (não é telemetria CAN)...")
+            HeadUnitSensorReader.readAccelerometer(this) { result ->
+                result.onSuccess { reading ->
+                    appendLog(
+                        "Acelerômetro ${reading.sensorName}: " +
+                            "x=${reading.x} m/s², y=${reading.y} m/s², z=${reading.z} m/s² " +
+                            "(amostra monotônica ${reading.timestampNanos} ns). " +
+                            "Sensor da central; não representa velocidade nem marcha."
+                    )
+                }.onFailure { error ->
+                    appendLog("Leitura do acelerômetro falhou: ${error.message}")
+                }
+            }
+        }
+
         // Direct read-only call through BYD AppServer's exported AIDL provider.
         btnReadDrivingState.setOnClickListener {
             appendLog("Lendo getDrivingState() pelo provider IPC BYD (somente leitura)...")
