@@ -2,11 +2,7 @@ package com.byd.carcontrol
 
 import android.content.Context
 
-/**
- * Candidate direct controls for the door-linked cabin light exposed by this ROM.
- * The OFF path is the explicit OEM turnOffInsideLight method. The ON path uses
- * the OEM INSIDE_LIGHT_DOOR_OPEN enum and setInsideLightDoorState method.
- */
+/** Controls the cabin light through BYDAutoSettingDevice's explicit state setter. */
 object BydInteriorLightControl {
     private const val DEVICE_CLASS = "android.hardware.bydauto.setting.BYDAutoSettingDevice"
     private const val INTERIOR_LIGHT_STATE_FID = 0x42E0002D
@@ -23,14 +19,16 @@ object BydInteriorLightControl {
         val sdkContext = BydAutoReadContext(context.applicationContext)
         val instance = deviceClass.getMethod("getInstance", Context::class.java)
             .invoke(null, sdkContext) ?: error("BYDAutoSettingDevice.getInstance retornou null")
-        val (methodName, result) = if (turnOn) {
-            val open = deviceClass.getField("INSIDE_LIGHT_DOOR_OPEN").getInt(null)
-            "setInsideLightDoorState($open)" to deviceClass
-                .getMethod("setInsideLightDoorState", Int::class.javaPrimitiveType)
-                .invoke(instance, open)
-        } else {
-            "turnOffInsideLight()" to deviceClass.getMethod("turnOffInsideLight").invoke(instance)
-        }
+        // The OEM method is oddly named for both states, but the SDK validates
+        // INSIGHT_LIGHT_OFF=1 and INSIGHT_LIGHT_ON=2 before writing
+        // SET_INSIDE_LIGHT_STATE_SET. Do not use setInsideLightDoorState here:
+        // that setter changes the door-linked state, not the cabin lamp power.
+        val stateField = if (turnOn) "INSIGHT_LIGHT_ON" else "INSIGHT_LIGHT_OFF"
+        val state = deviceClass.getField(stateField).getInt(null)
+        val methodName = "turnOffInsideLight($stateField=$state)"
+        val result = deviceClass
+            .getMethod("turnOffInsideLight", Int::class.javaPrimitiveType)
+            .invoke(instance, state)
 
         // BYD setters use nonnegative command status codes; the readback below is kept separate.
         val accepted = when (result) {
