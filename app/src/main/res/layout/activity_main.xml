@@ -321,6 +321,49 @@
                 android:textSize="11sp"
                 android:layout_marginBottom="14dp" />
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#0f172a"
+                android:padding="16dp"
+                android:layout_marginBottom="14dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="PERSIANA DO TETO PANORÂMICO"
+                    android:textColor="#38bdf8"
+                    android:textStyle="bold"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:layout_marginBottom="10dp"
+                    android:text="Abertura pela API OEM. Use somente com o veículo parado e em segurança; a posição será lida após o comando."
+                    android:textColor="#cbd5e1"
+                    android:textSize="12sp" />
+
+                <Button
+                    android:id="@+id/btnOpenSunshade"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:text="ABRIR PERSIANA"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#059669" />
+
+                <TextView
+                    android:id="@+id/txtSunshadeStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="API identificada; nenhum comando de persiana enviado nesta sessão."
+                    android:textColor="#94a3b8"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
             <!-- Atalhos oficiais OEM e estado de acesso real -->
             <LinearLayout
                 android:layout_width="match_parent"

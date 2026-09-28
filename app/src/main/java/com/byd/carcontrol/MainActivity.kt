@@ -91,6 +91,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnInteriorLightOff: Button
     private lateinit var txtInteriorLightProbe: TextView
     private lateinit var txtClimateCommandStatus: TextView
+    private lateinit var btnOpenSunshade: Button
+    private lateinit var txtSunshadeStatus: TextView
 
     private val logHistory = mutableListOf<String>()
     private var lastInspectionReport: String? = null
@@ -166,6 +168,8 @@ class MainActivity : AppCompatActivity() {
         btnInteriorLightOff = findViewById(R.id.btnInteriorLightOff)
         txtInteriorLightProbe = findViewById(R.id.txtInteriorLightProbe)
         txtClimateCommandStatus = findViewById(R.id.txtClimateCommandStatus)
+        btnOpenSunshade = findViewById(R.id.btnOpenSunshade)
+        txtSunshadeStatus = findViewById(R.id.txtSunshadeStatus)
     }
 
     private fun setupTabs() {
@@ -387,6 +391,38 @@ class MainActivity : AppCompatActivity() {
         }
         btnInteriorLightOn.setOnClickListener { requestInteriorLightPower(true) }
         btnInteriorLightOff.setOnClickListener { requestInteriorLightPower(false) }
+        btnOpenSunshade.setOnClickListener { confirmAndOpenSunshade() }
+    }
+
+    private fun confirmAndOpenSunshade() {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Abrir a persiana do teto?")
+            .setMessage("Confirme apenas se o veículo estiver totalmente parado, em local seguro, e se a área do teto estiver livre.")
+            .setNegativeButton("CANCELAR", null)
+            .setPositiveButton("ABRIR") { _, _ -> requestSunshadeOpen() }
+            .show()
+    }
+
+    private fun requestSunshadeOpen() {
+        btnOpenSunshade.isEnabled = false
+        txtSunshadeStatus.text = "Solicitando abertura pela API OEM…"
+        Thread {
+            val result = runCatching { BydSunshadeControl.open(this) }
+            runOnUiThread {
+                btnOpenSunshade.isEnabled = true
+                txtSunshadeStatus.text = result.fold(
+                    onSuccess = { response ->
+                        when {
+                            !response.accepted -> "Abertura bloqueada pela condição reportada pelo veículo. ${response.detail}"
+                            response.percent == 100 -> "API executou a abertura e a leitura mostra 100% aberto. ${response.detail}"
+                            else -> "API executou a chamada, mas a abertura ainda não foi confirmada pela leitura. ${response.detail}"
+                        }
+                    },
+                    onFailure = { error -> "Falha ao abrir a persiana: ${error.cause?.javaClass?.simpleName ?: error.javaClass.simpleName}: ${error.cause?.message ?: error.message}" }
+                )
+                appendLog(txtSunshadeStatus.text.toString())
+            }
+        }.start()
     }
 
     private fun requestInteriorLightPower(turnOn: Boolean) {
