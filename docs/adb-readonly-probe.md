@@ -90,6 +90,16 @@ controle de carroceria/luzes. Portanto, a resposta acima veio especificamente
 da ponte Binder exportada, não de permissões concedidas ao aplicativo. Nenhuma
 alteração física ou setter foi executado.
 
+Na consulta independente `adb shell dumpsys byd_car_service`, o serviço exibiu
+`Current Driving State: 3` e um histórico de transições entre os códigos `0`,
+`1`, `2` e `3` (a transição mais recente listada foi para `3`). A saída não
+documenta o significado dos números. Como ela foi obtida em outro momento que
+as respostas `1` do app e não houve captura pareada com timestamp comum, isso
+não demonstra divergência entre APIs nem permite mapear os códigos. O próximo
+ensaio deve guardar, na mesma janela temporal, timestamp, getter Binder e dump;
+qualquer mudança natural observada deve ser anotada junto com o que o painel
+mostrava, sem provocar mudança de marcha/movimento.
+
 Uma nova leitura somente de dados persistidos em
 `content://com.byd.carStatusProvider/car_status` retornou 26 pares. Entre eles,
 `car_status_maintenance_mile=6193` e `set_car_status_maintenance_mile=20000`;
