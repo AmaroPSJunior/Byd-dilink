@@ -328,6 +328,55 @@
                 android:background="#0f172a"
                 android:padding="16dp"
                 android:layout_marginBottom="14dp">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="CONTROLES WEB NA REDE DO HOTSPOT"
+                    android:textColor="#38bdf8"
+                    android:textStyle="bold"
+                    android:textSize="14sp" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="Inicie o servidor e conecte os outros dispositivos ao mesmo hotspot do celular. Escaneie o QR para abrir os controles."
+                    android:textColor="#cbd5e1"
+                    android:textSize="12sp" />
+                <Button
+                    android:id="@+id/btnWebServer"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="10dp"
+                    android:text="INICIAR SERVIDOR WEB"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#0284c7" />
+                <TextView
+                    android:id="@+id/txtWebServerAddress"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Servidor parado."
+                    android:textColor="#e2e8f0"
+                    android:textSize="12sp"
+                    android:fontFamily="monospace"
+                    android:textIsSelectable="true" />
+                <ImageView
+                    android:id="@+id/imgWebServerQr"
+                    android:layout_width="190dp"
+                    android:layout_height="190dp"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="10dp"
+                    android:contentDescription="QR code para abrir os controles web locais"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#0f172a"
+                android:padding="16dp"
+                android:layout_marginBottom="14dp">
 
                 <TextView
                     android:layout_width="match_parent"

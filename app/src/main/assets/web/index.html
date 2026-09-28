@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>BYD Dolphin · Controles</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#e2e8f0;background:#070d1e;font-synthesis:none}
+    *{box-sizing:border-box}body{margin:0 auto;max-width:1000px;padding:18px 16px 48px}
+    h1{font-size:1.45rem;color:#22d3ee;margin:4px 0}h2{font-size:1.05rem;color:#38bdf8;margin:0 0 12px}
+    p{color:#aab8cd;line-height:1.45}.sub{font-size:.9rem;margin:4px 0 18px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:14px}
+    section{background:#0f172a;border-radius:14px;padding:16px;box-shadow:0 8px 24px #02061766}
+    .row{display:flex;gap:9px;align-items:center}.row>*{flex:1}.row.wrap{flex-wrap:wrap}
+    button{border:0;border-radius:9px;padding:12px 14px;color:white;background:#2563eb;font-weight:700;font-size:.95rem;min-height:44px}
+    button.green{background:#059669}button.red{background:#b91c1c}button.gray{background:#334155}
+    input[type=range]{width:100%;accent-color:#22d3ee;margin:10px 0}input[type=number]{width:90px;background:#111c32;color:white;border:1px solid #475569;border-radius:7px;padding:9px;font-size:1rem}
+    label{display:block;margin:10px 0 4px;font-weight:600}.value{color:#67e8f9;font-weight:700}
+    .status{font-size:.87rem;color:#94a3b8;min-height:1.3em;margin:9px 0 0}.status.err{color:#fca5a5}.status.ok{color:#86efac}
+    .windows{display:grid;grid-template-columns:1fr;gap:14px}.window{border-top:1px solid #334155;padding-top:10px}
+    #connection{font-size:.83rem;overflow-wrap:anywhere}.muted{font-size:.78rem;color:#94a3b8}
+    .pill{display:inline-block;background:#172554;color:#bae6fd;padding:4px 9px;border-radius:99px;font-size:.8rem}
+    @media(min-width:720px){body{padding:24px}.windows{grid-template-columns:1fr 1fr}}
+  </style>
+</head>
+<body>
+  <header><h1>BYD Dolphin · Controles</h1><p class="sub">Painel local da central do carro <span class="pill" id="connection">conectando…</span></p></header>
+  <div class="grid">
+    <section>
+      <h2>Ar-condicionado</h2>
+      <div class="row"><button class="green" onclick="command('/api/climate/power',{on:true})">Ligar</button><button class="red" onclick="command('/api/climate/power',{on:false})">Desligar</button></div>
+      <label>Ventilação: <span class="value" id="fanLabel">—</span></label><input id="fan" type="range" min="1" max="7" step="1" value="1" oninput="fanLabel.textContent=this.value+'/7'">
+      <button onclick="command('/api/climate/fan',{level:+fan.value})">Aplicar ventilação</button>
+      <label>Temperatura: <span class="value" id="tempLabel">22 °C</span></label><input id="temp" type="range" min="17" max="33" step="1" value="22" oninput="tempLabel.textContent=this.value+' °C'">
+      <button onclick="command('/api/climate/temperature',{celsius:+temp.value})">Aplicar temperatura</button><p id="climateStatus" class="status"></p>
+    </section>
+    <section>
+      <h2>Persiana do teto</h2>
+      <label>Posição: <span class="value" id="shadeLabel">0%</span></label><input id="shade" type="range" min="0" max="100" step="1" value="0" oninput="shadeLabel.textContent=this.value+'%'">
+      <div class="row wrap"><button class="green" onclick="command('/api/sunshade',{position:100})">Abrir</button><button class="red" onclick="command('/api/sunshade',{position:0})">Fechar</button><button class="gray" onclick="command('/api/sunshade/stop',{})">Parar</button><button onclick="command('/api/sunshade',{position:+shade.value})">Aplicar posição</button></div>
+      <p class="muted">O controle OEM exige veículo parado em P.</p><p id="shadeStatus" class="status"></p>
+    </section>
+    <section>
+      <h2>Vidros</h2><div id="windows" class="windows"></div><p class="muted">A barra seleciona fechado, meia abertura ou aberto. Toque Aplicar para enviar. O controle OEM exige veículo parado em P.</p><p id="windowStatus" class="status"></p>
+    </section>
+    <section>
+      <h2>Luz interna do teto</h2><div class="row"><button class="green" onclick="command('/api/lights/interior',{on:true})">Ligar</button><button class="red" onclick="command('/api/lights/interior',{on:false})">Desligar</button></div>
+      <p class="muted">O app informa se o HAL aceitou o comando; a leitura atual pode não confirmar fisicamente a lâmpada.</p><p id="lightStatus" class="status"></p>
+    </section>
+    <section>
+      <h2>Cinto e alerta sonoro</h2><p>Motorista: <span class="value" id="beltState">lendo…</span></p><p>Velocidade: <span class="value" id="speedState">—</span></p>
+      <label class="row"><span>Alerta sonoro ativo</span><input id="beltAudio" type="checkbox" onchange="saveBeltPrefs()"></label>
+      <label>Velocidade mínima do alerta (km/h)</label><input id="beltSpeed" type="number" min="1" max="200" value="10"><button onclick="saveBeltPrefs()">Salvar alerta</button>
+      <p class="muted">Leitura validada somente para o motorista. Ocupação/peso dos outros assentos não está disponível pela API confirmada.</p><p id="beltStatus" class="status"></p>
+    </section>
+  </div>
+  <script>
+    const names={driver_front:'Motorista · dianteiro esquerdo',passenger_front:'Passageiro · dianteiro direito',driver_rear:'Motorista · traseiro esquerdo',passenger_rear:'Passageiro · traseiro direito'};
+    const byId=id=>document.getElementById(id),fan=byId('fan'),fanLabel=byId('fanLabel'),temp=byId('temp'),tempLabel=byId('tempLabel'),shade=byId('shade'),shadeLabel=byId('shadeLabel'),beltAudio=byId('beltAudio'),beltSpeed=byId('beltSpeed');
+    const tokenFromUrl=new URLSearchParams(location.search).get('token');if(tokenFromUrl){localStorage.setItem('byd-local-token',tokenFromUrl);history.replaceState({},'',location.pathname)}
+    const token=localStorage.getItem('byd-local-token');
+    const setStatus=(id,msg,ok=true)=>{const el=document.getElementById(id);el.textContent=msg||'';el.className='status '+(msg?(ok?'ok':'err'):'')};
+    async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:{'Authorization':'Bearer '+(token||''),'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined,cache:'no-store'});const data=await r.json();if(!r.ok||data.ok===false)throw new Error(data.error||data.message||('HTTP '+r.status));return data}
+    async function command(path,body){const id=path.includes('climate')?'climateStatus':path.includes('sunshade')?'shadeStatus':path.includes('windows')?'windowStatus':'lightStatus';try{const r=await api(path,body);setStatus(id,r.message||'Comando aceito.',true);await refresh()}catch(e){setStatus(id,e.message,false)}}
+    function createWindows(){const root=document.getElementById('windows');root.innerHTML=Object.entries(names).map(([key,name])=>`<div class="window"><label>${name} · <span class="value" id="label-${key}">0%</span></label><input id="slider-${key}" type="range" min="0" max="100" step="1" value="0" oninput="document.getElementById('label-${key}').textContent=this.value+'%'"/><div class="row"><button class="red" onclick="command('/api/windows/${key}',{position:0})">Fechar</button><button class="green" onclick="command('/api/windows/${key}',{position:100})">Abrir</button><button onclick="applyWindow('${key}')">Aplicar</button></div></div>`).join('')}
+    async function applyWindow(key){const n=+document.getElementById('slider-'+key).value;const preset=n<25?0:n<75?50:100;command('/api/windows/'+key,{position:preset})}
+    async function saveBeltPrefs(){const speed=+beltSpeed.value;try{const r=await api('/api/belt-alerts',{enabled:beltAudio.checked,speedKmh:speed});setStatus('beltStatus',r.message,true)}catch(e){setStatus('beltStatus',e.message,false)}}
+    async function refresh(){try{const s=await api('/api/state');document.getElementById('connection').textContent='central conectada';
+      if(s.climate){fan.value=s.climate.fanLevel||1;fanLabel.textContent=s.climate.fanLevel===0?'desligada':s.climate.fanLevel+'/7';temp.max=s.climate.maxTemperatureCelsius||33;temp.step=s.climate.stepCelsius||1;if(s.climate.temperatureCelsius!=null){temp.value=s.climate.temperatureCelsius;tempLabel.textContent=s.climate.temperatureCelsius+' °C'}}
+      if(s.sunshade.position!=null){shade.value=s.sunshade.position;shadeLabel.textContent=s.sunshade.position+'%'}
+      for(const [key,w] of Object.entries(s.windows||{})){if(w.position!=null){const el=document.getElementById('slider-'+key);if(el){el.value=w.position;document.getElementById('label-'+key).textContent=w.position+'%'}}}
+      document.getElementById('beltState').textContent=s.belt?.status||'indisponível';document.getElementById('speedState').textContent=s.speedKmh==null?'indisponível':Math.round(s.speedKmh)+' km/h';
+      if(s.beltAlert){document.getElementById('beltAudio').checked=s.beltAlert.enabled;document.getElementById('beltSpeed').value=s.beltAlert.speedKmh}
+    }catch(e){document.getElementById('connection').textContent='sem conexão';setStatus('beltStatus',e.message,false)}}
+    createWindows();refresh();setInterval(refresh,2500);
+  </script>
+</body>
+</html>

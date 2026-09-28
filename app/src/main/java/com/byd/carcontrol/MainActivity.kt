@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.graphics.Color
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -21,6 +22,7 @@ import android.view.accessibility.AccessibilityManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.CompoundButton
+import android.widget.ImageView
 import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
@@ -28,6 +30,9 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
+import androidx.core.content.ContextCompat
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
 import com.byd.carcontrol.discovery.BYDBodyworkInspector
 import com.byd.carcontrol.discovery.BYDControlManager
 import com.byd.carcontrol.discovery.BYDLightHalInspector
@@ -113,6 +118,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var txtSunshadePercent: TextView
     private lateinit var txtSunshadeStatus: TextView
     private lateinit var txtWindowCommandStatus: TextView
+    private lateinit var btnWebServer: Button
+    private lateinit var txtWebServerAddress: TextView
+    private lateinit var imgWebServerQr: ImageView
+    private var lastWebQrUrl: String? = null
+    private val webServerUiPoll = object : Runnable {
+        override fun run() {
+            if (::btnWebServer.isInitialized) refreshWebServerUi()
+            if (activityResumed) seatbeltHandler.postDelayed(this, 1500L)
+        }
+    }
     private lateinit var windowViews: List<WindowUi>
     private var sunshadeMotion: SunshadeMotion? = null
     private var sunshadePosition = 0
@@ -224,6 +239,9 @@ class MainActivity : AppCompatActivity() {
         txtClimateTemperatureValue = findViewById(R.id.txtClimateTemperatureValue)
         txtClimateAdjustmentStatus = findViewById(R.id.txtClimateAdjustmentStatus)
         txtWindowCommandStatus = findViewById(R.id.txtWindowCommandStatus)
+        btnWebServer = findViewById(R.id.btnWebServer)
+        txtWebServerAddress = findViewById(R.id.txtWebServerAddress)
+        imgWebServerQr = findViewById(R.id.imgWebServerQr)
         windowViews = listOf(
             WindowUi(BydWindowControl.Window.DRIVER_FRONT, findViewById(R.id.txtWindowDriverFront), findViewById(R.id.seekWindowDriverFront), findViewById(R.id.btnWindowDriverFrontOpen), findViewById(R.id.btnWindowDriverFrontClose), findViewById(R.id.btnWindowDriverFrontApply)),
             WindowUi(BydWindowControl.Window.PASSENGER_FRONT, findViewById(R.id.txtWindowPassengerFront), findViewById(R.id.seekWindowPassengerFront), findViewById(R.id.btnWindowPassengerFrontOpen), findViewById(R.id.btnWindowPassengerFrontClose), findViewById(R.id.btnWindowPassengerFrontApply)),
@@ -454,6 +472,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupControlsListeners() {
+        btnWebServer.setOnClickListener {
+            val prefs = LocalCarWebService.prefs(this)
+            if (prefs.getBoolean(LocalCarWebService.KEY_RUNNING, false)) {
+                startService(Intent(this, LocalCarWebService::class.java).setAction(LocalCarWebService.ACTION_STOP))
+            } else {
+                val intent = Intent(this, LocalCarWebService::class.java)
+                if (Build.VERSION.SDK_INT >= 26) ContextCompat.startForegroundService(this, intent)
+                else startService(intent)
+            }
+            seatbeltHandler.postDelayed({ refreshWebServerUi() }, 500L)
+        }
         btnHvacOn.setOnClickListener { requestHvacPower(true) }
         btnHvacOff.setOnClickListener { requestHvacPower(false) }
         btnReadSeatbelt.setOnClickListener {
@@ -822,6 +851,8 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         activityResumed = true
+        seatbeltHandler.removeCallbacks(webServerUiPoll)
+        seatbeltHandler.post(webServerUiPoll)
         if (::txtClimateCommandStatus.isInitialized) updateClimateCommandStatus()
         if (::layoutTabControls.isInitialized && layoutTabControls.visibility == View.VISIBLE) {
             startSeatbeltPolling()
@@ -830,6 +861,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         activityResumed = false
+        seatbeltHandler.removeCallbacks(webServerUiPoll)
         stopSeatbeltPolling()
         super.onPause()
     }
@@ -888,7 +920,8 @@ class MainActivity : AppCompatActivity() {
                     }
                     txtSeatbeltAccessStatus.setTextColor(if (unbuckled.isEmpty()) Color.parseColor("#86efac") else Color.parseColor("#fca5a5"))
                     val newWarnings = eligibleWarnings.filter { it.key !in previouslyUnbuckled }
-                    if (seatbeltVoiceEnabled) seatbeltVoiceAnnouncer?.announce(newWarnings)
+                    val webServerOwnsSeatbeltAudio = LocalCarWebService.prefs(this).getBoolean(LocalCarWebService.KEY_RUNNING, false)
+                    if (seatbeltVoiceEnabled && !webServerOwnsSeatbeltAudio) seatbeltVoiceAnnouncer?.announce(newWarnings)
                     previouslyUnbuckled = if (seatbeltVoiceEnabled) eligibleWarnings.map { it.key }.toSet() else emptySet()
                 }.onFailure { error ->
                     val cause = error.cause ?: error
@@ -915,6 +948,43 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateClimateCommandStatus() {
         txtClimateCommandStatus.text = hvacCommandStatus
+    }
+
+    private fun refreshWebServerUi() {
+        val prefs = LocalCarWebService.prefs(this)
+        val running = prefs.getBoolean(LocalCarWebService.KEY_RUNNING, false)
+        val url = prefs.getString(LocalCarWebService.KEY_URL, "").orEmpty()
+        btnWebServer.text = if (running) "PARAR SERVIDOR WEB" else "INICIAR SERVIDOR WEB"
+        btnWebServer.backgroundTintList = android.content.res.ColorStateList.valueOf(
+            Color.parseColor(if (running) "#b91c1c" else "#0284c7")
+        )
+        if (!running) {
+            txtWebServerAddress.text = prefs.getString(LocalCarWebService.KEY_ERROR, null)
+                ?.takeIf { it.isNotBlank() }?.let { "Servidor parado: $it" } ?: "Servidor parado."
+            imgWebServerQr.visibility = View.GONE
+            lastWebQrUrl = null
+            return
+        }
+        if (url.isBlank()) {
+            txtWebServerAddress.text = "Servidor ativo, mas não encontrei o endereço Wi-Fi da central. Verifique se ela está conectada ao hotspot."
+            imgWebServerQr.visibility = View.GONE
+            return
+        }
+        txtWebServerAddress.text = "Ativo na rede do hotspot. Escaneie o QR ou abra:\n$url"
+        imgWebServerQr.visibility = View.VISIBLE
+        if (lastWebQrUrl != url) {
+            runCatching {
+                val matrix = QRCodeWriter().encode(url, BarcodeFormat.QR_CODE, 420, 420)
+                val pixels = IntArray(matrix.width * matrix.height)
+                for (y in 0 until matrix.height) for (x in 0 until matrix.width)
+                    pixels[y * matrix.width + x] = if (matrix[x, y]) Color.BLACK else Color.WHITE
+                imgWebServerQr.setImageBitmap(Bitmap.createBitmap(pixels, matrix.width, matrix.height, Bitmap.Config.ARGB_8888))
+                lastWebQrUrl = url
+            }.onFailure {
+                imgWebServerQr.visibility = View.GONE
+                txtWebServerAddress.append("\nFalha ao gerar QR: ${it.message}")
+            }
+        }
     }
 
     private fun updateControlsUI() {
