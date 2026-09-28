@@ -20,28 +20,40 @@ object BydInteriorLightControl {
         val instance = deviceClass.getMethod("getInstance", Context::class.java)
             .invoke(null, sdkContext) ?: error("BYDAutoSettingDevice.getInstance retornou null")
 
-        // ROMs expose the generic setter with slightly different signatures.
+        // This ROM exposes set(int[], BYDAutoEventValue), like the OEM SDK.
         val methods = deviceClass.methods.filter { it.name == "set" }
-        val typedSetter = methods.firstOrNull {
-            it.parameterTypes.size == 3 && it.parameterTypes[0] == IntArray::class.java &&
-                it.parameterTypes[1] == Class::class.java
-        }
-        val result = when {
-            typedSetter != null -> typedSetter.invoke(instance, intArrayOf(INTERIOR_LIGHT_COMMAND_FID), Int::class.java, value)
-            methods.any { it.parameterTypes.size == 2 && it.parameterTypes[0] == IntArray::class.java } -> {
-                val setter = methods.first { it.parameterTypes.size == 2 && it.parameterTypes[0] == IntArray::class.java }
-                setter.invoke(instance, intArrayOf(INTERIOR_LIGHT_COMMAND_FID), value)
-            }
-            else -> error("Nenhum método set compatível encontrado em $DEVICE_CLASS: ${methods.joinToString { it.toGenericString() }}")
-        }
+        val setter = methods.firstOrNull {
+            it.parameterTypes.size == 2 && it.parameterTypes[0] == IntArray::class.java &&
+                it.parameterTypes[1].name == "android.hardware.bydauto.BYDAutoEventValue"
+        } ?: error("set(int[], BYDAutoEventValue) não encontrado: ${methods.joinToString { it.toGenericString() }}")
+        val eventValue = createEventValue(setter.parameterTypes[1], value)
+        val result = setter.invoke(instance, intArrayOf(INTERIOR_LIGHT_COMMAND_FID), eventValue)
 
         // SDK setters commonly return void; otherwise treat Boolean true or nonzero numeric result as acceptance.
         val accepted = when (result) {
             null -> true
             is Boolean -> result
-            is Number -> result.toInt() != 0
+            is Number -> result.toInt() >= 0
             else -> true
         }
         return Result(accepted, value, "FID=0x${INTERIOR_LIGHT_COMMAND_FID.toString(16)}, retorno=${result ?: "void"}")
+    }
+
+    private fun createEventValue(eventClass: Class<*>, value: Int): Any {
+        val intConstructor = eventClass.constructors.firstOrNull {
+            it.parameterTypes.contentEquals(arrayOf(Int::class.javaPrimitiveType))
+        }
+        if (intConstructor != null) return intConstructor.newInstance(value)
+
+        val noArg = eventClass.constructors.firstOrNull { it.parameterTypes.isEmpty() }
+            ?: error("BYDAutoEventValue sem construtor int ou vazio: ${eventClass.constructors.joinToString { it.toGenericString() }}")
+        val event = noArg.newInstance()
+        val intField = generateSequence(eventClass as Class<*>?) { it.superclass }
+            .flatMap { it.declaredFields.asSequence() }
+            .firstOrNull { it.name == "intValue" && it.type == Int::class.javaPrimitiveType }
+            ?: error("BYDAutoEventValue não expõe campo intValue")
+        intField.isAccessible = true
+        intField.setInt(event, value)
+        return event
     }
 }
