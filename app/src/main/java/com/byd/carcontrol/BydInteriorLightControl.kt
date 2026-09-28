@@ -9,6 +9,7 @@ object BydInteriorLightControl {
 
     data class Result(
         val accepted: Boolean,
+        val requestedState: Int,
         val observedState: Int?,
         val doorState: Int?,
         val detail: String
@@ -30,19 +31,15 @@ object BydInteriorLightControl {
             .getMethod("turnOffInsideLight", Int::class.javaPrimitiveType)
             .invoke(instance, state)
 
-        // BYD setters use nonnegative command status codes; the readback below is kept separate.
-        val accepted = when (result) {
-            null -> true
-            is Boolean -> result
-            is Number -> result.toInt() >= 0
-            else -> true
-        }
+        // BYDAutoManager.BYDAUTO_COMMAND_RESULT_SUCCESS is exactly 0.
+        val accepted = result is Number && result.toInt() == 0
         val observedState = runCatching { readIntFeature(deviceClass, instance, INTERIOR_LIGHT_STATE_FID) }.getOrNull()
         val doorState = runCatching {
             (deviceClass.getMethod("getInsideLightDoorState").invoke(instance) as? Number)?.toInt()
         }.getOrNull()
         return Result(
             accepted,
+            state,
             observedState,
             doorState,
             "$methodName retorno=${result ?: "void"}; " +

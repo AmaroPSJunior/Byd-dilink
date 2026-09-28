@@ -401,10 +401,13 @@ class MainActivity : AppCompatActivity() {
                 btnInteriorLightOff.isEnabled = true
                 txtInteriorLightProbe.text = result.fold(
                     onSuccess = { response ->
-                        if (response.accepted) {
-                            "Comando $action aceito pelo HAL BYD (${response.detail}). A leitura é somente o valor bruto do FID de estado, sem interpretação presumida."
-                        } else {
+                        when {
+                            !response.accepted ->
                             "O HAL BYD recusou o comando para $action (${response.detail})."
+                            response.observedState == response.requestedState ->
+                                "Comando $action aceito; o HAL reporta o estado solicitado (${response.detail})."
+                            else ->
+                                "Comando $action aceito pelo HAL, mas o estado pedido (${response.requestedState}) não apareceu na leitura (${response.detail}); efeito da lâmpada não confirmado."
                         }
                     },
                     onFailure = { error ->
