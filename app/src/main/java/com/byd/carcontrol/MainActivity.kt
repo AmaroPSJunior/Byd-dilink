@@ -72,6 +72,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnRunHalInspector: Button
     private lateinit var btnReadDrivingState: Button
     private lateinit var btnReadAccelerometer: Button
+    private lateinit var btnOpenHvac: Button
     private lateinit var btnCheckPermissions: Button
     private lateinit var btnExportReport: Button
     private lateinit var btnCopyInParts: Button
@@ -163,6 +164,7 @@ class MainActivity : AppCompatActivity() {
         btnRunHalInspector = findViewById(R.id.btnRunHalInspector)
         btnReadDrivingState = findViewById(R.id.btnReadDrivingState)
         btnReadAccelerometer = findViewById(R.id.btnReadAccelerometer)
+        btnOpenHvac = findViewById(R.id.btnOpenHvac)
         btnCheckPermissions = findViewById(R.id.btnCheckPermissions)
         btnExportReport = findViewById(R.id.btnExportReport)
         btnCopyInParts = findViewById(R.id.btnCopyInParts)
@@ -225,6 +227,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupDiagnosticListeners() {
+        btnOpenHvac.setOnClickListener {
+            try {
+                startActivity(Intent("OPEN_AIR_CONDITIONING").setPackage("com.byd.airconditioning"))
+                appendLog("Abrindo o painel OEM de climatização; nenhum valor HVAC foi enviado pelo app.")
+            } catch (t: Throwable) {
+                appendLog("Painel HVAC OEM indisponível: ${t.javaClass.simpleName}: ${t.message}")
+            }
+        }
+
         btnReadAccelerometer.setOnClickListener {
             appendLog("Lendo acelerômetro inercial Android da central (não é telemetria CAN)...")
             HeadUnitSensorReader.readAccelerometer(this) { result ->

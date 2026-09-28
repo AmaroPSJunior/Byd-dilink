@@ -232,7 +232,14 @@ não deve ser apresentado como velocidade ou marcha. O getter BYD de estado de
 condução continua disponível como valor bruto. A tela Car Status do Magic
 Manager é, por enquanto, o caminho autorizado confirmado para estados de
 portas e iluminação; o provider dela continua protegido para o UID do nosso
-app.
+app. A compilação `1.0.33` foi instalada e o botão retornou
+`icm42670-accel = (9.794679, -0.011971, 0.0) m/s²`, com timestamp monotônico
+`118873038081038 ns`.
+
+O app também passa a abrir o painel OEM pelo intent público
+`OPEN_AIR_CONDITIONING` do pacote `com.byd.airconditioning`. A resolução do
+intent foi confirmada no firmware. O botão apenas abre a interface oficial;
+não envia valores HVAC nem chama os métodos `BYDAUTO_AC_SET` diretamente.
 
 ## Referências locais da análise
 

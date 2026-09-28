@@ -38,6 +38,7 @@
         <package android:name="com.byd.bluetoothprovider" />
         <package android:name="com.byd.auto" />
         <package android:name="com.byd.carsettings" />
+        <package android:name="com.byd.airconditioning" />
         <package android:name="com.byd.service" />
         <package android:name="com.byd.autoui" />
         <package android:name="com.byd.systemui" />

@@ -137,6 +137,17 @@
                     android:textStyle="bold"
                     android:textColor="#ffffff"
                     android:backgroundTint="#475569" />
+
+                <Button
+                    android:id="@+id/btnOpenHvac"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginTop="8dp"
+                    android:text="❄ ABRIR CLIMATIZAÇÃO NATIVA BYD"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#0369a1" />
             </LinearLayout>
 
             <!-- 2️⃣ SEÇÃO 2: PERMISSÕES -->
