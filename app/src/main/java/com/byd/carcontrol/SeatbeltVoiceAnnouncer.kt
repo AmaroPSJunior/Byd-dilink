@@ -10,13 +10,8 @@ class SeatbeltVoiceAnnouncer(context: Context) {
     private val appContext = context.applicationContext
     private val pending = ArrayDeque<Int>()
     private var player: MediaPlayer? = null
-    private val prompts = mapOf(
-        "SAFETY_BELT_AREA_MAIN" to R.raw.seat_driver,
-        "SAFETY_BELT_AREA_DEPUTY" to R.raw.seat_front_passenger,
-        "SAFETY_BELT_AREA_SECOND_ROW_SEAT_LEFT" to R.raw.seat_rear_left,
-        "SAFETY_BELT_AREA_SECOND_ROW_SEAT_MID" to R.raw.seat_rear_middle,
-        "SAFETY_BELT_AREA_SECOND_ROW_SEAT_RIGHT" to R.raw.seat_rear_right
-    )
+    // BYD VoiceReminder's native Brazilian Portuguese prompt, more natural than synthesized eSpeak.
+    private val prompts = mapOf("SAFETY_BELT_AREA_MAIN" to R.raw.seat_driver)
 
     fun announce(seats: List<BydSeatbeltReader.Seat>) {
         seats.mapNotNull { prompts[it.key] }.forEach(pending::addLast)
@@ -24,6 +19,13 @@ class SeatbeltVoiceAnnouncer(context: Context) {
     }
 
     fun release() {
+        pending.clear()
+        player?.setOnCompletionListener(null)
+        player?.release()
+        player = null
+    }
+
+    fun stop() {
         pending.clear()
         player?.setOnCompletionListener(null)
         player?.release()

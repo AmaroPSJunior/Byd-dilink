@@ -19,6 +19,8 @@ import android.util.Log
 import android.view.View
 import android.view.accessibility.AccessibilityManager
 import android.widget.Button
+import android.widget.EditText
+import android.widget.CompoundButton
 import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
@@ -91,6 +93,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnHvacOff: Button
     private lateinit var btnReadSeatbelt: Button
     private lateinit var txtSeatbeltAccessStatus: TextView
+    private lateinit var switchSeatbeltAudio: CompoundButton
+    private lateinit var editSeatbeltSpeed: EditText
+    private var seatbeltVoiceEnabled = true
+    private var seatbeltAlertSpeedKmh = 10
     private lateinit var seatbeltDiagram: SeatbeltStatusView
     private lateinit var btnInteriorLightOn: Button
     private lateinit var btnInteriorLightOff: Button
@@ -121,7 +127,8 @@ class MainActivity : AppCompatActivity() {
         val label: TextView,
         val seek: SeekBar,
         val open: Button,
-        val close: Button
+        val close: Button,
+        val apply: Button
     )
 
     private val logHistory = mutableListOf<String>()
@@ -199,6 +206,13 @@ class MainActivity : AppCompatActivity() {
         btnHvacOff = findViewById(R.id.btnHvacOff)
         btnReadSeatbelt = findViewById(R.id.btnReadSeatbelt)
         txtSeatbeltAccessStatus = findViewById(R.id.txtSeatbeltAccessStatus)
+        switchSeatbeltAudio = findViewById(R.id.switchSeatbeltAudio)
+        editSeatbeltSpeed = findViewById(R.id.editSeatbeltSpeed)
+        val beltPrefs = getSharedPreferences("seatbelt_alerts", MODE_PRIVATE)
+        seatbeltVoiceEnabled = beltPrefs.getBoolean("voice_enabled", true)
+        seatbeltAlertSpeedKmh = beltPrefs.getInt("alert_speed_kmh", 10).coerceIn(1, 200)
+        switchSeatbeltAudio.isChecked = seatbeltVoiceEnabled
+        editSeatbeltSpeed.setText(seatbeltAlertSpeedKmh.toString())
         seatbeltDiagram = findViewById(R.id.seatbeltDiagram)
         btnInteriorLightOn = findViewById(R.id.btnInteriorLightOn)
         btnInteriorLightOff = findViewById(R.id.btnInteriorLightOff)
@@ -211,10 +225,10 @@ class MainActivity : AppCompatActivity() {
         txtClimateAdjustmentStatus = findViewById(R.id.txtClimateAdjustmentStatus)
         txtWindowCommandStatus = findViewById(R.id.txtWindowCommandStatus)
         windowViews = listOf(
-            WindowUi(BydWindowControl.Window.DRIVER_FRONT, findViewById(R.id.txtWindowDriverFront), findViewById(R.id.seekWindowDriverFront), findViewById(R.id.btnWindowDriverFrontOpen), findViewById(R.id.btnWindowDriverFrontClose)),
-            WindowUi(BydWindowControl.Window.PASSENGER_FRONT, findViewById(R.id.txtWindowPassengerFront), findViewById(R.id.seekWindowPassengerFront), findViewById(R.id.btnWindowPassengerFrontOpen), findViewById(R.id.btnWindowPassengerFrontClose)),
-            WindowUi(BydWindowControl.Window.DRIVER_REAR, findViewById(R.id.txtWindowDriverRear), findViewById(R.id.seekWindowDriverRear), findViewById(R.id.btnWindowDriverRearOpen), findViewById(R.id.btnWindowDriverRearClose)),
-            WindowUi(BydWindowControl.Window.PASSENGER_REAR, findViewById(R.id.txtWindowPassengerRear), findViewById(R.id.seekWindowPassengerRear), findViewById(R.id.btnWindowPassengerRearOpen), findViewById(R.id.btnWindowPassengerRearClose))
+            WindowUi(BydWindowControl.Window.DRIVER_FRONT, findViewById(R.id.txtWindowDriverFront), findViewById(R.id.seekWindowDriverFront), findViewById(R.id.btnWindowDriverFrontOpen), findViewById(R.id.btnWindowDriverFrontClose), findViewById(R.id.btnWindowDriverFrontApply)),
+            WindowUi(BydWindowControl.Window.PASSENGER_FRONT, findViewById(R.id.txtWindowPassengerFront), findViewById(R.id.seekWindowPassengerFront), findViewById(R.id.btnWindowPassengerFrontOpen), findViewById(R.id.btnWindowPassengerFrontClose), findViewById(R.id.btnWindowPassengerFrontApply)),
+            WindowUi(BydWindowControl.Window.DRIVER_REAR, findViewById(R.id.txtWindowDriverRear), findViewById(R.id.seekWindowDriverRear), findViewById(R.id.btnWindowDriverRearOpen), findViewById(R.id.btnWindowDriverRearClose), findViewById(R.id.btnWindowDriverRearApply)),
+            WindowUi(BydWindowControl.Window.PASSENGER_REAR, findViewById(R.id.txtWindowPassengerRear), findViewById(R.id.seekWindowPassengerRear), findViewById(R.id.btnWindowPassengerRearOpen), findViewById(R.id.btnWindowPassengerRearClose), findViewById(R.id.btnWindowPassengerRearApply))
         )
         btnOpenSunshade = findViewById(R.id.btnOpenSunshade)
         btnCloseSunshade = findViewById(R.id.btnCloseSunshade)
@@ -445,6 +459,19 @@ class MainActivity : AppCompatActivity() {
         btnReadSeatbelt.setOnClickListener {
             readAndRenderSeatbeltState()
         }
+        switchSeatbeltAudio.setOnCheckedChangeListener { _, enabled ->
+            seatbeltVoiceEnabled = enabled
+            getSharedPreferences("seatbelt_alerts", MODE_PRIVATE).edit().putBoolean("voice_enabled", enabled).apply()
+            if (!enabled) seatbeltVoiceAnnouncer?.stop()
+            else {
+                previouslyUnbuckled = emptySet()
+                readAndRenderSeatbeltState()
+            }
+        }
+        editSeatbeltSpeed.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) saveSeatbeltAlertSpeed()
+        }
+        editSeatbeltSpeed.setOnEditorActionListener { _, _, _ -> saveSeatbeltAlertSpeed(); false }
         btnInteriorLightOn.setOnClickListener { requestInteriorLightPower(true) }
         btnInteriorLightOff.setOnClickListener { requestInteriorLightPower(false) }
         btnOpenSunshade.setOnClickListener {
@@ -474,9 +501,10 @@ class MainActivity : AppCompatActivity() {
         windowViews.forEach { ui ->
             ui.open.setOnClickListener { sendWindowCommand(ui, target = 100, fullTravel = true) }
             ui.close.setOnClickListener { sendWindowCommand(ui, target = 0, fullTravel = true) }
+            ui.apply.setOnClickListener { sendWindowCommand(ui, ui.seek.progress, fullTravel = false) }
             ui.seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
-                    if (fromUser) ui.label.text = "${ui.window.label}: alvo $progress%"
+                    if (fromUser) ui.label.text = "${ui.window.label}: alvo $progress% (selecione APLICAR)"
                 }
                 override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
                 override fun onStopTrackingTouch(seekBar: SeekBar) {
@@ -486,7 +514,7 @@ class MainActivity : AppCompatActivity() {
                         else -> 100
                     }
                     seekBar.progress = target
-                    sendWindowCommand(ui, target, fullTravel = false)
+                    ui.label.text = "${ui.window.label}: alvo $target% — toque APLICAR"
                 }
             })
         }
@@ -836,24 +864,32 @@ class MainActivity : AppCompatActivity() {
         if (seatbeltReadInFlight) return
         seatbeltReadInFlight = true
         Thread {
-            val result = runCatching { BydSeatbeltReader.readAll(this) }
+            val result = runCatching {
+                val belt = BydSeatbeltReader.readAll(this)
+                val speed = runCatching { BydVehicleSpeedReader.readKmh(this) }.getOrNull()
+                belt to speed
+            }
             runOnUiThread {
                 seatbeltReadInFlight = false
-                result.onSuccess { state ->
+                result.onSuccess { (state, speed) ->
                     val byName = state.seats.associate { it.key to it.raw }
                     seatbeltDiagram.setSeatStates(byName)
                     val unbuckled = state.seats.filter { it.raw == 2 }
                     val unavailable = state.seats.filter { it.raw == 0 }
+                    val speedEligible = speed != null && speed.isFinite() && speed >= seatbeltAlertSpeedKmh
+                    val eligibleWarnings = if (speedEligible) unbuckled else emptyList()
                     txtSeatbeltAccessStatus.text = buildString {
-                        if (unbuckled.isEmpty()) append("✓ Nenhum cinto detectado como desafivelado.")
+                        if (unbuckled.isEmpty()) append("✓ Cinto do motorista não está reportado como desafivelado.")
                         else append("⚠ Desafivelados: ${unbuckled.joinToString { it.label }}.")
                         if (unavailable.isNotEmpty()) append(" Estado indisponível: ${unavailable.joinToString { it.label }}.")
-                        append(" Avisos de voz em português ativos.")
+                        append(" Velocidade: ${speed?.let { "%.0f".format(Locale.getDefault(), it) + " km/h" } ?: "indisponível"}; alerta a partir de $seatbeltAlertSpeedKmh km/h.")
+                        if (seatbeltVoiceEnabled) append(if (speedEligible) " Aviso sonoro habilitado." else " Abaixo do limite, sem aviso sonoro.")
+                        else append(" Aviso sonoro desativado.")
                     }
                     txtSeatbeltAccessStatus.setTextColor(if (unbuckled.isEmpty()) Color.parseColor("#86efac") else Color.parseColor("#fca5a5"))
-                    val newWarnings = unbuckled.filter { it.key !in previouslyUnbuckled }
-                    seatbeltVoiceAnnouncer?.announce(newWarnings)
-                    previouslyUnbuckled = unbuckled.map { it.key }.toSet()
+                    val newWarnings = eligibleWarnings.filter { it.key !in previouslyUnbuckled }
+                    if (seatbeltVoiceEnabled) seatbeltVoiceAnnouncer?.announce(newWarnings)
+                    previouslyUnbuckled = if (seatbeltVoiceEnabled) eligibleWarnings.map { it.key }.toSet() else emptySet()
                 }.onFailure { error ->
                     val cause = error.cause ?: error
                     txtSeatbeltAccessStatus.text =
@@ -862,6 +898,19 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }.start()
+    }
+
+    private fun saveSeatbeltAlertSpeed() {
+        val value = editSeatbeltSpeed.text.toString().toIntOrNull()
+        if (value == null || value !in 1..200) {
+            editSeatbeltSpeed.error = "Informe uma velocidade de 1 a 200 km/h"
+            editSeatbeltSpeed.setText(seatbeltAlertSpeedKmh.toString())
+            return
+        }
+        seatbeltAlertSpeedKmh = value
+        getSharedPreferences("seatbelt_alerts", MODE_PRIVATE).edit().putInt("alert_speed_kmh", value).apply()
+        previouslyUnbuckled = emptySet()
+        txtSeatbeltAccessStatus.text = "Limite do alerta salvo: $value km/h. Os assentos sem sensor de ocupação validado não geram aviso."
     }
 
     private fun updateClimateCommandStatus() {

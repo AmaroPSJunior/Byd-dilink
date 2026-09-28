@@ -19,18 +19,11 @@ object BydSeatbeltReader {
             ?: error("BYDAutoSafetyBeltDevice.getInstance retornou null")
         fun constant(name: String): Int = deviceClass.getField(name).getInt(null)
         val getter = deviceClass.getMethod("getSafetyBeltStatus", Int::class.javaPrimitiveType)
-        val names = listOf(
-            listOf("SAFETY_BELT_AREA_MAIN") to ("SAFETY_BELT_AREA_MAIN" to "Motorista"),
-            listOf("SAFETY_BELT_AREA_DEPUTY", "SAFETY_BELT_AREA_FRONT_ROW_SEAT_RIGHT") to ("SAFETY_BELT_AREA_DEPUTY" to "Passageiro dianteiro"),
-            listOf("SAFETY_BELT_AREA_SECOND_ROW_SEAT_LEFT", "SAFETY_BELT_AREA_REAR_LEFT") to ("SAFETY_BELT_AREA_SECOND_ROW_SEAT_LEFT" to "Traseiro esquerdo"),
-            listOf("SAFETY_BELT_AREA_SECOND_ROW_SEAT_MID", "SAFETY_BELT_AREA_SECOND_ROW_SEAT_MIDDLE", "SAFETY_BELT_AREA_SECOND_ROW_SEAT_CENTER") to ("SAFETY_BELT_AREA_SECOND_ROW_SEAT_MID" to "Traseiro central"),
-            listOf("SAFETY_BELT_AREA_SECOND_ROW_SEAT_RIGHT", "SAFETY_BELT_AREA_REAR_RIGHT") to ("SAFETY_BELT_AREA_SECOND_ROW_SEAT_RIGHT" to "Traseiro direito")
-        )
-        val seats = names.mapNotNull { (candidates, seat) ->
-            val (key, label) = seat
-            val field = candidates.firstNotNullOfOrNull { name -> runCatching { deviceClass.getField(name) }.getOrNull() }
-                ?: return@mapNotNull null
-            val area = runCatching { field.getInt(null) }.getOrNull() ?: return@mapNotNull null
+        // Only the main/driver area was verified against live vehicle behavior.
+        // Other area values appeared to change without corresponding belt activity.
+        val seats = listOf("SAFETY_BELT_AREA_MAIN" to "Motorista").map { (key, label) ->
+            val field = deviceClass.getField(key)
+            val area = field.getInt(null)
             val raw = (getter.invoke(instance, area) as? Number)?.toInt()
                 ?: error("getSafetyBeltStatus(${field.name}) não retornou um número")
             val normalized = when (raw) {

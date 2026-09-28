@@ -421,7 +421,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:layout_marginBottom="8dp"
-                    android:text="Controles individuais. A API OEM confirmada oferece fechar, meia abertura e abertura total; ao soltar a barra, o valor é aplicado ao preset suportado mais próximo. Requer velocidade zero e P."
+                    android:text="Controles individuais. Selecione a posição na barra e toque APLICAR. O carro oferece presets OEM de fechado, meia abertura e aberto; alvos intermediários usam meia abertura. Requer velocidade zero e P."
                     android:textColor="#cbd5e1"
                     android:textSize="12sp" />
 
@@ -431,6 +431,7 @@
                     <Button android:id="@+id/btnWindowDriverFrontOpen" android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1" android:layout_marginStart="8dp" android:text="ABRIR" android:textColor="#ffffff" android:backgroundTint="#059669" />
                 </LinearLayout>
                 <SeekBar android:id="@+id/seekWindowDriverFront" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="100" android:contentDescription="Posição do vidro dianteiro do motorista" />
+                <Button android:id="@+id/btnWindowDriverFrontApply" android:layout_width="match_parent" android:layout_height="44dp" android:text="APLICAR POSIÇÃO" android:textColor="#ffffff" android:backgroundTint="#2563eb" android:contentDescription="Aplicar posição do vidro dianteiro do motorista" />
 
                 <TextView android:id="@+id/txtWindowPassengerFront" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="Passageiro — dianteiro direito: leitura…" android:textColor="#e2e8f0" android:textStyle="bold" android:textSize="12sp" />
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
@@ -438,6 +439,7 @@
                     <Button android:id="@+id/btnWindowPassengerFrontOpen" android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1" android:layout_marginStart="8dp" android:text="ABRIR" android:textColor="#ffffff" android:backgroundTint="#059669" />
                 </LinearLayout>
                 <SeekBar android:id="@+id/seekWindowPassengerFront" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="100" android:contentDescription="Posição do vidro dianteiro do passageiro" />
+                <Button android:id="@+id/btnWindowPassengerFrontApply" android:layout_width="match_parent" android:layout_height="44dp" android:text="APLICAR POSIÇÃO" android:textColor="#ffffff" android:backgroundTint="#2563eb" android:contentDescription="Aplicar posição do vidro dianteiro do passageiro" />
 
                 <TextView android:id="@+id/txtWindowDriverRear" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="Motorista — traseiro esquerdo: leitura…" android:textColor="#e2e8f0" android:textStyle="bold" android:textSize="12sp" />
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
@@ -445,6 +447,7 @@
                     <Button android:id="@+id/btnWindowDriverRearOpen" android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1" android:layout_marginStart="8dp" android:text="ABRIR" android:textColor="#ffffff" android:backgroundTint="#059669" />
                 </LinearLayout>
                 <SeekBar android:id="@+id/seekWindowDriverRear" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="100" android:contentDescription="Posição do vidro traseiro do motorista" />
+                <Button android:id="@+id/btnWindowDriverRearApply" android:layout_width="match_parent" android:layout_height="44dp" android:text="APLICAR POSIÇÃO" android:textColor="#ffffff" android:backgroundTint="#2563eb" android:contentDescription="Aplicar posição do vidro traseiro do motorista" />
 
                 <TextView android:id="@+id/txtWindowPassengerRear" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="Passageiro — traseiro direito: leitura…" android:textColor="#e2e8f0" android:textStyle="bold" android:textSize="12sp" />
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
@@ -452,6 +455,7 @@
                     <Button android:id="@+id/btnWindowPassengerRearOpen" android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1" android:layout_marginStart="8dp" android:text="ABRIR" android:textColor="#ffffff" android:backgroundTint="#059669" />
                 </LinearLayout>
                 <SeekBar android:id="@+id/seekWindowPassengerRear" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="100" android:contentDescription="Posição do vidro traseiro do passageiro" />
+                <Button android:id="@+id/btnWindowPassengerRearApply" android:layout_width="match_parent" android:layout_height="44dp" android:text="APLICAR POSIÇÃO" android:textColor="#ffffff" android:backgroundTint="#2563eb" android:contentDescription="Aplicar posição do vidro traseiro do passageiro" />
 
                 <TextView android:id="@+id/txtWindowCommandStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="Nenhum comando dos vidros enviado nesta sessão." android:textColor="#94a3b8" android:textSize="11sp" />
             </LinearLayout>
@@ -591,9 +595,36 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:layout_marginBottom="10dp"
-                    android:text="Leitura periódica somente pelo BYDAutoSafetyBeltDevice. Verde: afivelado; vermelho: desafivelado; cinza: sem leitura. Uma mensagem de voz em português será reproduzida quando um cinto passar para desafivelado."
+                    android:text="Somente o cinto do motorista foi validado; os demais assentos ficam sem leitura. O alerta exige cinto do motorista desafivelado e velocidade igual ou superior ao limite. A ocupação por peso dos demais assentos não está disponível na API confirmada."
                     android:textColor="#cbd5e1"
                     android:textSize="12sp" />
+
+                <Switch
+                    android:id="@+id/switchSeatbeltAudio"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="AVISO SONORO DO CINTO"
+                    android:textColor="#e2e8f0"
+                    android:checked="true" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Velocidade mínima do alerta (km/h) — motorista"
+                    android:textColor="#cbd5e1"
+                    android:textSize="12sp" />
+
+                <EditText
+                    android:id="@+id/editSeatbeltSpeed"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:inputType="number"
+                    android:maxLength="3"
+                    android:singleLine="true"
+                    android:text="10"
+                    android:textColor="#ffffff"
+                    android:hint="10 km/h"
+                    android:importantForAutofill="no" />
 
                 <Button
                     android:id="@+id/btnReadSeatbelt"
