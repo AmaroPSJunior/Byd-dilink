@@ -236,9 +236,15 @@ app. A compilação `1.0.33` foi instalada e o botão retornou
 `icm42670-accel = (9.794679, -0.011971, 0.0) m/s²`, com timestamp monotônico
 `118873038081038 ns`.
 
-O app também passa a abrir o painel OEM pelo intent público
+O Package Manager concedeu ao `com.byd.carcontrol` a permissão perigosa
+`cc.omycar.magiccore.permission.API`, declarada no manifesto. Isso não concede
+`INTERACT_ACROSS_USERS_FULL`, que protege o provider do Magic Manager; o app
+continua sem acesso direto ao Binder desse provider.
+
+A versão `1.0.34` também abre o painel OEM pelo intent público
 `OPEN_AIR_CONDITIONING` do pacote `com.byd.airconditioning`. A resolução do
-intent foi confirmada no firmware. O botão apenas abre a interface oficial;
+intent foi confirmada no firmware e o botão foi acionado a partir do nosso app.
+Ele apenas abre a interface oficial;
 não envia valores HVAC nem chama os métodos `BYDAUTO_AC_SET` diretamente.
 
 ## Referências locais da análise
