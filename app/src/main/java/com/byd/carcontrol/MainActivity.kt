@@ -201,6 +201,7 @@ class MainActivity : AppCompatActivity() {
             btnTabDiagnostic.setTextColor(Color.parseColor("#94a3b8"))
             updateControlsUI()
             startSeatbeltPolling()
+            refreshSunshadePosition()
         }
     }
 
@@ -413,6 +414,18 @@ class MainActivity : AppCompatActivity() {
         btnApplySunshadePosition.setOnClickListener {
             confirmSunshadePosition(seekSunshadePosition.progress)
         }
+    }
+
+    private fun refreshSunshadePosition() {
+        Thread {
+            val percent = BydSunshadeControl.readPosition(this)
+            runOnUiThread {
+                if (percent != null && !seekSunshadePosition.isPressed) {
+                    seekSunshadePosition.progress = percent
+                    txtSunshadePercent.text = "POSIÇÃO LIDA: $percent%"
+                }
+            }
+        }.start()
     }
 
     private fun confirmSunshadePosition(percent: Int) {
