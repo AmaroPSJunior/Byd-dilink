@@ -6,19 +6,24 @@ import android.content.Context
 object BydSunshadeControl {
     private const val DEVICE_CLASS = "android.hardware.bydauto.bodywork.BYDAutoBodyworkDevice"
     private const val SPEED_DEVICE_CLASS = "android.hardware.bydauto.speed.BYDAutoSpeedDevice"
+    private const val GEARBOX_DEVICE_CLASS = "android.hardware.bydauto.gearbox.BYDAutoGearboxDevice"
     private const val SPEED_FEATURE_HEX = "94400008" // OEM SPEED_AUTO_SPEED
     private const val SUNSHADE_AREA = 6
     private const val OPEN_PERCENT = 100
+    private const val PARK_GEAR = 3
 
-    data class Result(val accepted: Boolean, val percent: Int?, val speedKmh: Double?, val detail: String)
+    data class Result(val accepted: Boolean, val percent: Int?, val speedKmh: Double?, val gear: Int?, val detail: String)
 
     fun open(context: Context): Result {
         val sdkContext = BydAutoReadContext(context.applicationContext)
         val speed = readSpeedKmh(sdkContext)
-            ?: return Result(false, null, null, "Leitura de velocidade indisponível; comando recusado por segurança.")
+            ?: return Result(false, null, null, null, "Leitura de velocidade indisponível; comando recusado por segurança.")
         if (!speed.isFinite() || speed > 0.5 || speed < -0.5) {
-            return Result(false, null, speed, "Veículo em movimento ($speed km/h); abertura recusada.")
+            return Result(false, null, speed, null, "Veículo em movimento ($speed km/h); abertura recusada.")
         }
+        val gear = readGear(sdkContext)
+            ?: return Result(false, null, speed, null, "Marcha indisponível; para segurança, a abertura exige P.")
+        if (gear != PARK_GEAR) return Result(false, null, speed, gear, "A abertura exige P; marcha reportada=$gear.")
 
         val deviceClass = Class.forName(DEVICE_CLASS)
         val instance = deviceClass.getMethod("getInstance", Context::class.java)
@@ -30,15 +35,22 @@ object BydSunshadeControl {
         val permit = (deviceClass.getMethod("getWindowPermitState").invoke(instance) as Number).toInt()
         val initialized = (deviceClass.getMethod("getWindoblindInitState").invoke(instance) as Number).toInt()
         if (permit != 1 || initialized != 1) {
-            return Result(false, readPercent(deviceClass, instance), speed, "A API OEM bloqueia abertura: permissão=$permit, inicialização=$initialized.")
+            return Result(false, readPercent(deviceClass, instance), speed, gear, "A API OEM bloqueia abertura: permissão=$permit, inicialização=$initialized.")
         }
 
         val method = deviceClass.getMethod("setSunshadeState", Int::class.javaPrimitiveType)
         val result = method.invoke(instance, OPEN_PERCENT)
         val percent = readPercent(deviceClass, instance)
         // This OEM setter is void; distinguish successful invocation from a verified position.
-        return Result(true, percent, speed, "setSunshadeState(100) executado a $speed km/h; retorno=${result ?: "void"}; posição=${percent ?: "indisponível"}%.")
+        return Result(true, percent, speed, gear, "setSunshadeState(100) executado em P e a $speed km/h; retorno=${result ?: "void"}; posição=${percent ?: "indisponível"}%.")
     }
+
+    private fun readGear(context: Context): Int? = runCatching {
+        val gearClass = Class.forName(GEARBOX_DEVICE_CLASS)
+        val instance = gearClass.getMethod("getInstance", Context::class.java).invoke(null, context)
+            ?: error("BYDAutoGearboxDevice.getInstance retornou null")
+        (gearClass.getMethod("getCurrentGear").invoke(instance) as Number).toInt()
+    }.getOrNull()
 
     private fun readSpeedKmh(context: Context): Double? = runCatching {
         val speedClass = Class.forName(SPEED_DEVICE_CLASS)
