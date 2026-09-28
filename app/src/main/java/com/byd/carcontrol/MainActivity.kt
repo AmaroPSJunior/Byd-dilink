@@ -555,7 +555,7 @@ class MainActivity : AppCompatActivity() {
         result.onSuccess { txtClimateAdjustmentStatus.text = it }
             .onFailure { error -> txtClimateAdjustmentStatus.text = "Comando HVAC falhou: ${error.cause?.message ?: error.message}" }
         snapshot.onSuccess(::renderClimateAdjustmentState)
-            .onFailure { error -> txtClimateAdjustmentStatus.text += " Leitura: ${error.cause?.message ?: error.message}" }
+            .onFailure { error -> txtClimateAdjustmentStatus.text = "${txtClimateAdjustmentStatus.text} Leitura: ${error.cause?.message ?: error.message}" }
     }
 
     private fun renderClimateAdjustmentState(snapshot: BydClimateAdjustment.Snapshot) {
