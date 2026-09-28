@@ -28,9 +28,9 @@ object BydClimateAdjustment {
         val displayedTemperature = managerClass.getMethod("getMainTemperatureValue").invoke(manager)?.toString()
         val step = readTemperatureStep(context)
         val celsius = displayedTemperature?.toDoubleOrNull()?.let { value ->
-            if (unit == 0) value else (value - 32.0) * 5.0 / 9.0
+            if (unit == 0) (value - 32.0) * 5.0 / 9.0 else value
         }?.coerceIn(17.0, maxC.toDouble())
-        val unitName = if (unit == 0) "°C" else "°F (convertido para °C na interface)"
+        val unitName = if (unit == 0) "°F (convertido para °C na interface)" else "°C"
         return Snapshot(wind, celsius, maxC, step,
             "getWindLevel=$wind; temperatura OEM=${displayedTemperature ?: "indisponível"} $unitName; resolução=${step}°C; aquecimento=$hasHeating")
     }
@@ -53,7 +53,7 @@ object BydClimateAdjustment {
         require(celsius in 17.0..maxC) { "Temperatura permitida: 17–${maxC.toInt()} °C." }
         val step = readTemperatureStep(context)
         val roundedC = (celsius / step).roundToInt() * step
-        val requested = if (unit == 0) roundedC else roundedC * 9.0 / 5.0 + 32.0
+        val requested = if (unit == 0) roundedC * 9.0 / 5.0 + 32.0 else roundedC
         val value = String.format(Locale.US, "%.1f", requested).removeSuffix(".0")
         type.getMethod("processMainTemperatureChanged", String::class.java).invoke(manager, value)
         return "Comando OEM processMainTemperatureChanged($value) enviado (${roundedC} °C solicitados)."
