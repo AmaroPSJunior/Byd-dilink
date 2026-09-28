@@ -30,10 +30,10 @@
     <section>
       <h2>Ar-condicionado</h2>
       <div class="row"><button class="green" onclick="command('/api/climate/power',{on:true})">Ligar</button><button class="red" onclick="command('/api/climate/power',{on:false})">Desligar</button></div>
-      <label>Ventilação: <span class="value" id="fanLabel">—</span></label><input id="fan" type="range" min="1" max="7" step="1" value="1" oninput="fanLabel.textContent=this.value+'/7'">
-      <button onclick="command('/api/climate/fan',{level:+fan.value})">Aplicar ventilação</button>
-      <label>Temperatura: <span class="value" id="tempLabel">22 °C</span></label><input id="temp" type="range" min="17" max="33" step="1" value="22" oninput="tempLabel.textContent=this.value+' °C'">
-      <button onclick="command('/api/climate/temperature',{celsius:+temp.value})">Aplicar temperatura</button><p id="climateStatus" class="status"></p>
+      <label>Ventilação: <span class="value" id="fanLabel">—</span></label><input id="fan" type="range" min="1" max="7" step="1" value="1" onpointerdown="markDirty('fan')" onfocus="markDirty('fan')" oninput="fanLabel.textContent=this.value+'/7'">
+      <button onclick="applyFan()">Aplicar ventilação</button>
+      <label>Temperatura: <span class="value" id="tempLabel">22 °C</span></label><input id="temp" type="range" min="17" max="33" step="1" value="22" onpointerdown="markDirty('temp')" onfocus="markDirty('temp')" oninput="tempLabel.textContent=this.value+' °C'">
+      <button onclick="applyTemperature()">Aplicar temperatura</button><p id="climateStatus" class="status"></p>
     </section>
     <section>
       <h2>Persiana do teto</h2>
@@ -51,7 +51,7 @@
     <section>
       <h2>Cinto e alerta sonoro</h2><p>Motorista: <span class="value" id="beltState">lendo…</span></p><p>Velocidade: <span class="value" id="speedState">—</span></p>
       <label class="row"><span>Alerta sonoro ativo</span><input id="beltAudio" type="checkbox" onchange="saveBeltPrefs()"></label>
-      <label>Velocidade mínima do alerta (km/h)</label><input id="beltSpeed" type="number" min="1" max="200" value="10"><button onclick="saveBeltPrefs()">Salvar alerta</button>
+      <label>Velocidade mínima do alerta (km/h)</label><input id="beltSpeed" type="number" min="1" max="200" value="10" oninput="markDirty('beltSpeed')"><button onclick="saveBeltPrefs()">Salvar alerta</button>
       <p class="muted">Leitura validada somente para o motorista. Ocupação/peso dos outros assentos não está disponível pela API confirmada.</p><p id="beltStatus" class="status"></p>
     </section>
   </div>
@@ -69,13 +69,15 @@
     async function windowCommand(key,position){dirtyControls.delete('slider-'+key);await command('/api/windows/'+key,{position})}
     async function applyShade(){if(await command('/api/sunshade',{position:+shade.value}))dirtyControls.delete('shade')}
     async function shadeCommand(position){dirtyControls.delete('shade');await command('/api/sunshade',{position})}
-    async function saveBeltPrefs(){const speed=+beltSpeed.value;try{const r=await api('/api/belt-alerts',{enabled:beltAudio.checked,speedKmh:speed});setStatus('beltStatus',r.message,true)}catch(e){setStatus('beltStatus',e.message,false)}}
+    async function applyFan(){if(await command('/api/climate/fan',{level:+fan.value}))dirtyControls.delete('fan')}
+    async function applyTemperature(){if(await command('/api/climate/temperature',{celsius:+temp.value}))dirtyControls.delete('temp')}
+    async function saveBeltPrefs(){const speed=+beltSpeed.value;try{const r=await api('/api/belt-alerts',{enabled:beltAudio.checked,speedKmh:speed});setStatus('beltStatus',r.message,true);dirtyControls.delete('beltSpeed')}catch(e){setStatus('beltStatus',e.message,false)}}
     async function refresh(){try{const s=await api('/api/state');document.getElementById('connection').textContent='central conectada';
-      if(s.climate){fan.value=s.climate.fanLevel||1;fanLabel.textContent=s.climate.fanLevel===0?'desligada':s.climate.fanLevel+'/7';temp.max=s.climate.maxTemperatureCelsius||33;temp.step=s.climate.stepCelsius||1;if(s.climate.temperatureCelsius!=null){temp.value=s.climate.temperatureCelsius;tempLabel.textContent=s.climate.temperatureCelsius+' °C'}}
+      if(s.climate){if(!dirtyControls.has('fan')){fan.value=s.climate.fanLevel||1;fanLabel.textContent=s.climate.fanLevel===0?'desligada':s.climate.fanLevel+'/7'}temp.max=s.climate.maxTemperatureCelsius||33;temp.step=s.climate.stepCelsius||1;if(s.climate.temperatureCelsius!=null&&!dirtyControls.has('temp')){temp.value=s.climate.temperatureCelsius;tempLabel.textContent=s.climate.temperatureCelsius+' °C'}}
       if(s.sunshade.position!=null&&!dirtyControls.has('shade')){shade.value=s.sunshade.position;shadeLabel.textContent=s.sunshade.position+'%'}
       for(const [key,w] of Object.entries(s.windows||{})){if(w.position!=null&&!dirtyControls.has('slider-'+key)){const el=document.getElementById('slider-'+key);if(el){el.value=w.position;document.getElementById('label-'+key).textContent=w.position+'%'}}}
       document.getElementById('beltState').textContent=s.belt?.status||'indisponível';document.getElementById('speedState').textContent=s.speedKmh==null?'indisponível':Math.round(s.speedKmh)+' km/h';
-      if(s.beltAlert){document.getElementById('beltAudio').checked=s.beltAlert.enabled;document.getElementById('beltSpeed').value=s.beltAlert.speedKmh}
+      if(s.beltAlert){document.getElementById('beltAudio').checked=s.beltAlert.enabled;if(!dirtyControls.has('beltSpeed'))document.getElementById('beltSpeed').value=s.beltAlert.speedKmh}
     }catch(e){document.getElementById('connection').textContent='sem conexão';setStatus('beltStatus',e.message,false)}}
     createWindows();refresh();setInterval(refresh,2500);
   </script>

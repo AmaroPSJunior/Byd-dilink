@@ -22,6 +22,8 @@ class ClimateAccessibilityService : AccessibilityService() {
     companion object {
         const val PREFS_NAME = "climate_accessibility"
         const val KEY_PENDING_POWER = "pending_power"
+        const val KEY_PENDING_FAN = "pending_fan"
+        const val KEY_PENDING_TEMPERATURE = "pending_temperature_c"
         const val KEY_REQUEST_TIME = "request_time"
         const val KEY_RESULT = "result"
 
@@ -33,7 +35,9 @@ class ClimateAccessibilityService : AccessibilityService() {
 
     private val handler = Handler(Looper.getMainLooper())
     private var gestureInProgress = false
+    private var uiCommandRunning = false
     private var verificationAttempts = 0
+    private var temperatureTaps = 0
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -55,7 +59,9 @@ class ClimateAccessibilityService : AccessibilityService() {
 
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         val desired = prefs.getInt(KEY_PENDING_POWER, -1)
-        if (desired != 0 && desired != 1) return
+        val desiredFan = prefs.getInt(KEY_PENDING_FAN, -1)
+        val desiredTemperature = prefs.getFloat(KEY_PENDING_TEMPERATURE, Float.NaN)
+        if (desired !in 0..1 && desiredFan !in 1..7 && !desiredTemperature.isFinite()) return
 
         val requestedAt = prefs.getLong(KEY_REQUEST_TIME, 0L)
         if (System.currentTimeMillis() - requestedAt > REQUEST_TIMEOUT_MS) {
@@ -65,6 +71,20 @@ class ClimateAccessibilityService : AccessibilityService() {
 
         val root = rootInActiveWindow ?: return
         if (root.packageName?.toString() != HVAC_PACKAGE) return
+        if (desiredFan in 1..7) {
+            if (uiCommandRunning) { root.recycle(); return }
+            uiCommandRunning = true
+            root.recycle()
+            adjustFan(desiredFan)
+            return
+        }
+        if (desiredTemperature.isFinite()) {
+            if (uiCommandRunning) { root.recycle(); return }
+            uiCommandRunning = true
+            root.recycle()
+            adjustTemperature(desiredTemperature.toDouble())
+            return
+        }
         val powerNode = findPowerNode(root) ?: return
 
         // On this DiLink build the OEM view is selected when HVAC is OFF.
@@ -106,22 +126,108 @@ class ClimateAccessibilityService : AccessibilityService() {
 
         val x = bounds.exactCenterX()
         val y = bounds.exactCenterY()
+        dispatchTap(x, y) {
+            verificationAttempts = 1
+            handler.postDelayed({ verifyResult() }, 1_500)
+        }
+    }
+
+    private fun adjustFan(target: Int) {
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        if (prefs.getInt(KEY_PENDING_FAN, -1) != target) return
+        val current = runCatching { BydClimateAdjustment.read(this).windLevel }.getOrNull()
+        if (current == target) {
+            finishCommand("Ventilação $target/7 confirmada pela leitura HVAC OEM.")
+            return
+        }
+        if (verificationAttempts >= 3) {
+            finishCommand("A tela OEM não confirmou a ventilação $target/7 (leitura=${current ?: "indisponível"}).")
+            return
+        }
+        val root = rootInActiveWindow
+        if (root?.packageName?.toString() != HVAC_PACKAGE) {
+            root?.recycle()
+            finishCommand("Painel HVAC OEM não está ativo; ventilação não alterada.")
+            return
+        }
+        fun nodeBounds(id: String): Rect? = try {
+            root.findAccessibilityNodeInfosByViewId("$HVAC_PACKAGE:id/$id")?.firstOrNull()?.let { node ->
+                Rect().also(node::getBoundsInScreen).also { node.recycle() }
+            }
+        } catch (_: Throwable) { null }
+        val minimum = nodeBounds("wind_min_id")
+        val maximum = nodeBounds("wind_max_id")
+        val track = nodeBounds("wind_level_id")
+        root.recycle()
+        if (minimum == null || maximum == null || track == null || maximum.left <= minimum.right) {
+            finishCommand("Não foi possível localizar a barra de ventilação OEM.")
+            return
+        }
+        val step = (maximum.left - minimum.right).toFloat() / 7f
+        val x = minimum.right + (target - 0.5f) * step
+        val y = track.exactCenterY()
+        verificationAttempts++
+        dispatchTap(x, y) { handler.postDelayed({ adjustFan(target) }, 600) }
+    }
+
+    private fun adjustTemperature(targetCelsius: Double) {
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        if (!prefs.getFloat(KEY_PENDING_TEMPERATURE, Float.NaN).isFinite()) return
+        val snapshot = runCatching { BydClimateAdjustment.read(this) }.getOrNull()
+        val current = snapshot?.temperatureCelsius
+        if (snapshot == null || current == null) {
+            finishCommand("A leitura de temperatura HVAC está indisponível; ajuste não enviado.")
+            return
+        }
+        val step = snapshot.temperatureStepCelsius.coerceAtLeast(0.5)
+        if (kotlin.math.abs(current - targetCelsius) < step / 2.0) {
+            finishCommand("Temperatura ${current} °C confirmada pela leitura HVAC OEM.")
+            return
+        }
+        if (temperatureTaps >= 32) {
+            finishCommand("O painel OEM não atingiu ${targetCelsius} °C (leitura=${current} °C).")
+            return
+        }
+        val root = rootInActiveWindow
+        if (root?.packageName?.toString() != HVAC_PACKAGE) {
+            root?.recycle()
+            finishCommand("Painel HVAC OEM não está ativo; temperatura não alterada.")
+            return
+        }
+        val id = if (targetCelsius > current) "main_arrow_plus_img" else "main_arrow_minus_img"
+        val bounds = try {
+            root.findAccessibilityNodeInfosByViewId("$HVAC_PACKAGE:id/$id")?.firstOrNull()?.let { node ->
+                Rect().also(node::getBoundsInScreen).also { node.recycle() }
+            }
+        } catch (_: Throwable) { null }
+        root.recycle()
+        if (bounds == null) {
+            finishCommand("Não foi possível localizar os controles de temperatura do motorista.")
+            return
+        }
+        temperatureTaps++
+        dispatchTap(bounds.exactCenterX(), bounds.exactCenterY()) {
+            handler.postDelayed({ adjustTemperature(targetCelsius) }, 500)
+        }
+    }
+
+    private fun dispatchTap(x: Float, y: Float, onCompleted: () -> Unit) {
+        if (x < 200 || x > 1900 || y < 100 || y > 980) {
+            finishCommand("Controle HVAC OEM fora da área esperada; nenhum toque foi enviado.")
+            return
+        }
         val path = Path().apply {
             moveTo(x, y)
-            // A zero-length stroke can be accepted by dispatchGesture but inject no tap.
             lineTo(x + 1f, y)
         }
         val gesture = GestureDescription.Builder()
             .addStroke(GestureDescription.StrokeDescription(path, 0, 90))
             .build()
-
         gestureInProgress = true
         val accepted = dispatchGesture(gesture, object : GestureResultCallback() {
             override fun onCompleted(gestureDescription: GestureDescription?) {
                 gestureInProgress = false
-                verificationAttempts = 1
-                // The OEM screen animates its HVAC state asynchronously; allow it to settle.
-                handler.postDelayed({ verifyResult() }, 1_500)
+                onCompleted()
             }
 
             override fun onCancelled(gestureDescription: GestureDescription?) {
@@ -177,10 +283,14 @@ class ClimateAccessibilityService : AccessibilityService() {
     private fun finishCommand(message: String) {
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
             .putInt(KEY_PENDING_POWER, -1)
+            .putInt(KEY_PENDING_FAN, -1)
+            .putFloat(KEY_PENDING_TEMPERATURE, Float.NaN)
             .putString(KEY_RESULT, message)
             .apply()
         gestureInProgress = false
+        uiCommandRunning = false
         verificationAttempts = 0
+        temperatureTaps = 0
     }
 
     override fun onInterrupt() {

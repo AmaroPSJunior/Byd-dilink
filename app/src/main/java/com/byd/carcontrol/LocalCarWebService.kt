@@ -227,8 +227,8 @@ private class LocalCarHttpServer(private val context: Context) : AutoCloseable {
         return try {
             val result = when {
                 path == "/api/climate/power" -> JSONObject().put("message", requestHvacPower(body.getBoolean("on")))
-                path == "/api/climate/fan" -> JSONObject().put("message", BydClimateAdjustment.setWindLevel(context, body.getInt("level")))
-                path == "/api/climate/temperature" -> JSONObject().put("message", BydClimateAdjustment.setTemperatureCelsius(context, body.getDouble("celsius")))
+                path == "/api/climate/fan" -> JSONObject().put("message", requestClimateAdjustment("fan", body.getInt("level").also { require(it in 1..7) { "A ventilação deve ficar entre 1 e 7." } }, null))
+                path == "/api/climate/temperature" -> JSONObject().put("message", requestClimateAdjustment("temperature", null, body.getDouble("celsius")))
                 path == "/api/lights/interior" -> {
                     val light = BydInteriorLightControl.setPower(context, body.getBoolean("on"))
                     JSONObject().put("accepted", light.accepted).put("confirmed", light.observedState == light.requestedState)
@@ -296,27 +296,57 @@ private class LocalCarHttpServer(private val context: Context) : AutoCloseable {
         val reason = direct.exceptionOrNull()?.cause?.message ?: direct.exceptionOrNull()?.message ?: "API OEM recusou o comando"
         if (!isClimateAccessibilityEnabled()) throw SecurityException("$reason. O serviço de acessibilidade HVAC do app não está ativo.")
 
+        return runClimateAccessibilityCommand("power", if (turnOn) 1 else 0, null, reason)
+    }
+
+    private fun requestClimateAdjustment(kind: String, level: Int?, celsius: Double?): String {
+        val direct = runCatching {
+            if (kind == "fan") BydClimateAdjustment.setWindLevel(context, requireNotNull(level))
+            else BydClimateAdjustment.setTemperatureCelsius(context, requireNotNull(celsius))
+        }
+        if (direct.isSuccess) return direct.getOrThrow()
+        val reason = direct.exceptionOrNull()?.cause?.message ?: direct.exceptionOrNull()?.message ?: "API OEM recusou o comando"
+        return runClimateAccessibilityCommand(kind, level, celsius, reason)
+    }
+
+    private fun runClimateAccessibilityCommand(kind: String, level: Int?, celsius: Double?, reason: String): String {
+        if (!isClimateAccessibilityEnabled()) throw SecurityException(
+            "$reason. Ative o serviço de acessibilidade HVAC do app para usar o painel OEM."
+        )
         val prefs = context.getSharedPreferences(ClimateAccessibilityService.PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putInt(ClimateAccessibilityService.KEY_PENDING_POWER, if (turnOn) 1 else 0)
+        prefs.edit()
+            .putInt(ClimateAccessibilityService.KEY_PENDING_POWER, if (kind == "power") level ?: -1 else -1)
+            .putInt(ClimateAccessibilityService.KEY_PENDING_FAN, if (kind == "fan") level ?: -1 else -1)
+            .putFloat(ClimateAccessibilityService.KEY_PENDING_TEMPERATURE, if (kind == "temperature") celsius!!.toFloat() else Float.NaN)
             .putLong(ClimateAccessibilityService.KEY_REQUEST_TIME, System.currentTimeMillis())
-            .putString(ClimateAccessibilityService.KEY_RESULT, "Aguardando painel HVAC OEM…").apply()
+            .putString(ClimateAccessibilityService.KEY_RESULT, "API direta recusada ($reason); aguardando painel HVAC OEM…")
+            .apply()
         try {
             context.startActivity(Intent("OPEN_AIR_CONDITIONING")
                 .setPackage("com.byd.airconditioning")
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (t: Throwable) {
-            prefs.edit().putInt(ClimateAccessibilityService.KEY_PENDING_POWER, -1).apply()
+            clearClimateRequests(prefs)
             throw IllegalStateException("API direta recusada ($reason) e não foi possível abrir o painel OEM: ${t.message}")
         }
         val deadline = System.currentTimeMillis() + 8_000
         while (System.currentTimeMillis() < deadline) {
             Thread.sleep(250)
-            if (prefs.getInt(ClimateAccessibilityService.KEY_PENDING_POWER, -1) == -1) {
-                return prefs.getString(ClimateAccessibilityService.KEY_RESULT, "Comando HVAC concluído.")
-                    ?: "Comando HVAC concluído."
+            val pending = when (kind) {
+                "power" -> prefs.getInt(ClimateAccessibilityService.KEY_PENDING_POWER, -1) != -1
+                "fan" -> prefs.getInt(ClimateAccessibilityService.KEY_PENDING_FAN, -1) != -1
+                else -> prefs.getFloat(ClimateAccessibilityService.KEY_PENDING_TEMPERATURE, Float.NaN).isFinite()
             }
+            if (!pending) return prefs.getString(ClimateAccessibilityService.KEY_RESULT, "Comando HVAC concluído.")
+                ?: "Comando HVAC concluído."
         }
-        return "Painel HVAC aberto. O serviço está aguardando a confirmação do controle OEM."
+        return "Painel HVAC aberto; aguardando confirmação do controle OEM."
+    }
+
+    private fun clearClimateRequests(prefs: android.content.SharedPreferences) {
+        prefs.edit().putInt(ClimateAccessibilityService.KEY_PENDING_POWER, -1)
+            .putInt(ClimateAccessibilityService.KEY_PENDING_FAN, -1)
+            .putFloat(ClimateAccessibilityService.KEY_PENDING_TEMPERATURE, Float.NaN).apply()
     }
 
     private fun isClimateAccessibilityEnabled(): Boolean {
