@@ -35,6 +35,20 @@ object BydClimateAdjustment {
             "getWindLevel=$wind; temperatura OEM=${displayedTemperature ?: "indisponível"} $unitName; resolução=${step}°C; aquecimento=$hasHeating")
     }
 
+    /** Uses the OEM manager API directly; no AccessibilityService or UI automation is involved. */
+    fun setPower(context: Context, enabled: Boolean): String {
+        val manager = manager(context)
+        manager.javaClass.getMethod("processAcPowerButtonClicked", Boolean::class.javaPrimitiveType)
+            .invoke(manager, enabled)
+        val raw = (manager.javaClass.getMethod("getAcPowerButtonState").invoke(manager) as Number).toInt()
+        return "API OEM processAcPowerButtonClicked($enabled) enviado; estado lido=$raw."
+    }
+
+    fun readPowerState(context: Context): Int {
+        val manager = manager(context)
+        return (manager.javaClass.getMethod("getAcPowerButtonState").invoke(manager) as Number).toInt()
+    }
+
     fun setWindLevel(context: Context, level: Int): String {
         require(level in 1..7) { "A velocidade do ventilador deve ficar entre 1 e 7." }
         val manager = manager(context)

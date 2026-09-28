@@ -1,12 +1,13 @@
 package com.byd.carcontrol
 
 import android.content.ClipData
-import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.ClipboardManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.media.AudioAttributes
+import android.speech.tts.TextToSpeech
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -14,8 +15,6 @@ import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
-import android.view.accessibility.AccessibilityManager
-import android.provider.Settings
 import android.provider.MediaStore
 import android.util.Log
 import android.view.View
@@ -92,6 +91,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnHvacOff: Button
     private lateinit var btnReadSeatbelt: Button
     private lateinit var txtSeatbeltAccessStatus: TextView
+    private lateinit var seatbeltDiagram: SeatbeltStatusView
     private lateinit var btnInteriorLightOn: Button
     private lateinit var btnInteriorLightOff: Button
     private lateinit var txtInteriorLightProbe: TextView
@@ -129,6 +129,11 @@ class MainActivity : AppCompatActivity() {
     private val seatbeltHandler = Handler(Looper.getMainLooper())
     private var seatbeltPolling = false
     private var activityResumed = false
+    private var seatbeltTts: TextToSpeech? = null
+    private var ttsReady = false
+    private var previouslyUnbuckled = emptySet<String>()
+    @Volatile private var seatbeltReadInFlight = false
+    private var hvacCommandStatus = "Climatização aguardando comando."
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -160,6 +165,15 @@ class MainActivity : AppCompatActivity() {
             setupTabs()
             setupDiagnosticListeners()
             setupControlsListeners()
+            seatbeltTts = TextToSpeech(this) { status ->
+                ttsReady = status == TextToSpeech.SUCCESS
+                if (ttsReady) {
+                    seatbeltTts?.language = Locale("pt", "BR")
+                    seatbeltTts?.setAudioAttributes(AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+                }
+            }
 
             updateHeaderInfo()
             updateControlsUI()
@@ -194,6 +208,7 @@ class MainActivity : AppCompatActivity() {
         btnHvacOff = findViewById(R.id.btnHvacOff)
         btnReadSeatbelt = findViewById(R.id.btnReadSeatbelt)
         txtSeatbeltAccessStatus = findViewById(R.id.txtSeatbeltAccessStatus)
+        seatbeltDiagram = findViewById(R.id.seatbeltDiagram)
         btnInteriorLightOn = findViewById(R.id.btnInteriorLightOn)
         btnInteriorLightOff = findViewById(R.id.btnInteriorLightOff)
         txtInteriorLightProbe = findViewById(R.id.txtInteriorLightProbe)
@@ -473,7 +488,15 @@ class MainActivity : AppCompatActivity() {
                     if (fromUser) ui.label.text = "${ui.window.label}: alvo $progress%"
                 }
                 override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
-                override fun onStopTrackingTouch(seekBar: SeekBar) { sendWindowCommand(ui, seekBar.progress, fullTravel = false) }
+                override fun onStopTrackingTouch(seekBar: SeekBar) {
+                    val target = when {
+                        seekBar.progress < 25 -> 0
+                        seekBar.progress < 75 -> 50
+                        else -> 100
+                    }
+                    seekBar.progress = target
+                    sendWindowCommand(ui, target, fullTravel = false)
+                }
             })
         }
         updateSunshadeButtons()
@@ -538,7 +561,7 @@ class MainActivity : AppCompatActivity() {
         windowCommandExecutor.execute {
             val result = runCatching {
                 if (fullTravel) BydWindowControl.setFullyOpenOrClosed(this, ui.window, target == 100)
-                else BydWindowControl.setPosition(this, ui.window, target)
+                else BydWindowControl.setPresetPosition(this, ui.window, target)
             }
             runOnUiThread {
                 result.onSuccess { txtWindowCommandStatus.text = it }
@@ -729,41 +752,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestHvacPower(turnOn: Boolean) {
-        if (!isClimateAccessibilityEnabled()) {
-            AlertDialog.Builder(this)
-                .setTitle("Ative o serviço de acessibilidade")
-                .setMessage(
-                    "Para controlar o HVAC, o serviço restrito do BYD Controller precisa ser ativado em " +
-                        "Acessibilidade. Ele só processa comandos quando o painel oficial com.byd.airconditioning está aberto."
-                )
-                .setNegativeButton("Agora não", null)
-                .setPositiveButton("Abrir configurações") { _, _ ->
-                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                }
-                .show()
-            return
-        }
-
-        getSharedPreferences(ClimateAccessibilityService.PREFS_NAME, MODE_PRIVATE).edit()
-            .putInt(ClimateAccessibilityService.KEY_PENDING_POWER, if (turnOn) 1 else 0)
-            .putLong(ClimateAccessibilityService.KEY_REQUEST_TIME, System.currentTimeMillis())
-            .putString(ClimateAccessibilityService.KEY_RESULT, "Comando enviado ao painel OEM; aguardando confirmação…")
-            .apply()
+        hvacCommandStatus = runCatching { BydClimateAdjustment.setPower(this, turnOn) }
+            .getOrElse { error -> "Comando HVAC falhou: ${error.cause?.message ?: error.message}" }
         updateClimateCommandStatus()
-        openOemPanel(
-            Intent("OPEN_AIR_CONDITIONING").setPackage("com.byd.airconditioning"),
-            "Painel OEM aberto para ${if (turnOn) "ligar" else "desligar"} o ar-condicionado."
-        )
-    }
-
-    private fun isClimateAccessibilityEnabled(): Boolean {
-        val manager = getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
-        return manager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
-            .any { info ->
-                info.resolveInfo?.serviceInfo?.let { service ->
-                    service.packageName == packageName && service.name == ClimateAccessibilityService::class.java.name
-                } == true
-            }
+        seatbeltHandler.postDelayed({
+            val state = runCatching { BydClimateAdjustment.readPowerState(this) }
+            hvacCommandStatus += state.fold(
+                { "; estado OEM após comando=$it." },
+                { "; não foi possível confirmar o estado: ${it.cause?.message ?: it.message}" }
+            )
+            updateClimateCommandStatus()
+        }, 500)
     }
 
     override fun onResume() {
@@ -779,6 +778,13 @@ class MainActivity : AppCompatActivity() {
         activityResumed = false
         stopSeatbeltPolling()
         super.onPause()
+    }
+
+    override fun onDestroy() {
+        seatbeltTts?.stop()
+        seatbeltTts?.shutdown()
+        seatbeltTts = null
+        super.onDestroy()
     }
 
     private val seatbeltPoll = object : Runnable {
@@ -802,20 +808,31 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun readAndRenderSeatbeltState() {
+        if (seatbeltReadInFlight) return
+        seatbeltReadInFlight = true
         Thread {
-            val result = runCatching { BydSeatbeltReader.readDriverState(this) }
+            val result = runCatching { BydSeatbeltReader.readAll(this) }
             runOnUiThread {
+                seatbeltReadInFlight = false
                 result.onSuccess { state ->
-                    txtSeatbeltAccessStatus.text = when (state.raw) {
-                        state.unlocked -> "⚠️ CINTO DO MOTORISTA DESAFIVELADO"
-                        state.locked -> "✓ Cinto do motorista afivelado"
-                        state.invalid -> "Estado do cinto indisponível (SDK retornou INVALID)."
-                        else -> "Estado do cinto desconhecido: ${state.raw}"
+                    val byName = state.seats.associate { it.key to it.raw }
+                    seatbeltDiagram.setSeatStates(byName)
+                    val unbuckled = state.seats.filter { it.raw == 2 }
+                    val unavailable = state.seats.filter { it.raw == 0 }
+                    txtSeatbeltAccessStatus.text = buildString {
+                        if (unbuckled.isEmpty()) append("✓ Nenhum cinto detectado como desafivelado.")
+                        else append("⚠ Desafivelados: ${unbuckled.joinToString { it.label }}.")
+                        if (unavailable.isNotEmpty()) append(" Estado indisponível: ${unavailable.joinToString { it.label }}.")
+                        append(if (ttsReady) " Avisos por voz ativos." else " Voz inicializando/indisponível.")
                     }
-                    txtSeatbeltAccessStatus.setTextColor(
-                        if (state.raw == state.unlocked) Color.parseColor("#fca5a5")
-                        else Color.parseColor("#fde68a")
-                    )
+                    txtSeatbeltAccessStatus.setTextColor(if (unbuckled.isEmpty()) Color.parseColor("#86efac") else Color.parseColor("#fca5a5"))
+                    val newWarnings = unbuckled.filter { it.key !in previouslyUnbuckled }
+                    newWarnings.forEach { seat ->
+                        if (ttsReady) seatbeltTts?.speak(
+                            "Atenção. ${seatbeltVoiceLabel(seat.label)} não está afivelado. Por favor, afivele o cinto.",
+                            TextToSpeech.QUEUE_ADD, null, "seatbelt-${seat.key}")
+                    }
+                    previouslyUnbuckled = unbuckled.map { it.key }.toSet()
                 }.onFailure { error ->
                     val cause = error.cause ?: error
                     txtSeatbeltAccessStatus.text =
@@ -826,18 +843,23 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
+    private fun seatbeltVoiceLabel(label: String): String = when (label) {
+        "Motorista" -> "o cinto do motorista"
+        "Passageiro dianteiro" -> "o cinto do passageiro dianteiro"
+        "Traseiro esquerdo" -> "o cinto do passageiro traseiro do lado esquerdo"
+        "Traseiro central" -> "o cinto do passageiro do meio no banco traseiro"
+        "Traseiro direito" -> "o cinto do passageiro traseiro do lado direito"
+        else -> "o cinto do assento ${label.lowercase(Locale("pt", "BR"))}"
+    }
+
     private fun updateClimateCommandStatus() {
-        val prefs = getSharedPreferences(ClimateAccessibilityService.PREFS_NAME, MODE_PRIVATE)
-        txtClimateCommandStatus.text = prefs.getString(
-            ClimateAccessibilityService.KEY_RESULT,
-            "Nenhum comando de climatização confirmado nesta sessão."
-        )
+        txtClimateCommandStatus.text = hvacCommandStatus
     }
 
     private fun updateControlsUI() {
         updateClimateCommandStatus()
-        txtControlLogs.text = "Ar-condicionado: comandos ON/OFF confirmados pelo painel OEM.\n" +
-            "Cinto: leitura de diagnóstico somente; nenhum estado será inferido sem validação.\n" +
+        txtControlLogs.text = "Ar-condicionado: comando direto pelo AirConditioningManager OEM.\n" +
+            "Cintos: leitura dos assentos expostos pelo SDK; estados desconhecidos permanecem indisponíveis.\n" +
             "Luz de teto: a API específica deste veículo ainda não foi confirmada."
     }
 

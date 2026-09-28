@@ -55,15 +55,26 @@ object BydWindowControl {
     }
 
     fun setFullyOpenOrClosed(context: Context, window: Window, open: Boolean): String {
+        return setPresetPosition(context, window, if (open) 100 else 0)
+    }
+
+    /** OEM exposes only close, half-open and full-open motion commands, not a confirmed arbitrary-percent setter. */
+    fun setPresetPosition(context: Context, window: Window, percent: Int): String {
+        require(percent in 0..100)
         checkVehicleSafe(context)
         val (clazz, instance) = bodywork(context)
         val permit = (clazz.getMethod("getWindowPermitState").invoke(instance) as Number).toInt()
         require(permit != 1) { "O HAL bloqueia a operação dos vidros (permit=$permit)." }
-        val command = if (open) 1 else 2 // WINDOW_OPEN_FULL / WINDOW_CLOSE
+        val command = when (percent) {
+            0 -> 2 // WINDOW_CLOSE
+            100 -> 1 // WINDOW_OPEN_FULL
+            else -> 4 // WINDOW_OPEN_HALF; map intermediate slider targets to this supported preset
+        }
         val result = (clazz.getMethod("setBodyWindowCtrlState", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
             .invoke(instance, window.area, command) as Number).toInt()
         require(result == 0) { "HAL recusou o comando (código=$result)." }
-        return "${window.label}: ${if (open) "abertura" else "fechamento"} aceito pelo HAL."
+        val preset = when (command) { 1 -> "aberto (100%)"; 2 -> "fechado (0%)"; else -> "abertura parcial (comando OEM de meia abertura)" }
+        return "${window.label}: comando $preset aceito pelo HAL. O OEM não expõe percentagem arbitrária confirmada."
     }
 
     private fun bodywork(context: Context): Pair<Class<*>, Any> {

@@ -421,7 +421,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:layout_marginBottom="8dp"
-                    android:text="Controles individuais e posição de 0 a 100%. A posição é enviada ao soltar a barra. Requer velocidade zero e P."
+                    android:text="Controles individuais. A API OEM confirmada oferece fechar, meia abertura e abertura total; ao soltar a barra, o valor é aplicado ao preset suportado mais próximo. Requer velocidade zero e P."
                     android:textColor="#cbd5e1"
                     android:textSize="12sp" />
 
@@ -478,7 +478,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:layout_marginBottom="10dp"
-                    android:text="Ligar/desligar é executado pelo controle de energia do painel OEM e confirmado pela mudança de estado da própria interface. Ative o serviço de acessibilidade do app uma vez."
+                    android:text="Ligar/desligar usa diretamente o AirConditioningManager OEM e consulta o estado após o comando. Não requer serviço de acessibilidade."
                     android:textColor="#cbd5e1"
                     android:textSize="12sp" />
 
@@ -581,7 +581,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="ESTADO DO CINTO DO MOTORISTA"
+                    android:text="CINTOS DE SEGURANÇA — CINCO ASSENTOS"
                     android:textColor="#fbbf24"
                     android:textStyle="bold"
                     android:textSize="14sp" />
@@ -591,7 +591,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:layout_marginBottom="10dp"
-                    android:text="Leitura somente pelo BYDAutoSafetyBeltDevice oficial: consulta o estado por área (motorista=1 conforme referência BYD). Nenhum comando de escrita é usado."
+                    android:text="Leitura periódica somente pelo BYDAutoSafetyBeltDevice. Verde: afivelado; vermelho: desafivelado; cinza: sem leitura. Avisos de voz são emitidos quando um cinto passa para desafivelado."
                     android:textColor="#cbd5e1"
                     android:textSize="12sp" />
 
@@ -599,7 +599,7 @@
                     android:id="@+id/btnReadSeatbelt"
                     android:layout_width="match_parent"
                     android:layout_height="52dp"
-                    android:text="LER CINTO DO MOTORISTA"
+                    android:text="ATUALIZAR CINTOS"
                     android:textColor="#ffffff"
                     android:backgroundTint="#0f766e" />
 
@@ -611,6 +611,13 @@
                     android:text="Sensor ainda não consultado."
                     android:textColor="#fde68a"
                     android:textSize="12sp" />
+
+                <com.byd.carcontrol.SeatbeltStatusView
+                    android:id="@+id/seatbeltDiagram"
+                    android:layout_width="match_parent"
+                    android:layout_height="190dp"
+                    android:layout_marginTop="10dp"
+                    android:contentDescription="Diagrama do estado dos cinco cintos de segurança" />
             </LinearLayout>
 
             <LinearLayout
