@@ -260,7 +260,7 @@ private class LocalCarHttpServer(private val context: Context) : AutoCloseable {
             }
             json(if (result.optBoolean("accepted", true)) 200 else 409, result.put("ok", result.optBoolean("accepted", true)))
         } catch (t: Throwable) {
-            json(409, jsonError(t.cause?.message ?: t.message ?: "Comando recusado."))
+            409 to jsonError(t.cause?.message ?: t.message ?: "Comando recusado.")
         }
     }
 
