@@ -13,6 +13,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.view.accessibility.AccessibilityManager
 import android.provider.Settings
 import android.provider.MediaStore
@@ -95,6 +96,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnInteriorLightOff: Button
     private lateinit var txtInteriorLightProbe: TextView
     private lateinit var txtClimateCommandStatus: TextView
+    private lateinit var seekClimateFan: SeekBar
+    private lateinit var txtClimateFanValue: TextView
+    private lateinit var seekClimateTemperature: SeekBar
+    private lateinit var txtClimateTemperatureValue: TextView
+    private lateinit var txtClimateAdjustmentStatus: TextView
     private lateinit var btnOpenSunshade: Button
     private lateinit var btnCloseSunshade: Button
     private lateinit var btnApplySunshadePosition: Button
@@ -105,6 +111,9 @@ class MainActivity : AppCompatActivity() {
     private var sunshadePosition = 0
     private var sunshadeCommandId = 0
     private val sunshadeCommandExecutor = Executors.newSingleThreadExecutor()
+    private var climateTemperatureMaxCelsius = 33.0
+    private var climateTemperatureStepCelsius = 1.0
+    private val climateCommandExecutor = Executors.newSingleThreadExecutor()
 
     private val logHistory = mutableListOf<String>()
     private var lastInspectionReport: String? = null
@@ -180,6 +189,11 @@ class MainActivity : AppCompatActivity() {
         btnInteriorLightOff = findViewById(R.id.btnInteriorLightOff)
         txtInteriorLightProbe = findViewById(R.id.txtInteriorLightProbe)
         txtClimateCommandStatus = findViewById(R.id.txtClimateCommandStatus)
+        seekClimateFan = findViewById(R.id.seekClimateFan)
+        txtClimateFanValue = findViewById(R.id.txtClimateFanValue)
+        seekClimateTemperature = findViewById(R.id.seekClimateTemperature)
+        txtClimateTemperatureValue = findViewById(R.id.txtClimateTemperatureValue)
+        txtClimateAdjustmentStatus = findViewById(R.id.txtClimateAdjustmentStatus)
         btnOpenSunshade = findViewById(R.id.btnOpenSunshade)
         btnCloseSunshade = findViewById(R.id.btnCloseSunshade)
         btnApplySunshadePosition = findViewById(R.id.btnApplySunshadePosition)
@@ -209,6 +223,7 @@ class MainActivity : AppCompatActivity() {
             updateControlsUI()
             startSeatbeltPolling()
             refreshSunshadePosition()
+            refreshClimateAdjustmentState()
         }
     }
 
@@ -272,7 +287,9 @@ class MainActivity : AppCompatActivity() {
 
             Thread {
                 try {
-                    val report = settingInspector.runDiscovery()
+                    val settingReport = settingInspector.runDiscovery()
+                    val bodyworkReport = bodyworkInspector.runDiscovery()
+                    val report = "$settingReport\n\n$bodyworkReport"
                     lastInspectionReport = report
                     runOnUiThread {
                         appendLog("=== RESULTADO DO DIAGNÓSTICO ===\n$report")
@@ -434,7 +451,76 @@ class MainActivity : AppCompatActivity() {
             requestSunshadePosition(target, motion)
         }
         updateSunshadeButtons()
+
+        seekClimateFan.max = 6
+        seekClimateFan.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
+                txtClimateFanValue.text = "VENTILAÇÃO: ${progress + 1}/7"
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
+            override fun onStopTrackingTouch(seekBar: SeekBar) {
+                requestClimateAdjustment("Ajustando ventilação…") {
+                    BydClimateAdjustment.setWindLevel(this@MainActivity, seekBar.progress + 1)
+                }
+            }
+        })
+        seekClimateTemperature.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
+                val celsius = 17.0 + progress * climateTemperatureStepCelsius
+                txtClimateTemperatureValue.text = "TEMPERATURA: ${formatTemperature(celsius)} °C"
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
+            override fun onStopTrackingTouch(seekBar: SeekBar) {
+                val celsius = 17.0 + seekBar.progress * climateTemperatureStepCelsius
+                requestClimateAdjustment("Ajustando temperatura…") {
+                    BydClimateAdjustment.setTemperatureCelsius(this@MainActivity, celsius)
+                }
+            }
+        })
     }
+
+    private fun refreshClimateAdjustmentState() {
+        Thread {
+            val result = runCatching { BydClimateAdjustment.read(this) }
+            runOnUiThread {
+                result.onSuccess(::renderClimateAdjustmentState)
+                    .onFailure { error ->
+                        txtClimateAdjustmentStatus.text = "Leitura HVAC indisponível: ${error.cause?.message ?: error.message}"
+                    }
+            }
+        }.start()
+    }
+
+    private fun requestClimateAdjustment(pendingMessage: String, command: () -> String) {
+        txtClimateAdjustmentStatus.text = pendingMessage
+        climateCommandExecutor.execute {
+            val result = runCatching { command() }
+            val snapshot = runCatching { BydClimateAdjustment.read(this) }
+            runOnUiThread {
+                result.onSuccess { txtClimateAdjustmentStatus.text = it }
+                    .onFailure { error -> txtClimateAdjustmentStatus.text = "Comando HVAC falhou: ${error.cause?.message ?: error.message}" }
+                snapshot.onSuccess(::renderClimateAdjustmentState)
+            }
+        }
+    }
+
+    private fun renderClimateAdjustmentState(snapshot: BydClimateAdjustment.Snapshot) {
+        climateTemperatureMaxCelsius = snapshot.maxTemperatureCelsius.toDouble()
+        climateTemperatureStepCelsius = snapshot.temperatureStepCelsius
+        seekClimateFan.progress = (snapshot.windLevel - 1).coerceIn(0, 6)
+        txtClimateFanValue.text = if (snapshot.windLevel == 0) "VENTILAÇÃO: desligada" else "VENTILAÇÃO: ${snapshot.windLevel}/7"
+        seekClimateTemperature.max = ((climateTemperatureMaxCelsius - 17.0) / climateTemperatureStepCelsius).toInt()
+        snapshot.temperatureCelsius?.let { celsius ->
+            val progress = ((celsius - 17.0) / climateTemperatureStepCelsius).toInt()
+                .coerceIn(0, seekClimateTemperature.max)
+            seekClimateTemperature.progress = progress
+            txtClimateTemperatureValue.text = "TEMPERATURA: ${formatTemperature(celsius)} °C"
+        } ?: run { txtClimateTemperatureValue.text = "TEMPERATURA: indisponível" }
+        txtClimateAdjustmentStatus.text = snapshot.detail
+    }
+
+    private fun formatTemperature(value: Double): String =
+        if (value % 1.0 == 0.0) value.toInt().toString() else String.format(Locale.US, "%.1f", value)
 
     private fun refreshSunshadePosition() {
         Thread {
@@ -451,20 +537,19 @@ class MainActivity : AppCompatActivity() {
         val previousMotion = sunshadeMotion
         sunshadeMotion = null
         updateSunshadeButtons()
-        executeSunshadeCommand(stop = true, requestedMotion = null, previousMotion = previousMotion)
+        executeSunshadeCommand(stop = true, previousMotion = previousMotion)
     }
 
     private fun requestSunshadePosition(percent: Int, motion: SunshadeMotion?) {
         val previousMotion = sunshadeMotion
         sunshadeMotion = motion
         updateSunshadeButtons()
-        executeSunshadeCommand(stop = false, percent = percent, requestedMotion = motion, previousMotion = previousMotion)
+        executeSunshadeCommand(stop = false, percent = percent, previousMotion = previousMotion)
     }
 
     private fun executeSunshadeCommand(
         stop: Boolean,
         percent: Int = sunshadePosition,
-        requestedMotion: SunshadeMotion?,
         previousMotion: SunshadeMotion? = null
     ) {
         val commandId = ++sunshadeCommandId
@@ -493,22 +578,28 @@ class MainActivity : AppCompatActivity() {
                     )
                     appendLog(txtSunshadeStatus.text.toString())
                     if (result.getOrNull()?.accepted == true) {
-                        pollSunshadePosition(commandId, if (stop) null else percent, requestedMotion)
+                        pollSunshadePosition(commandId, if (stop) null else percent)
                     }
                 }
             }
         }
     }
 
-    private fun pollSunshadePosition(commandId: Int, target: Int?, requestedMotion: SunshadeMotion?) {
+    private fun pollSunshadePosition(commandId: Int, target: Int?) {
         Thread {
+            val startedAt = SystemClock.elapsedRealtime()
+            var consecutiveTargetReads = 0
             repeat(40) {
                 Thread.sleep(250L)
                 val position = BydSunshadeControl.readPosition(this) ?: return@repeat
+                val atTarget = target != null && kotlin.math.abs(position - target) <= 2
+                consecutiveTargetReads = if (atTarget) consecutiveTargetReads + 1 else 0
                 runOnUiThread {
                     if (commandId == sunshadeCommandId) {
                         renderSunshadePosition(position)
-                        if (target != null && kotlin.math.abs(position - target) <= 2) {
+                        if (atTarget && consecutiveTargetReads >= 3 &&
+                            SystemClock.elapsedRealtime() - startedAt >= 1_800L
+                        ) {
                             sunshadeMotion = null
                             updateSunshadeButtons()
                             txtSunshadeStatus.text = "Posição $position% alcançada."
@@ -516,7 +607,9 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 if (commandId != sunshadeCommandId) return@Thread
-                if (target != null && kotlin.math.abs(position - target) <= 2) return@Thread
+                if (atTarget && consecutiveTargetReads >= 3 &&
+                    SystemClock.elapsedRealtime() - startedAt >= 1_800L
+                ) return@Thread
                 if (target == null && it >= 3) {
                     runOnUiThread {
                         if (commandId == sunshadeCommandId) {

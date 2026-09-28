@@ -473,6 +473,66 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:text="VENTILAÇÃO E TEMPERATURA"
+                    android:textColor="#38bdf8"
+                    android:textStyle="bold"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/txtClimateFanValue"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="VENTILAÇÃO: —"
+                    android:textColor="#e2e8f0"
+                    android:textStyle="bold"
+                    android:textSize="12sp" />
+
+                <SeekBar
+                    android:id="@+id/seekClimateFan"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="6"
+                    android:contentDescription="Velocidade do ventilador, níveis de um a sete" />
+
+                <TextView
+                    android:id="@+id/txtClimateTemperatureValue"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="TEMPERATURA: — °C"
+                    android:textColor="#e2e8f0"
+                    android:textStyle="bold"
+                    android:textSize="12sp" />
+
+                <SeekBar
+                    android:id="@+id/seekClimateTemperature"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="16"
+                    android:contentDescription="Temperatura do ar em graus Celsius" />
+
+                <TextView
+                    android:id="@+id/txtClimateAdjustmentStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Consulta os ajustes HVAC atuais ao abrir esta aba."
+                    android:textColor="#94a3b8"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#0f172a"
+                android:padding="16dp"
+                android:layout_marginBottom="14dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
                     android:text="ESTADO DO CINTO DO MOTORISTA"
                     android:textColor="#fbbf24"
                     android:textStyle="bold"

@@ -1,6 +1,7 @@
 package com.byd.carcontrol
 
 import android.content.Context
+import android.os.SystemClock
 import kotlin.math.abs
 
 /** Uses BYDAutoBodyworkDevice as called by the OEM sunshade screen. */
@@ -14,6 +15,8 @@ object BydSunshadeControl {
     private const val OPEN_OPERATION_BLOCKED = 1
     private const val POSITION_TOLERANCE = 2
     private const val STOP_COMMAND = 254 // OEM ISunRoofModel.MOONROOF_STOP.
+    private const val COMMAND_RESET = 255 // OEM clears the requested target after 200 ms.
+    private const val COMMAND_RESET_DELAY_MS = 200L
 
     data class Result(
         val accepted: Boolean,
@@ -77,6 +80,10 @@ object BydSunshadeControl {
                 "setSunshadeState($command) retornou ${rawResult ?: "void"}; comando não confirmado como aceito.")
         }
 
+        if (!isStop) {
+            SystemClock.sleep(COMMAND_RESET_DELAY_MS)
+            runCatching { method.invoke(instance, COMMAND_RESET) }
+        }
         val observed = readPercent(deviceClass, instance)
         val confirmed = !isStop && matchesTarget(observed, requestedPercent)
         val detail = if (isStop) {
