@@ -30,9 +30,10 @@ Observação sobre bootstrap: o `onCreate()` do provider chama `DiCarService.ini
 O construtor do `CarInfoServiceImpl` executa sincronizações de modelo/posição do
 volante pelo framework BYD (`set`/propriedade de sistema). O getter solicitado
 é de leitura, mas a primeira abertura do provider pode inicializar esse serviço
-com os efeitos de sincronização que o próprio AppServer contém. Não foi enviada
-nenhuma chamada ao provider nesta sessão; essa inicialização ocorrerá quando o
-probe for executado no APK.
+com os efeitos de sincronização que o próprio AppServer contém. Na execução
+real do probe, a primeira consulta iniciou `com.byd.appserver:CarService`; essa
+sincronização de inicialização ocorreu como comportamento interno do AppServer.
+Não foi enviado nenhum setter pelo probe.
 
 ## Implementação neste app
 
@@ -66,18 +67,73 @@ segundo retornou 26 registros, incluindo quilometragem de manutenção (`6193`)
 e dados de viagem. Esses providers comprovam leitura de dados disponíveis; as
 configurações persistidas não equivalem a telemetria instantânea.
 
+## Resultado de execução real (28/09/2026)
+
+O APK foi instalado e executado na central `BYD_AUTO` / `DiLink3.0` por ADB.
+O botão de leitura recebeu duas respostas reais:
+
+```text
+getDrivingState() = 1
+getDrivingState() = 1
+```
+
+Isso confirma que o provider exportado entregou um Binder utilizável e que a
+transação AIDL de leitura respondeu no processo do aplicativo. O valor segue
+sem interpretação: a enumeração não foi identificada, e esse método lê o
+feature `GEARBOX_AUTO_MODE_TYPE`, que não deve ser confundido com posição atual
+da alavanca sem validação adicional. Não se deve inferir que o veículo está
+estacionado a partir desse valor.
+
+O Package Manager negou ao APK as permissões BYD de leitura/escrita solicitadas
+(`BYDAUTO_*_GET/SET`, incluindo `BYDAUTO_SETTING_GET/SET`) e permissões de
+controle de carroceria/luzes. Portanto, a resposta acima veio especificamente
+da ponte Binder exportada, não de permissões concedidas ao aplicativo. Nenhuma
+alteração física ou setter foi executado.
+
+Uma nova leitura somente de dados persistidos em
+`content://com.byd.carStatusProvider/car_status` retornou 26 pares. Entre eles,
+`car_status_maintenance_mile=6193` e `set_car_status_maintenance_mile=20000`;
+isso é informação de manutenção persistida, não odômetro ou telemetria ao vivo.
+As séries `travel_points_*` também são dados históricos agregados e não foram
+interpretadas como posição ou velocidade atuais.
+
 ## Limitações e próxima validação
 
-1. A implementação Kotlin ainda precisa ser compilada e executada no head unit.
-   Este ambiente não tem um Gradle wrapper funcional nem Android SDK instalado.
-2. Após instalar o APK, pressionar o botão e guardar logcat/resultado, sem
-   atribuir significado ao valor numérico inicialmente.
-3. Comparar leituras repetidas com o estado exibido pelo carro e, apenas com o
-   veículo parado em local seguro, registrar mudanças de estado natural para
-   inferir a enumeração.
-4. Para TPMS, clima ou autonomia, repetir a investigação do provider/API e
-   selecionar primeiro getters sem efeitos físicos. Não chamar setters,
-   broadcasts especulativos ou transações Binder não documentadas.
+1. A compilação remota do APK e a execução no head unit já foram concluídas.
+2. Próximo passo técnico: inventariar as interfaces realmente expostas pelo
+   provider e seus AIDLs, procurando getters documentados de TPMS, clima,
+   autonomia e estado de portas. Validar um método de cada vez com checagem de
+   descriptor/transação e registrar valor bruto, horário e repetibilidade.
+3. Para interpretar `getDrivingState()`, comparar leituras com a indicação do
+   painel durante estados naturais observados, sem provocar troca de marcha nem
+   movimento do veículo. O valor `1` sozinho permanece desconhecido.
+4. Não chamar setters, broadcasts especulativos ou transações Binder não
+   documentadas. As permissões `signature` negadas não devem ser contornadas;
+   uma escrita só poderá ser considerada após caminho oficial autorizado,
+   validação do método e uma decisão explícita e segura sobre o efeito físico.
+
+## Inventário estático confirmado do AppServer
+
+O APK ativo foi copiado da central e descompilado localmente para inspeção. O
+`DiCarService.registerService()` registra exatamente estes cinco contratos SPI
+no provider genérico `sync_binder`:
+
+| Interface AIDL | Métodos observados | Observação de segurança |
+| --- | --- | --- |
+| `com.byd.car.driving.IDrivingStateService` | `getDrivingState()`, listeners | getter validado em execução; registro de listener não foi chamado |
+| `com.byd.car.carinfo.ICarInfoService` | `getDriverSeat()`, `getVehicleType(int)`, `getCarType(int)`, `getCarBodyConfig()`, `getVehicleVin()` | `getVehicleVin()` lê identificador sensível e não foi chamado; construtor sincroniza dados de modelo/volante |
+| `com.byd.car.adas.ICarAdasService` | `getAdasVendor()` | propriedade de plataforma/configuração, não estado ADAS ao vivo |
+| `com.byd.car.locale.ICarLocaleService` | `getCountryDomain()`, `getCountryCode()` | getters de configuração regional; o construtor sincroniza uma propriedade de sistema |
+| `com.byd.car.collect2.ICollect2FileStoreService` | leitura e escrita de arquivos/diretórios | contém operações destrutivas de arquivo; nenhuma foi chamada |
+
+Esse provider do AppServer não expõe diretamente getters identificáveis de
+TPMS, temperatura do habitáculo, autonomia, portas ou janelas. Para esses dados,
+o caminho provável continua sendo o SDK `BYDAuto*` sob permissões `signature`
+ou serviços OEM específicos. A inspeção confirmou o limite do provider; ela
+não prova que esses recursos inexistam em outras partes do firmware. O próximo
+passo deve localizar contratos de leitura OEM documentados e avaliar as
+permissões/exportação antes de invocar qualquer um. O ADB shell conectado não
+concede automaticamente ao APK UID de sistema nem as permissões privilegiadas.
 
 ## Primeiro candidato de controle identificado (ainda bloqueado)
 
