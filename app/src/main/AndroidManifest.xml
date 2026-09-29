@@ -70,6 +70,15 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".inspector.DiLinkInspectorActivity"
+            android:exported="false" />
+
+        <service
+            android:name=".inspector.DiLinkInspectorService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
+
         <service
             android:name=".ClimateAccessibilityService"
             android:exported="true"

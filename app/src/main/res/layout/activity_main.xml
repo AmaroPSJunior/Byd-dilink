@@ -63,6 +63,17 @@
                 android:textStyle="bold"
                 android:textColor="#94a3b8"
                 android:backgroundTint="#334155" />
+
+            <Button
+                android:id="@+id/btnTabInspector"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="🔎 INSPECTOR"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="#94a3b8"
+                android:backgroundTint="#334155" />
         </LinearLayout>
     </LinearLayout>
 

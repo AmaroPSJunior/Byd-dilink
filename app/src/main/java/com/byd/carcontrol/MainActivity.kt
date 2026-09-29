@@ -79,6 +79,7 @@ class MainActivity : AppCompatActivity() {
     // Tab buttons & containers
     private lateinit var btnTabDiagnostic: Button
     private lateinit var btnTabControls: Button
+    private lateinit var btnTabInspector: Button
     private lateinit var layoutTabDiagnostic: ScrollView
     private lateinit var layoutTabControls: ScrollView
 
@@ -204,6 +205,7 @@ class MainActivity : AppCompatActivity() {
 
         btnTabDiagnostic = findViewById(R.id.btnTabDiagnostic)
         btnTabControls = findViewById(R.id.btnTabControls)
+        btnTabInspector = findViewById(R.id.btnTabInspector)
         layoutTabDiagnostic = findViewById(R.id.layoutTabDiagnostic)
         layoutTabControls = findViewById(R.id.layoutTabControls)
 
@@ -278,6 +280,10 @@ class MainActivity : AppCompatActivity() {
             refreshSunshadePosition()
             refreshClimateAdjustmentState()
             refreshWindowStates()
+        }
+
+        btnTabInspector.setOnClickListener {
+            startActivity(Intent(this, com.byd.carcontrol.inspector.DiLinkInspectorActivity::class.java))
         }
     }
 
