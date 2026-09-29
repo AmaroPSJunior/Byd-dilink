@@ -24,7 +24,7 @@ data class ActiveInspectorFiles(
 class InspectorSessionStorage(private val context: Context) {
     companion object {
         const val PUBLIC_ROOT = "/sdcard/Download/BydDilink/Inspector/sessions"
-        private const val RELATIVE_ROOT = "${Environment.DIRECTORY_DOWNLOADS}/BydDilink/Inspector/sessions"
+        private val RELATIVE_ROOT = "${Environment.DIRECTORY_DOWNLOADS}/BydDilink/Inspector/sessions"
     }
 
     fun create(sessionId: String): ActiveInspectorFiles {

@@ -79,7 +79,7 @@ class DiLinkInspectorActivity : AppCompatActivity() {
         nav.addView(navButton("EXPERIMENTO", Page.EXPERIMENT), weightedParams())
         nav.addView(navButton("SESSÕES", Page.SESSIONS), weightedParams())
         root.addView(nav)
-        val scroll = ScrollView(this).apply { fillViewport = true }
+        val scroll = ScrollView(this).apply { isFillViewport = true }
         body = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, dp(12), 0, dp(24))
