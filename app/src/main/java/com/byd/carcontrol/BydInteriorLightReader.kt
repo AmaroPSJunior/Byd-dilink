@@ -4,6 +4,7 @@ import android.content.Context
 
 /** Read-only check of OEM interior/door-light and reading-light status features. */
 object BydInteriorLightReader {
+    data class Reading(val device: String, val name: String, val id: Int, val value: Int?, val error: String? = null)
     private data class Feature(val device: String, val name: String, val id: Int)
 
     private val features = listOf(
@@ -12,6 +13,7 @@ object BydInteriorLightReader {
         Feature("setting", "inside_light_online", 0x3FF00009),
         Feature("setting", "has_interior_atmosphere_lamp", 0x3FF00000),
         Feature("setting", "interior_lamp_duration", 0x39400015),
+        Feature("setting", "inside_light_power_state", 0x42E0002D),
         Feature("light", "front_left_reading_light", 0x3FE0000A),
         Feature("light", "front_right_reading_light", 0x3FE0000C),
         Feature("light", "middle_left_reading_light", 0x3FE0000E),
@@ -20,7 +22,7 @@ object BydInteriorLightReader {
         Feature("light", "rear_right_reading_light", 0x3FE00018)
     )
 
-    fun read(context: Context): List<String> {
+    fun readDetailed(context: Context): List<Reading> {
         val sdkContext = BydAutoReadContext(context.applicationContext)
         val instances = mutableMapOf<String, Pair<Class<*>, Any>>()
         return features.map { feature ->
@@ -44,10 +46,16 @@ object BydInteriorLightReader {
                     (valueField?.get(result) as? Number)?.toInt()
                         ?: error("resposta ${result.javaClass.name} sem intValue")
                 }
-                "${feature.name}=0x${feature.id.toString(16)}:$raw"
+                Reading(feature.device, feature.name, feature.id, raw)
             }.getOrElse { error ->
-                "${feature.name}=0x${feature.id.toString(16)}:ERRO(${error.cause?.javaClass?.simpleName ?: error.javaClass.simpleName}:${error.cause?.message ?: error.message})"
+                val cause = error.cause ?: error
+                Reading(feature.device, feature.name, feature.id, null, "${cause.javaClass.simpleName}:${cause.message.orEmpty()}")
             }
         }
+    }
+
+    fun read(context: Context): List<String> = readDetailed(context).map { reading ->
+        val value = reading.value?.toString() ?: "ERRO(${reading.error})"
+        "${reading.name}=0x${reading.id.toString(16)}:$value"
     }
 }

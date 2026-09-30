@@ -7,3 +7,6 @@ coverage/
 __pycache__/
 .env*
 !.env.example
+
+# Anotações pessoais de continuidade: manter apenas nesta cópia local.
+/docs/STATUS.local.md

@@ -12,6 +12,11 @@ As APIs BYD variam por firmware e algumas gravações exigem permissões de assi
 
 ## Documentação
 
+- [Estado e continuidade](docs/STATUS.md): objetivo ativo, decisões confirmadas e próxima etapa.
+- [Auditoria e ampliação do Inspector](docs/inspector-audit-expansion.md): fontes existentes, pontos cegos, coleta ampliada e limites de acesso.
+- [Captura ADB de logs de iluminação](docs/adb-light-trace.md): fonte complementar somente de leitura para correlacionar callbacks OEM com as ações marcadas no Inspector.
+- [Histórico de mudanças](CHANGELOG.md): resumo das mudanças entregues.
+
 - [Engenharia reversa DiLink](docs/engenharia-reversa-dilink.md): arquitetura, classes, identificadores, protocolos e nível de validação.
 - [Servidor web local](docs/servidor-web-local.md): implantação na rede do hotspot, pareamento e exemplos HTTP.
 - [Contrato OpenAPI](docs/openapi.yaml): rotas, parâmetros, autenticação e respostas para Swagger UI/Editor.
@@ -48,6 +53,8 @@ Consulte os documentos antes de acrescentar métodos de escrita. Não use frames
 
 ## Codex no Termux
 
+As instruções para ferramentas de desenvolvimento estão em `AGENTS.md`. Para imprimir o contexto salvo antes de iniciar uma tarefa, execute `npm run codex:context`. O comando inclui `docs/STATUS.local.md` se você tiver criado esse arquivo a partir do exemplo; ele permanece fora do Git.
+
 Para trabalhar em todo o Byd-dilink, incluindo o Inspector:
 
 ```sh
@@ -64,3 +71,8 @@ Reinicie a sessão para aplicar os novos padrões. O script antigo
 
 Para personalizar os caminhos, use `BYD_CODEX_DATA_DIR` e, opcionalmente,
 `BYD_INSPECTOR_REPORTS_DIR` ao executar o script.
+
+A leitura de respostas em português via Termux TTS é uma preferência global do
+usuário: configure `notify` em `~/.codex/config.toml`, apontando para um script
+fora do repositório. O inicializador herda essa configuração sem sobrescrevê-la.
+Modelo, permissões e caminhos do Inspector continuam específicos deste projeto.
