@@ -58,7 +58,7 @@ class InspectorSessionController(private val context: Context) {
         sourceDescriptions = collectors.map { mapOf("id" to it.id, "label" to it.label, "status" to "pending") } + listOf(
             mapOf("id" to "byd.interior_light_state", "label" to "Getters BYDAuto conhecidos de iluminação, leitura a cada 2 s", "status" to "pending"),
             mapOf("id" to "vehicle_broadcasts", "label" to "Receiver manifest: 4 ações BYD declaradas", "status" to "armed_when_session_active"),
-            mapOf("id" to "android.sensor", "label" to "SensorManager: motion sensors allowlisted", "status" to "pending"),
+            mapOf("id" to "android.sensor", "label" to "SensorManager: inventário completo + fluxo allowlist (movimento, luz e ambiente)", "status" to "pending"),
             mapOf("id" to "android.logcat", "label" to "logcat filtrado; acesso depende de READ_LOGS", "status" to "best_effort")
         )
 

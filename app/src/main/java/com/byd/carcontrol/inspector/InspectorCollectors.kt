@@ -213,17 +213,29 @@ class DiLinkSnapshotCollector : InspectorCollector {
 
         val sensors = try {
             val manager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-            manager.getSensorList(Sensor.TYPE_ALL).filter { it.type in OBSERVED_SENSOR_TYPES }
-                .map { mapOf("name" to it.name, "vendor" to it.vendor, "type" to it.type, "version" to it.version) }
+            manager.getSensorList(Sensor.TYPE_ALL)
+                .map { mapOf(
+                    "name" to it.name, "vendor" to it.vendor, "type" to it.type,
+                    "version" to it.version, "stringType" to it.stringType,
+                    "reportingMode" to it.reportingMode, "wakeUp" to it.isWakeUpSensor,
+                    "maxRange" to it.maximumRange, "resolution" to it.resolution,
+                    "powerMa" to it.power
+                ) }
         } catch (t: Throwable) {
             add(InspectorObservation(id, "SENSOR_ENUMERATION_ERROR", value = "${t.javaClass.simpleName}: ${t.message}"))
             emptyList()
         }
-        add(InspectorObservation(id, "ANDROID_SENSOR_INVENTORY", value = "${sensors.size} motion sensor(s)", metadata = mapOf("sensors" to sensors), isSnapshot = true))
+        add(InspectorObservation(id, "ANDROID_SENSOR_INVENTORY", value = "${sensors.size} Android sensor(s) enumerated; allowlisted live stream only", metadata = mapOf("sensors" to sensors), isSnapshot = true))
     }
 
     companion object {
-        val OBSERVED_SENSOR_TYPES = setOf(Sensor.TYPE_ACCELEROMETER, Sensor.TYPE_GYROSCOPE, Sensor.TYPE_GRAVITY, Sensor.TYPE_LINEAR_ACCELERATION, Sensor.TYPE_ROTATION_VECTOR)
+        /** Passive sensor types useful for correlating cabin use, vibration, light, and environment. */
+        val OBSERVED_SENSOR_TYPES = setOf(
+            Sensor.TYPE_ACCELEROMETER, Sensor.TYPE_GYROSCOPE, Sensor.TYPE_GRAVITY,
+            Sensor.TYPE_LINEAR_ACCELERATION, Sensor.TYPE_ROTATION_VECTOR,
+            Sensor.TYPE_MAGNETIC_FIELD, Sensor.TYPE_LIGHT, Sensor.TYPE_PROXIMITY,
+            Sensor.TYPE_PRESSURE, Sensor.TYPE_AMBIENT_TEMPERATURE, Sensor.TYPE_RELATIVE_HUMIDITY
+        )
     }
 }
 
@@ -339,7 +351,10 @@ class FilteredLogcatStream(private val emit: (InspectorObservation) -> Unit) {
                         }
                     }
                 }
-                if (running) emit(InspectorObservation("android.logcat", "SOURCE_ENDED", value = "logcat process finished with ${child.exitValue()}"))
+                if (running) {
+                    val exitCode = try { child.waitFor() } catch (_: InterruptedException) { null }
+                    if (running) emit(InspectorObservation("android.logcat", "SOURCE_ENDED", value = "logcat process finished with ${exitCode ?: "unknown exit code"}"))
+                }
             } catch (t: Throwable) {
                 if (running) emit(InspectorObservation("android.logcat", "SOURCE_LIMITED", value = "${t.javaClass.simpleName}: ${t.message}", permission = Manifest.permission.READ_LOGS, metadata = mapOf("exception" to t.javaClass.name)))
             } finally {
