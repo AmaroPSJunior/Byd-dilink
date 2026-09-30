@@ -45,3 +45,22 @@ O endereço IP depende da rede do hotspot e pode mudar. O app atualiza o endere�
 - O painel HTTP usa a rede local sem TLS. Use apenas uma rede confiável e mantenha o pareamento protegido.
 
 Consulte os documentos antes de acrescentar métodos de escrita. Não use frames CAN, transações Binder, broadcasts ou FIDs adivinhados como comandos.
+
+## Codex no Termux
+
+Para trabalhar em todo o Byd-dilink, incluindo o Inspector:
+
+```sh
+sh ~/Downloads/github/Byd-dilink/start-codex.sh
+```
+
+O inicializador usa `gpt-6-luna`, `workspace-write` e `approval_policy = "never"`.
+Permite editar o projeto inteiro e os dados em `Download/BydDilink`, incluindo
+`Inspector`, sem confirmações de edição. Operações fora das permissões podem
+falhar em vez de pedir aprovação. A configuração `.codex/config.toml` também
+aplica esses padrões ao iniciar `codex` dentro deste projeto confiável.
+Reinicie a sessão para aplicar os novos padrões. O script antigo
+`start-codex-inspector.sh` encaminha para o mesmo inicializador.
+
+Para personalizar os caminhos, use `BYD_CODEX_DATA_DIR` e, opcionalmente,
+`BYD_INSPECTOR_REPORTS_DIR` ao executar o script.
