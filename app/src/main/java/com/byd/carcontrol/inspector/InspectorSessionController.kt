@@ -24,6 +24,7 @@ class InspectorSessionController(private val context: Context) {
     private var activeMode: InspectorMode? = null
     private var startedAt: Long = 0L
     private var pollTask: ScheduledFuture<*>? = null
+    private var lightPollTask: ScheduledFuture<*>? = null
     private var sensors: MotionSensorStream? = null
     private var logcat: FilteredLogcatStream? = null
     private var deviceMetadata: Map<String, Any?> = emptyMap()
@@ -55,6 +56,7 @@ class InspectorSessionController(private val context: Context) {
             DiLinkPermissionCollector(), DiLinkSnapshotCollector()
         )
         sourceDescriptions = collectors.map { mapOf("id" to it.id, "label" to it.label, "status" to "pending") } + listOf(
+            mapOf("id" to "byd.interior_light_state", "label" to "Getters BYDAuto conhecidos de iluminação, leitura a cada 2 s", "status" to "pending"),
             mapOf("id" to "vehicle_broadcasts", "label" to "Receiver manifest: 4 ações BYD declaradas", "status" to "armed_when_session_active"),
             mapOf("id" to "android.sensor", "label" to "SensorManager: motion sensors allowlisted", "status" to "pending"),
             mapOf("id" to "android.logcat", "label" to "logcat filtrado; acesso depende de READ_LOGS", "status" to "best_effort")
@@ -79,6 +81,8 @@ class InspectorSessionController(private val context: Context) {
                 }
             }
             pollTask = executor.scheduleWithFixedDelay({ pollSnapshot(collectors[3]) }, 0, POLL_INTERVAL_SECONDS, TimeUnit.SECONDS)
+            val lightCollector = InteriorLightStateCollector()
+            lightPollTask = executor.scheduleWithFixedDelay({ pollCollector(lightCollector) }, 0, LIGHT_POLL_INTERVAL_SECONDS, TimeUnit.SECONDS)
             try {
                 sensors = MotionSensorStream(context, ::onObservation).also { it.start() }
                 markSource("android.sensor", "listener_registered_where_available")
@@ -133,6 +137,8 @@ class InspectorSessionController(private val context: Context) {
             val files = activeFiles ?: run { onStopped?.invoke(); return@execute }
             pollTask?.cancel(true)
             pollTask = null
+            lightPollTask?.cancel(true)
+            lightPollTask = null
             sensors?.stop()
             sensors = null
             logcat?.stop()
@@ -160,6 +166,17 @@ class InspectorSessionController(private val context: Context) {
             storageLocation = files?.displayLocation.orEmpty(),
             lastError = files?.lastStorageError
         )
+    }
+
+    private fun pollCollector(collector: InspectorCollector) {
+        if (activeFiles == null) return
+        try {
+            collector.collect(context).forEach(::recordObservation)
+            markSource(collector.id, "polling_every_${LIGHT_POLL_INTERVAL_SECONDS}s")
+        } catch (t: Throwable) {
+            recordSourceError(collector.id, t)
+        }
+        updateServiceState()
     }
 
     private fun pollSnapshot(collector: InspectorCollector) {
@@ -225,7 +242,7 @@ class InspectorSessionController(private val context: Context) {
             metadata = metadata
         )
         writeEvent(event)
-        if (nearestMarker != null && eventType !in setOf("ACTION_MARKER", "CORRELATION", "LOGCAT_LINE")) {
+        if (nearestMarker != null && eventType !in setOf("ACTION_MARKER", "CORRELATION")) {
             writeCorrelation(nearestMarker, event, "within_action_window")
         }
         updateServiceState()
@@ -282,7 +299,10 @@ class InspectorSessionController(private val context: Context) {
     }
 
     private fun markSource(id: String, status: String) {
+        val changed = sourceDescriptions.any { it["id"] == id && it["status"] != status }
+        if (!changed) return
         sourceDescriptions = sourceDescriptions.map { if (it["id"] == id) it + mapOf("status" to status) else it }
+        updateMetadata()
     }
 
     private fun updateMetadata(endedAt: Long? = null) {
@@ -318,6 +338,7 @@ class InspectorSessionController(private val context: Context) {
 
     companion object {
         private const val POLL_INTERVAL_SECONDS = 5L
+        private const val LIGHT_POLL_INTERVAL_SECONDS = 2L
         private const val ACTION_BEFORE_MS = 20_000L
         private const val ACTION_AFTER_MS = 30_000L
         private const val RECENT_EVENT_RETENTION_MS = 120_000L

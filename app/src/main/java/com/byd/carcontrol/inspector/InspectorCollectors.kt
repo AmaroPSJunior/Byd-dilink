@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
 import android.util.Log
+import com.byd.carcontrol.BydInteriorLightReader
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.lang.reflect.Modifier
@@ -77,6 +78,21 @@ class DiLinkApiInventoryCollector : InspectorCollector {
                         value = heuristic,
                         metadata = mapOf("declaringClass" to method.declaringClass.name, "executionStatus" to "NOT_INVOKED")
                     ))
+                }
+                if (name.contains(".light.") || name.contains(".setting.")) {
+                    type.declaredFields.filter { field ->
+                        Regex("light|lamp|inside|interior|reading|ambient|brightness|dome|room|fid", RegexOption.IGNORE_CASE)
+                            .containsMatchIn(field.name)
+                    }.forEach { field ->
+                        add(InspectorObservation(
+                            source = id,
+                            eventType = "API_FIELD_DISCOVERED",
+                            className = name,
+                            property = field.name,
+                            value = "${Modifier.toString(field.modifiers)} ${field.type.name}",
+                            metadata = mapOf("fieldValueRead" to false, "classInitializationRequested" to false)
+                        ))
+                    }
                 }
             } catch (t: Throwable) {
                 add(InspectorObservation(
@@ -211,6 +227,28 @@ class DiLinkSnapshotCollector : InspectorCollector {
     }
 }
 
+/** Periodically reads only the BYDAuto light/setting getters already used by the app. */
+class InteriorLightStateCollector : InspectorCollector {
+    override val id = "byd.interior_light_state"
+    override val label = "Getters BYDAuto conhecidos de luz interna (somente leitura)"
+
+    override fun collect(context: Context): List<InspectorObservation> =
+        BydInteriorLightReader.readDetailed(context).map { reading ->
+            val property = "${reading.device}.${reading.name}"
+            val deviceClass = "android.hardware.bydauto.${reading.device}.BYDAuto${if (reading.device == "setting") "Setting" else "Light"}Device"
+            val metadata = mapOf("featureIdHex" to "0x${reading.id.toString(16)}", "featureIdDecimal" to reading.id, "readOnly" to true)
+            if (reading.error == null) InspectorObservation(
+                source = id, eventType = "LIGHT_FEATURE_SNAPSHOT", value = reading.value.toString(),
+                className = deviceClass, method = "get(int[], Class)", property = property,
+                metadata = metadata, isSnapshot = true
+            ) else InspectorObservation(
+                source = id, eventType = "LIGHT_FEATURE_READ_ERROR", value = reading.error,
+                className = deviceClass, method = "get(int[], Class)", property = property,
+                metadata = metadata
+            )
+        }
+}
+
 class DiLinkDeviceMetadataCollector : InspectorCollector {
     override val id = "device_metadata"
     override val label = "Versão de build e dispositivo"
@@ -280,6 +318,7 @@ class MotionSensorStream(private val context: Context, private val emit: (Inspec
 class FilteredLogcatStream(private val emit: (InspectorObservation) -> Unit) {
     @Volatile private var process: Process? = null
     @Volatile private var running = false
+    private val relevantLine = Regex("light|lamp|inside|interior|ambient|reading|dome|roof|ceiling|cabin|courtesy|bydauto|vehicle|carservice|\\u706f|\\u8f66", RegexOption.IGNORE_CASE)
 
     fun start() {
         if (running) return
@@ -287,8 +326,7 @@ class FilteredLogcatStream(private val emit: (InspectorObservation) -> Unit) {
         Thread({
             try {
                 val child = ProcessBuilder(
-                    "logcat", "-v", "epoch", "-T", "1",
-                    "BYD:V", "DiLink:V", "DiCar:V", "Vehicle:V", "MagicCore:V", "MagicManager:V", "*:S"
+                    "logcat", "-v", "epoch", "-T", "1"
                 ).redirectErrorStream(true).start()
                 process = child
                 BufferedReader(InputStreamReader(child.inputStream)).useLines { lines ->
@@ -296,7 +334,7 @@ class FilteredLogcatStream(private val emit: (InspectorObservation) -> Unit) {
                         if (!running) return@forEach
                         if (line.contains("not permitted", true) || line.contains("permission denied", true) || line.contains("Operation not permitted", true)) {
                             emit(InspectorObservation("android.logcat", "SOURCE_LIMITED", value = line.take(500), permission = Manifest.permission.READ_LOGS))
-                        } else if (line.isNotBlank()) {
+                        } else if (line.isNotBlank() && relevantLine.containsMatchIn(line)) {
                             emit(InspectorObservation("android.logcat", "LOGCAT_LINE", value = line.take(1200), property = "filtered_line"))
                         }
                     }

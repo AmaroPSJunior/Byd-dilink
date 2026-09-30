@@ -63,20 +63,21 @@ O `tar` contém todas as sessões privadas; extraia-o no computador. Em um APK r
 
 | Fonte | Instrumentação feita pelo Inspector | Limite relevante |
 |---|---|---|
-| Inventário BYDAuto por reflexão | Tenta carregar, sem inicialização, classes candidatas; registra classes e assinaturas declaradas | É inventário estático/runtime do class loader acessível. Não instancia classes nem executa métodos. Classes em APKs não visíveis ou protegidas podem não carregar. |
+| Inventário BYDAuto por reflexão | Tenta carregar, sem inicialização, classes candidatas; registra assinaturas de métodos e nomes/tipos de campos relacionados a luz, sem ler valores estáticos | É inventário estático/runtime do class loader acessível. Não instancia classes nem executa métodos. Classes em APKs não visíveis ou protegidas podem não carregar. |
+| BYDAuto light/setting | A cada 2 s lê por `get(int[], Class)` FIDs já usados pelo app: estado de alimentação da luz interna, estado/configuração ligado à porta, indicadores/configurações de disponibilidade e seis luzes de leitura; emite apenas a primeira leitura e mudanças, além de erros por FID | Não cobre automaticamente todos os tipos de luz; alguns FIDs representam disponibilidade/configuração, não estado físico. Os valores são brutos e precisam ser correlacionados com ações manuais; o backend ainda pode negar leituras. Nenhum setter é chamado. |
 | Binder/ServiceManager | A cada 5 s consulta uma allowlist de nomes conhecidos; registra disponibilidade, `isBinderAlive` e descriptor quando o acesso funciona | Não observa tráfego Binder, chamadas ou parâmetros de outros processos. Serviço presente não implica permissão para chamar suas transações. |
 | System properties | Tenta ler três nomes previamente conhecidos por reflexão | Hidden API, SELinux e permissões podem bloquear a leitura. Não faz enumeração de propriedades. |
 | Permissões BYDAUTO | Lê permissões declaradas pelo app e resultado de `checkSelfPermission`; tenta obter metadados de proteção | Mede o UID deste APK. Uma permissão privilegiada, signature ou OEM pode constar como negada mesmo que o app OEM tenha acesso. |
 | Broadcasts BYD | O receiver do app registra broadcasts recebidos para quatro ações declaradas: cinto, luz, janela e porta; extras primitivos são preservados | Só registra intents entregues a este receiver. Não consegue bisbilhotar broadcasts protegidos, privados ou direcionados a outro pacote. A declaração de uma action não prova que a central a emite. |
 | Sensores Android | Registra listener para acelerômetro, giroscópio, gravidade, aceleração linear e vetor de rotação se disponíveis; limita a amostra a ~1 Hz por sensor | Sensores do Android da central, não sensores automotivos garantidos. A disponibilidade e calibração variam por hardware. |
-| logcat | Tenta acompanhar um conjunto pequeno de tags BYD/veículo com `logcat` | Em Android comum, `READ_LOGS` é privilegiada. O processo pode receber apenas seus próprios logs ou nenhum log OEM; falhas ficam em erros/fontes da sessão. |
+| logcat | Lê o stream disponível e persiste linhas que casam com termos de iluminação/veículo; linhas filtradas também podem ser correlacionadas temporalmente com marcadores | Em Android comum, `READ_LOGS` é privilegiada. O processo pode receber apenas seus próprios logs ou nenhum log OEM; falhas ficam em erros/fontes da sessão. |
 | Aplicativo em foreground | Grava ações marcadas pelo usuário, início/fim, falhas e alterações do próprio fluxo | Não instrumenta outros APKs nem intercepta chamadas de métodos/callbacks em processos OEM. |
 
-O Inspector não implementa captura de HAL arbitrária, CAN, FIDs, buffers de câmera, shared memory ou Binder callbacks OEM. Nenhum método desconhecido é invocado automaticamente. Para adicionar um coletor, implemente `InspectorCollector` e emita `InspectorObservation`; o controller normaliza as observações, gera transições/correlações, persiste JSONL e atualiza os metadados.
+A nova leitura de iluminação usa somente FIDs/getters já conhecidos pelo app. O Inspector não implementa captura de HAL arbitrária, CAN, FIDs desconhecidos, buffers de câmera, shared memory ou Binder callbacks OEM. Nenhum método desconhecido é invocado automaticamente. Para adicionar um coletor, implemente `InspectorCollector` e emita `InspectorObservation`; o controller normaliza as observações, gera transições/correlações, persiste JSONL e atualiza os metadados.
 
 ## Fontes de código
 
-- `inspector/InspectorCollectors.kt`: interface de coletores e implementações de inventário, permissões, snapshots, sensores e logcat.
+- `inspector/InspectorCollectors.kt`: interface de coletores e implementações de inventário, permissões, snapshots, leitura de estados de iluminação, sensores e logcat.
 - `inspector/InspectorSessionController.kt`: sessão, polling, marcadores, transições e correlações temporais.
 - `inspector/InspectorSessionStorage.kt`: MediaStore, teste de escrita, fallback privado, listagem e compartilhamento.
 - `inspector/DiLinkInspectorService.kt`: foreground service para continuar a coleta fora da tela.
