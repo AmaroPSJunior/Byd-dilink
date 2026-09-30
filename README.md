@@ -71,3 +71,8 @@ Reinicie a sessão para aplicar os novos padrões. O script antigo
 
 Para personalizar os caminhos, use `BYD_CODEX_DATA_DIR` e, opcionalmente,
 `BYD_INSPECTOR_REPORTS_DIR` ao executar o script.
+
+A leitura de respostas em português via Termux TTS é uma preferência global do
+usuário: configure `notify` em `~/.codex/config.toml`, apontando para um script
+fora do repositório. O inicializador herda essa configuração sem sobrescrevê-la.
+Modelo, permissões e caminhos do Inspector continuam específicos deste projeto.

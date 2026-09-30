@@ -4,6 +4,8 @@ Mudanças relevantes entregues no projeto, em ordem cronológica inversa.
 
 ## Não lançado
 
+- O inicializador do Codex agora herda o `notify` global do usuário; removido o TTS específico do repositório, evitando duplicação entre projetos.
+
 - Ampliada a coleta read-only do Inspector: logcat bruto sem filtro textual, Settings, propriedades, serviços/dumpsys/HAL, processos e inventários BYD/kernel sujeitos às permissões do UID.
 - Adicionado modo de experimento com intensidades LOW/NORMAL/DEEP, baseline com indicador de prontidão, snapshots por marcador, diff, ranking heurístico, filtros de evidência e exportação JSON/relatório legível.
 - Registrada a auditoria técnica e os limites em `docs/inspector-audit-expansion.md`.

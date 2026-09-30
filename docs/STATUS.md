@@ -58,3 +58,7 @@ Executar build e testes solicitados. Depois instalar e realizar ensaio parado de
 - Mudança de código ainda não compilada nem instalada. Na próxima sessão no carro, conferir `ANDROID_SENSOR_INVENTORY`, estados das fontes e se `TYPE_LIGHT` está disponível; comparar marcadores de luz com fluxo de sensor e captura ADB externa.
 - Tentativa de compilar/instalar (2026-09-30): ADB está conectado ao DiLink (`172.20.227.181:5555`), mas não foi possível gerar o APK porque este ambiente não tem Android SDK instalado/configurado (`ANDROID_HOME`/`sdk.dir` ausente; nenhuma cópia de `android.jar` encontrada). APKs antigos existentes não incluem com segurança a mudança de sensores e não foram instalados.
 - Conclusão da instalação (2026-09-30): GitHub Actions `36675900062` compilou o APK; instalado no DiLink após remover o pacote anterior porque as assinaturas divergiam. Antes da troca, foram copiados para o Termux o APK anterior, 7,3 MB de sessões (10 diretórios) e dados privados; após instalar, confirmei os 10 diretórios no carro e comparei SHA-256 do APK instalado com o artefato (`06a081e804b75b85826e8bb260848217be9e0cf31431f75d0469c91af768a6dc`). O `versionName` interno continua `1.0.0`, apesar de o artefato do workflow chamar-se `v1.0.83`.
+
+## Codex no Termux: TTS global (2026-09-30)
+
+- O inicializador herda `notify` de `~/.codex/config.toml`; o leitor de respostas em português fica fora do repositório. Modelo, permissões e diretórios BYD permanecem locais ao projeto.
