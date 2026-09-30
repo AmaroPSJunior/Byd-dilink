@@ -34,7 +34,8 @@ class DiLinkInspectorService : Service() {
                 }
                 controller = InspectorSessionController(this)
                 try {
-                    uiState = controller?.start(mode) ?: InspectorUiState()
+                    val intensity = intent.getStringExtra(EXTRA_INTENSITY) ?: "NORMAL"
+                    uiState = controller?.start(mode, intensity) ?: InspectorUiState()
                 } catch (t: Throwable) {
                     uiState = InspectorUiState(lastError = "${t.javaClass.simpleName}: ${t.message}")
                     stopForeground(STOP_FOREGROUND_REMOVE)
@@ -103,15 +104,17 @@ class DiLinkInspectorService : Service() {
         const val ACTION_STOP = "com.byd.carcontrol.inspector.STOP"
         const val ACTION_STATE = "com.byd.carcontrol.inspector.STATE"
         const val EXTRA_DESCRIPTION = "description"
+        const val EXTRA_INTENSITY = "intensity"
         private const val CHANNEL_ID = "dilink_inspector"
         private const val NOTIFICATION_ID = 7901
 
         @Volatile var uiState: InspectorUiState = InspectorUiState()
             internal set
 
-        fun send(context: android.content.Context, action: String, description: String? = null) {
+        fun send(context: android.content.Context, action: String, description: String? = null, intensity: String? = null) {
             val intent = Intent(context, DiLinkInspectorService::class.java).setAction(action)
             if (description != null) intent.putExtra(EXTRA_DESCRIPTION, description)
+            if (intensity != null) intent.putExtra(EXTRA_INTENSITY, intensity)
             if (action == ACTION_START_MONITORING || action == ACTION_START_EXPERIMENT) {
                 ContextCompat.startForegroundService(context, intent)
             } else {

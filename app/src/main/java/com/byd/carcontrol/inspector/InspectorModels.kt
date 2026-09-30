@@ -91,7 +91,8 @@ data class InspectorSessionMetadata(
     val device: Map<String, Any?>,
     val sources: List<Map<String, Any?>>,
     val storage: Map<String, Any?>,
-    val errors: List<Map<String, Any?>> = emptyList()
+    val errors: List<Map<String, Any?>> = emptyList(),
+    val capture: Map<String, Any?> = emptyMap()
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("schemaVersion", 1)
@@ -103,6 +104,7 @@ data class InspectorSessionMetadata(
         put("sources", org.json.JSONArray(sources.map(::JSONObject)))
         put("storage", JSONObject(storage))
         put("errors", org.json.JSONArray(errors.map(::JSONObject)))
+        put("capture", JSONObject(capture))
     }
 }
 
@@ -119,6 +121,7 @@ data class StoredInspectorSession(
 
 data class InspectorUiState(
     val active: Boolean = false,
+    val ready: Boolean = false,
     val sessionId: String? = null,
     val mode: String? = null,
     val startedAt: Long? = null,

@@ -119,7 +119,7 @@ class DiLinkPermissionCollector : InspectorCollector {
         "android.permission.BYDAUTO_AC_GET", "android.permission.BYDAUTO_AC_SET",
         "android.permission.BYDAUTO_PANORAMA_GET", "android.permission.BYDAUTO_PANORAMA_SET",
         "android.permission.BYDAUTO_PANORAMA_COMMON", "android.permission.BYDDIAGNOSTIC_SEND_BUFFER",
-        "android.permission.READ_LOGS", Manifest.permission.CAMERA
+        "android.permission.READ_LOGS", "android.permission.QUERY_ALL_PACKAGES", Manifest.permission.CAMERA
     )
 
     @Suppress("DEPRECATION")
@@ -281,11 +281,17 @@ class DiLinkDeviceMetadataCollector : InspectorCollector {
     }
 }
 
-class MotionSensorStream(private val context: Context, private val emit: (InspectorObservation) -> Unit) : SensorEventListener {
+class MotionSensorStream(
+    private val context: Context,
+    private val emit: (InspectorObservation) -> Unit,
+    private val emitUnchangedSamples: Boolean = false,
+    private val sampleIntervalMs: Long = 1_000L
+) : SensorEventListener {
     private val manager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     private val lastEmittedAt = ConcurrentHashMap<Int, Long>()
     private val previous = ConcurrentHashMap<Int, String>()
     @Volatile private var running = false
+    private val logLine = Regex("^([0-9.]+)\\s+(\\d+)\\s+(\\d+)\\s+([VDIWEF])\\s+([^:]+):\\s?(.*)$")
 
     fun start() {
         if (running) return
@@ -307,11 +313,11 @@ class MotionSensorStream(private val context: Context, private val emit: (Inspec
         if (!running) return
         val now = System.currentTimeMillis()
         val previousTime = lastEmittedAt[event.sensor.type] ?: 0L
-        if (now - previousTime < 1000L) return
+        if (now - previousTime < sampleIntervalMs) return
         val value = event.values.joinToString(",") { "%.4f".format(java.util.Locale.US, it) }
         val old = previous.put(event.sensor.type, value)
         lastEmittedAt[event.sensor.type] = now
-        if (old == null || old != value) emit(InspectorObservation(
+        if (emitUnchangedSamples || old == null || old != value) emit(InspectorObservation(
             source = "android.sensor",
             eventType = "SENSOR_SAMPLE",
             value = value,
@@ -326,35 +332,40 @@ class MotionSensorStream(private val context: Context, private val emit: (Inspec
     }
 }
 
-/** Best-effort filtered logcat stream; Android normally restricts an ordinary app to its own logs. */
+/** Best-effort unfiltered logcat stream; Android normally restricts an ordinary app to its own logs. */
 class FilteredLogcatStream(private val emit: (InspectorObservation) -> Unit) {
     @Volatile private var process: Process? = null
     @Volatile private var running = false
-    private val relevantLine = Regex("light|lamp|inside|interior|ambient|reading|dome|roof|ceiling|cabin|courtesy|bydauto|vehicle|carservice|\\u706f|\\u8f66", RegexOption.IGNORE_CASE)
+    private val logLine = Regex("^([0-9.]+)\\s+(\\d+)\\s+(\\d+)\\s+([VDIWEF])\\s+([^:]+):\\s?(.*)$")
 
     fun start() {
         if (running) return
         running = true
         Thread({
             try {
-                val child = ProcessBuilder(
-                    "logcat", "-v", "epoch", "-T", "1"
-                ).redirectErrorStream(true).start()
+                val command = listOf("logcat", "-b", "all", "-v", "epoch", "-T", "1")
+                val child = ProcessBuilder(command).redirectErrorStream(true).start()
                 process = child
                 BufferedReader(InputStreamReader(child.inputStream)).useLines { lines ->
                     lines.forEach { line ->
                         if (!running) return@forEach
-                        if (line.contains("not permitted", true) || line.contains("permission denied", true) || line.contains("Operation not permitted", true)) {
-                            emit(InspectorObservation("android.logcat", "SOURCE_LIMITED", value = line.take(500), permission = Manifest.permission.READ_LOGS))
-                        } else if (line.isNotBlank() && relevantLine.containsMatchIn(line)) {
-                            emit(InspectorObservation("android.logcat", "LOGCAT_LINE", value = line.take(1200), property = "filtered_line"))
+                        if (line.isNotBlank()) {
+                            val parsed = logLine.find(line)
+                            val tag = parsed?.groupValues?.getOrNull(5)?.trim()
+                            val message = parsed?.groupValues?.getOrNull(6).orEmpty()
+                            val numericTokens = Regex("0x[0-9a-fA-F]+|(?<![A-Za-z])\\d+(?:\\.\\d+)?").findAll(message).map { it.value }.toList()
+                            val signature = message.replace(Regex("0x[0-9a-fA-F]+|(?<![A-Za-z])\\d+(?:\\.\\d+)?"), "#").take(500)
+                            emit(InspectorObservation(
+                                "android.logcat", "LOGCAT_RAW_LINE", value = line, service = tag,
+                                property = tag ?: "buffer=all", metadata = mapOf("command" to command, "buffersRequested" to "all", "contentFilter" to false, "readPermission" to Manifest.permission.READ_LOGS,
+                                    "logEpoch" to parsed?.groupValues?.getOrNull(1), "pid" to parsed?.groupValues?.getOrNull(2)?.toIntOrNull(), "tid" to parsed?.groupValues?.getOrNull(3)?.toIntOrNull(),
+                                    "priority" to parsed?.groupValues?.getOrNull(4), "tag" to tag, "message" to message, "numericTokens" to numericTokens, "normalizedSignature" to signature)
+                            ))
                         }
                     }
                 }
-                if (running) {
-                    val exitCode = try { child.waitFor() } catch (_: InterruptedException) { null }
-                    if (running) emit(InspectorObservation("android.logcat", "SOURCE_ENDED", value = "logcat process finished with ${exitCode ?: "unknown exit code"}"))
-                }
+                val exitCode = try { child.waitFor() } catch (_: InterruptedException) { null }
+                if (running) emit(InspectorObservation("android.logcat", if (exitCode != null && exitCode != 0) "SOURCE_LIMITED" else "SOURCE_ENDED", value = "logcat process finished with ${exitCode ?: "unknown exit code"}", permission = if (exitCode != null && exitCode != 0) Manifest.permission.READ_LOGS else null, metadata = mapOf("buffersRequested" to "all", "contentFilter" to false, "exitCode" to exitCode)))
             } catch (t: Throwable) {
                 if (running) emit(InspectorObservation("android.logcat", "SOURCE_LIMITED", value = "${t.javaClass.simpleName}: ${t.message}", permission = Manifest.permission.READ_LOGS, metadata = mapOf("exception" to t.javaClass.name)))
             } finally {
