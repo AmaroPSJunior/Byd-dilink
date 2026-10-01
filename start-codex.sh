@@ -12,4 +12,4 @@ fi
 
 mkdir -p "$DATA_DIR" "$REPORTS_DIR"
 cd "$PROJECT_DIR"
-exec codex -C "$PROJECT_DIR" -m gpt-6-luna -s workspace-write -a never -c "notify=[\"python\", \"$PROJECT_DIR/.codex/speak-codex-reply.py\"]" --add-dir "$DATA_DIR" --add-dir "$REPORTS_DIR" "$@"
+exec codex -C "$PROJECT_DIR" -m gpt-6-luna -s workspace-write -a never --add-dir "$DATA_DIR" --add-dir "$REPORTS_DIR" "$@"
