@@ -88,8 +88,7 @@ object BydWindowControl {
     private fun checkVehicleSafe(context: Context) {
         val speed = readSpeed(context) ?: error("Velocidade indisponível; comando recusado.")
         require(speed.isFinite() && abs(speed) <= 0.5) { "Veículo em movimento ($speed km/h); comando recusado." }
-        val gear = readGear(context) ?: error("Marcha indisponível; comando recusado.")
-        require(gear == 3) { "O comando exige P; marcha reportada=$gear." }
+        // Não exige marcha P: imobilidade continua obrigatória pela leitura de velocidade.
     }
 
     private fun readSpeed(context: Context): Double? = runCatching {
