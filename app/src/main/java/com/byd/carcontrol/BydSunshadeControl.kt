@@ -53,9 +53,8 @@ object BydSunshadeControl {
         if (!speed.isFinite() || abs(speed) > 0.5) {
             return blocked(requestedPercent, speed, null, "Veículo em movimento ($speed km/h); comando recusado.")
         }
+        // Marcha informativa, não é bloqueio. Velocidade válida e <= 0,5 km/h continua obrigatória.
         val gear = readGear(sdkContext)
-            ?: return blocked(requestedPercent, speed, null, "Marcha indisponível; o comando exige P.")
-        if (gear != PARK_GEAR) return blocked(requestedPercent, speed, gear, "O comando exige P; marcha reportada=$gear.")
 
         val deviceClass = Class.forName(DEVICE_CLASS)
         val instance = deviceClass.getMethod("getInstance", Context::class.java)
@@ -87,9 +86,9 @@ object BydSunshadeControl {
         val observed = readPercent(deviceClass, instance)
         val confirmed = !isStop && matchesTarget(observed, requestedPercent)
         val detail = if (isStop) {
-            "Comando OEM de parada (254) aceito em P (velocidade ${speed} km/h); posição lida ${observed ?: "indisponível"}%."
+            "Comando OEM de parada (254) aceito com veículo parado (velocidade ${speed} km/h); posição lida ${observed ?: "indisponível"}%."
         } else if (confirmed) {
-            "Posição ${observed}% confirmada em P (velocidade ${speed} km/h)."
+            "Posição ${observed}% confirmada com veículo parado (velocidade ${speed} km/h)."
         } else {
             "API aceitou setSunshadeState($command); movimento para ${requestedPercent}% iniciado, leitura atual ${observed ?: "indisponível"}%."
         }
