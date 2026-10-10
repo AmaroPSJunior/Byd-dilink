@@ -1,67 +1,37 @@
 package com.byd.carcontrol
 
 import android.content.Context
-import android.media.AudioAttributes
-import android.media.MediaPlayer
-import java.util.ArrayDeque
+import android.speech.tts.TextToSpeech
+import java.util.Locale
 
-/** Plays bundled Brazilian Portuguese seat specific prompts through Android's cabin audio route. */
+/** Speaks explicit Portuguese seatbelt warnings; avoids misidentified bundled audio. */
 class SeatbeltVoiceAnnouncer(context: Context) {
-    private val appContext = context.applicationContext
-    private val pending = ArrayDeque<Int>()
-    private var player: MediaPlayer? = null
-    // BYD VoiceReminder's native Brazilian Portuguese prompt, more natural than synthesized eSpeak.
-    private val prompts = mapOf("SAFETY_BELT_AREA_MAIN" to R.raw.seat_driver)
-
-    fun announce(seats: List<BydSeatbeltReader.Seat>) {
-        seats.mapNotNull { prompts[it.key] }.forEach(pending::addLast)
-        playNext()
+    private var ready = false
+    private val pending = mutableListOf<String>()
+    private val tts = TextToSpeech(context.applicationContext) { status ->
+        ready = status == TextToSpeech.SUCCESS
     }
 
-    fun release() {
-        pending.clear()
-        player?.setOnCompletionListener(null)
-        player?.release()
-        player = null
+    fun announce(seats: List<BydSeatbeltReader.Seat>) {
+        seats.filter { it.raw == 2 }.forEach {
+            pending.add("Atenção. Cinto do assento ${it.label} desafivelado. Por favor, afivele o cinto.")
+        }
+        if (ready) {
+            tts.language = Locale("pt", "BR")
+            pending.forEachIndexed { index, phrase ->
+                tts.speak(phrase, if (index == 0) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD, null, "belt_${index}")
+            }
+            pending.clear()
+        }
     }
 
     fun stop() {
         pending.clear()
-        player?.setOnCompletionListener(null)
-        player?.release()
-        player = null
+        tts.stop()
     }
 
-    private fun playNext() {
-        if (player != null || pending.isEmpty()) return
-        val resource = pending.removeFirst()
-        val next = MediaPlayer()
-        player = next
-        next.setOnCompletionListener { completed ->
-            completed.release()
-            player = null
-            playNext()
-        }
-        next.setOnErrorListener { failed, _, _ ->
-            failed.release()
-            player = null
-            playNext()
-            true
-        }
-        runCatching {
-            next.setAudioAttributes(AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                .build())
-            appContext.resources.openRawResourceFd(resource).use { audio ->
-                next.setDataSource(audio.fileDescriptor, audio.startOffset, audio.length)
-            }
-            next.setOnPreparedListener { it.start() }
-            next.prepareAsync()
-        }.onFailure {
-            next.release()
-            player = null
-            playNext()
-        }
+    fun release() {
+        stop()
+        tts.shutdown()
     }
 }
