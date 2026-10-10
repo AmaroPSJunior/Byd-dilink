@@ -19,9 +19,14 @@ object BydSeatbeltReader {
             ?: error("BYDAutoSafetyBeltDevice.getInstance retornou null")
         fun constant(name: String): Int = deviceClass.getField(name).getInt(null)
         val getter = deviceClass.getMethod("getSafetyBeltStatus", Int::class.javaPrimitiveType)
-        // Only the main/driver area was verified against live vehicle behavior.
-        // Other area values appeared to change without corresponding belt activity.
-        val seats = listOf("SAFETY_BELT_AREA_MAIN" to "Motorista").map { (key, label) ->
+        // Other areas are exposed for display; alerts require a verified state transition.
+        val seats = listOf(
+            "SAFETY_BELT_AREA_MAIN" to "motorista",
+            "SAFETY_BELT_AREA_DEPUTY" to "passageiro dianteiro",
+            "SAFETY_BELT_AREA_SECOND_ROW_SEAT_LEFT" to "traseiro esquerdo",
+            "SAFETY_BELT_AREA_SECOND_ROW_SEAT_MID" to "traseiro central",
+            "SAFETY_BELT_AREA_SECOND_ROW_SEAT_RIGHT" to "traseiro direito"
+        ).filter { (key, _) -> runCatching { deviceClass.getField(key) }.isSuccess }.map { (key, label) ->
             val field = deviceClass.getField(key)
             val area = field.getInt(null)
             val raw = (getter.invoke(instance, area) as? Number)?.toInt()
