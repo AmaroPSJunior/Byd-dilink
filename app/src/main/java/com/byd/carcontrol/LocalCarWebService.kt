@@ -35,7 +35,8 @@ class LocalCarWebService : Service() {
     private var server: LocalCarHttpServer? = null
     private var beltScheduler: ScheduledExecutorService? = null
     private var beltAnnouncer: SeatbeltVoiceAnnouncer? = null
-    private var beltWasEligible = false
+    private val previousBeltStates = mutableMapOf<String, Int>()
+    private val confirmedPassengerAlerts = mutableSetOf<String>()
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
@@ -88,16 +89,23 @@ class LocalCarWebService : Service() {
                     val settings = getSharedPreferences(BELT_PREFS, MODE_PRIVATE)
                     val enabled = settings.getBoolean(BELT_VOICE_ENABLED, true)
                     val threshold = settings.getInt(BELT_SPEED_KMH, 10).coerceIn(1, 200)
-                    val driverUnbuckled = BydSeatbeltReader.readAll(this).seats.any { it.key == "SAFETY_BELT_AREA_MAIN" && it.raw == 2 }
+                    val seats = BydSeatbeltReader.readAll(this).seats
+                    seats.forEach { seat ->
+                        if (seat.key != "SAFETY_BELT_AREA_MAIN") {
+                            if (previousBeltStates[seat.key] == 1 && seat.raw == 2)
+                                confirmedPassengerAlerts.add(seat.key)
+                            if (seat.raw != 2) confirmedPassengerAlerts.remove(seat.key)
+                        }
+                        previousBeltStates[seat.key] = seat.raw
+                    }
                     val speed = runCatching { BydVehicleSpeedReader.readKmh(this) }.getOrNull()
-                    val eligible = enabled && driverUnbuckled && speed != null && speed.isFinite() && speed >= threshold
-                    if (eligible && !beltWasEligible) beltAnnouncer?.announce(
-                        BydSeatbeltReader.readAll(this).seats.filter { it.key == "SAFETY_BELT_AREA_MAIN" && it.raw == 2 }
-                    )
-                    if (!enabled) beltAnnouncer?.stop()
-                    beltWasEligible = eligible
+                    val eligible = enabled && speed != null && speed.isFinite() && speed >= threshold
+                    val active = if (eligible) seats.filter { seat ->
+                        seat.raw == 2 && (seat.key == "SAFETY_BELT_AREA_MAIN" || seat.key in confirmedPassengerAlerts)
+                    } else emptyList()
+                    beltAnnouncer?.setActive(active)
                 } catch (t: Throwable) {
-                    beltWasEligible = false
+                    beltAnnouncer?.stop()
                     Log.w(TAG, "Leitura do cinto no serviço web falhou", t)
                 }
             }, 0, 2, TimeUnit.SECONDS)
