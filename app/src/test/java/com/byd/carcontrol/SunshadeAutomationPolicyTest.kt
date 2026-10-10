@@ -7,6 +7,8 @@ class SunshadeAutomationPolicyTest {
     private val p = SunshadeAutomationPolicy
     @Test fun safetyFailsClosed() {
         assertTrue(p.safe(0.0, 3, 0, 1))
+        assertTrue(p.safe(0.5, 3, 0, 1))
+        assertTrue(p.safe(-0.5, 3, 0, 1))
         for (speed in listOf(null, Double.NaN, Double.POSITIVE_INFINITY, 0.51, -0.51))
             assertFalse(p.safe(speed, 3, 0, 1))
         for (gear in listOf(null, 0, 1, 2, -1)) assertFalse(p.safe(0.0, gear, 0, 1))

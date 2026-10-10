@@ -76,3 +76,7 @@ A leitura de respostas em português via Termux TTS é uma preferência global d
 usuário: configure `notify` em `~/.codex/config.toml`, apontando para um script
 fora do repositório. O inicializador herda essa configuração sem sobrescrevê-la.
 Modelo, permissões e caminhos do Inspector continuam específicos deste projeto.
+
+## Automação Persiana experimental
+
+Consulte [configuração, bloqueios e limites da automação OEM por acessibilidade](docs/automacao-persiana.md). Requer habilitação explícita e leituras OEM autorizadas; não usa coordenadas nem shell. Não homologada no veículo.

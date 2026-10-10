@@ -12,7 +12,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 /** One explicit request, one exact OEM node click. No gestures or coordinates. */
 class SunshadeAccessibilityService : AccessibilityService() {
     companion object {
-        private var connected: SunshadeAccessibilityService? = null
+        @Volatile private var connected: SunshadeAccessibilityService? = null
         var result: String = "Requer acessibilidade habilitada e leitura OEM autorizada de velocidade/P."
             private set
         fun available() = connected != null
