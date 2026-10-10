@@ -175,6 +175,7 @@ class DiLinkInspectorActivity : AppCompatActivity() {
             setHintTextColor(Color.LTGRAY)
         }
         body.addView(times, marginParams(bottom = 6))
+        lateinit var showFiltered: () -> Unit
         val categories = listOf("CAPTURA", "EVENTOS", "DIFF", "CORRELAÇÕES", "SERVIÇOS", "HAL/BINDER", "PERMISSÕES/ERROS", "RAW")
         val categoryRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         categories.forEach { category ->
@@ -188,7 +189,7 @@ class DiLinkInspectorActivity : AppCompatActivity() {
         body.addView(android.widget.HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = true; addView(categoryRow) }, marginParams(bottom = 6))
         val output = TextView(this).apply { textSize = 11f; setTextColor(Color.rgb(226, 232, 240)); setTextIsSelectable(true) }
         val resultCards = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        fun showFiltered() {
+        showFiltered = {
             searchText = search.text.toString()
             timeRangeText = times.text.toString()
             val all = storage.readEvents(session)

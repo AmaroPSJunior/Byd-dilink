@@ -70,7 +70,7 @@ class InspectorSystemSurfaceCollector : InspectorCollector {
 
         val permissions = try {
             @Suppress("DEPRECATION")
-            pm.getInstalledPackages(PackageManager.GET_PERMISSIONS).flatMap { it.requestedPermissions.orEmpty() }.filter { it.startsWith("android.permission.BYDAUTO_", true) }.distinct().sorted()
+            pm.getInstalledPackages(PackageManager.GET_PERMISSIONS).flatMap { it.requestedPermissions.orEmpty().asIterable() }.filter { it.startsWith("android.permission.BYDAUTO_", true) }.distinct().sorted()
         } catch (t: Throwable) { add(accessError("BYDAUTO_permission_inventory", t)); emptyList() }
         permissions.forEach { permission ->
             val definition = try { pm.getPermissionInfo(permission, 0) } catch (_: Throwable) { null }
@@ -123,7 +123,7 @@ class InspectorSystemSurfaceCollector : InspectorCollector {
     private fun runCommand(command: String, eventType: String, vararg args: String): List<InspectorObservation> {
         val process = try { ProcessBuilder(listOf(command) + args).redirectErrorStream(true).start() }
         catch (t: Throwable) { return listOf(accessError(command, t, "Executable absent or execution denied")) }
-        try {
+        return try {
             val outputBuilder = StringBuilder()
             var truncated = false
             process.inputStream.bufferedReader().use { reader ->
