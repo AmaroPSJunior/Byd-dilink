@@ -48,7 +48,7 @@ object BydSunshadeControl {
         val isStop = command == STOP_COMMAND
         val requestedPercent = if (isStop) readPosition(context) ?: 0 else command
         val sdkContext = BydAutoReadContext(context.applicationContext)
-        // val speed = readSpeedKmh(sdkContext)
+        val speed = readSpeedKmh(sdkContext)
         //     ?: return blocked(requestedPercent, null, null, "Leitura de velocidade indisponível; comando recusado.")
         // if (!speed.isFinite() || abs(speed) > 0.5) {
         //     return blocked(requestedPercent, speed, null, "Veículo em movimento ($speed km/h); comando recusado.")
