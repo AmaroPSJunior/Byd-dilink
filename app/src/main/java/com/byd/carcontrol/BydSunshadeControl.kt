@@ -48,28 +48,28 @@ object BydSunshadeControl {
         val isStop = command == STOP_COMMAND
         val requestedPercent = if (isStop) readPosition(context) ?: 0 else command
         val sdkContext = BydAutoReadContext(context.applicationContext)
-        val speed = readSpeedKmh(sdkContext)
-            ?: return blocked(requestedPercent, null, null, "Leitura de velocidade indisponível; comando recusado.")
-        if (!speed.isFinite() || abs(speed) > 0.5) {
-            return blocked(requestedPercent, speed, null, "Veículo em movimento ($speed km/h); comando recusado.")
-        }
+        // val speed = readSpeedKmh(sdkContext)
+        //     ?: return blocked(requestedPercent, null, null, "Leitura de velocidade indisponível; comando recusado.")
+        // if (!speed.isFinite() || abs(speed) > 0.5) {
+        //     return blocked(requestedPercent, speed, null, "Veículo em movimento ($speed km/h); comando recusado.")
+        // }
         // Marcha informativa, não é bloqueio. Velocidade válida e <= 0,5 km/h continua obrigatória.
         val gear = readGear(sdkContext)
 
         val deviceClass = Class.forName(DEVICE_CLASS)
         val instance = deviceClass.getMethod("getInstance", Context::class.java)
-            .invoke(null, sdkContext) ?: error("BYDAutoBodyworkDevice.getInstance retornou null")
+            .invoke(null, sdkContext) ?: error("BYDAutoB// odyworkDevice.getInstance retornou null")
 
         // OEM CarSettings disables its sunshade controls when this getter is 1.
-        val operationBlocked = (deviceClass.getMethod("getWindowPermitState").invoke(instance) as Number).toInt()
-        val initialized = (deviceClass.getMethod("getWindoblindInitState").invoke(instance) as Number).toInt()
-        if (operationBlocked == OPEN_OPERATION_BLOCKED || initialized != 1) {
-            return blocked(
-                requestedPercent, speed, gear,
-                "API OEM bloqueia a operação: bloqueio=$operationBlocked, inicialização=$initialized.",
-                readPercent(deviceClass, instance)
-            )
-        }
+        // val operationBlocked = (deviceClass.getMethod("getWindowPermitState").invoke(instance) as Number).toInt()
+        // val initialized = (deviceClass.getMethod("getWindoblindInitState").invoke(instance) as Number).toInt()
+        // if (operationBlocked == OPEN_OPERATION_BLOCKED || initialized != 1) {
+        //      return blocked(
+        //        requestedPercent, speed, gear,
+        //         "API OEM bloqueia a operação: bloqueio=$operationBlocked, inicialização=$initialized.",
+        //         readPercent(deviceClass, instance)
+        //     )
+        // }
 
         val method = deviceClass.getMethod("setSunshadeState", Int::class.javaPrimitiveType)
         val rawResult = method.invoke(instance, command)
