@@ -153,6 +153,8 @@ class MainActivity : AppCompatActivity() {
     private var seatbeltPolling = false
     private var activityResumed = false
     private var seatbeltVoiceAnnouncer: SeatbeltVoiceAnnouncer? = null
+    private val priorSeatbeltStates = mutableMapOf<String, Int>()
+    private val verifiedPassengerAlerts = mutableSetOf<String>()
     private var previouslyUnbuckled = emptySet<String>()
     @Volatile private var seatbeltReadInFlight = false
     private var hvacCommandStatus = "Climatização aguardando comando."
@@ -913,11 +915,18 @@ class MainActivity : AppCompatActivity() {
                     val byName = state.seats.associate { it.key to it.raw }
                     seatbeltDiagram.setSeatStates(byName)
                     val unbuckled = state.seats.filter { it.raw == 2 }
+                    state.seats.forEach { seat ->
+                        if (seat.key != "SAFETY_BELT_AREA_MAIN") {
+                            if (priorSeatbeltStates[seat.key] == 1 && seat.raw == 2) verifiedPassengerAlerts.add(seat.key)
+                            if (seat.raw != 2) verifiedPassengerAlerts.remove(seat.key)
+                        }
+                        priorSeatbeltStates[seat.key] = seat.raw
+                    }
                     val unavailable = state.seats.filter { it.raw == 0 }
                     val speedEligible = speed != null && speed.isFinite() && speed >= seatbeltAlertSpeedKmh
                     val eligibleWarnings = if (speedEligible) unbuckled else emptyList()
                     txtSeatbeltAccessStatus.text = buildString {
-                        if (unbuckled.isEmpty()) append("✓ Cinto do motorista não está reportado como desafivelado.")
+                        if (unbuckled.isEmpty()) append("✓ Nenhum cinto reportado como desafivelado.")
                         else append("⚠ Desafivelados: ${unbuckled.joinToString { it.label }}.")
                         if (unavailable.isNotEmpty()) append(" Estado indisponível: ${unavailable.joinToString { it.label }}.")
                         append(" Velocidade: ${speed?.let { "%.0f".format(Locale.getDefault(), it) + " km/h" } ?: "indisponível"}; alerta a partir de $seatbeltAlertSpeedKmh km/h.")
@@ -927,7 +936,11 @@ class MainActivity : AppCompatActivity() {
                     txtSeatbeltAccessStatus.setTextColor(if (unbuckled.isEmpty()) Color.parseColor("#86efac") else Color.parseColor("#fca5a5"))
                     val newWarnings = eligibleWarnings.filter { it.key !in previouslyUnbuckled }
                     val webServerOwnsSeatbeltAudio = LocalCarWebService.prefs(this).getBoolean(LocalCarWebService.KEY_RUNNING, false)
-                    if (seatbeltVoiceEnabled && !webServerOwnsSeatbeltAudio) seatbeltVoiceAnnouncer?.announce(newWarnings)
+                    if (!webServerOwnsSeatbeltAudio) {
+                        val active = eligibleWarnings.filter { it.key == "SAFETY_BELT_AREA_MAIN" || it.key in verifiedPassengerAlerts }
+                        if (seatbeltVoiceEnabled) seatbeltVoiceAnnouncer?.setActive(active)
+                        else seatbeltVoiceAnnouncer?.stop()
+                    }
                     previouslyUnbuckled = if (seatbeltVoiceEnabled) eligibleWarnings.map { it.key }.toSet() else emptySet()
                 }.onFailure { error ->
                     val cause = error.cause ?: error
