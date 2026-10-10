@@ -40,6 +40,8 @@
 
     <!-- Visibilidade de pacotes Android 11+ -->
     <queries>
+        <intent><action android:name="android.settings.ACCESSIBILITY_SETTINGS" /></intent>
+        <intent><action android:name="android.intent.action.BYD_ACCESSIBILITY" /></intent>
         <provider android:authorities="com.byd.car.server.provider.CarServiceProvider" />
         <package android:name="cc.omycar.magicmanager" />
         <package android:name="cc.omycar.magicsentry" />

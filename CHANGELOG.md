@@ -23,3 +23,5 @@ Mudanças relevantes entregues no projeto, em ordem cronológica inversa.
 - Serviço de acessibilidade separado, habilitação explícita, clique único em nó OEM identificado.
 - Verificações de velocidade/P/permit/init por contexto normal; falhas bloqueiam sem fallback por coordenadas.
 - Retorno ao aplicativo, timeout e testes de política offline. Sem homologação física ou instalação automática.
+
+- Corrigida abertura de acessibilidade no DiLink: resolução prévia, fallback OEM validado e tratamento de atividade ausente/acesso recusado, sem habilitação automática.

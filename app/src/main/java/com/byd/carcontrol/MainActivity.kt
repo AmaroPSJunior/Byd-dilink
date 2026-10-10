@@ -510,7 +510,13 @@ class MainActivity : AppCompatActivity() {
         btnInteriorLightOn.setOnClickListener { requestInteriorLightPower(true) }
         btnInteriorLightOff.setOnClickListener { requestInteriorLightPower(false) }
         findViewById<android.widget.Button>(R.id.btnAutomationAccess).setOnClickListener {
-            startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            if (!AccessibilitySettingsLauncher.open(this)) {
+                val message = "Configuração de acessibilidade indisponível ou não autorizada nesta central. Consulte o menu original BYD ou o suporte do fabricante. A automação permanece bloqueada até habilitação explícita; nenhuma permissão foi alterada."
+                findViewById<TextView>(R.id.txtSunshadeAutomation).text = message
+                androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle("Acessibilidade indisponível").setMessage(message)
+                    .setPositiveButton("Entendi", null).show()
+            }
         }
         fun requestAutomation(action: SunshadeAutomationPolicy.Action) {
             if (sunshadeMotion != null) {

@@ -41,3 +41,15 @@ antes de autorizar qualquer comando. Nenhum teste de hardware foi feito nesta im
 
 Reversão: desabilitar o serviço nas configurações; para código, reverter o commit da
 branch feature/sunshade-accessibility-safe. Não remover dados do aplicativo.
+
+## Configurações ausentes no DiLink
+
+O build 102 abria a ação Android padrão sem tratar sua ausência. No DiLink observado,
+isso causava ActivityNotFoundException. Agora a resolução é verificada antes da abertura;
+a rota alternativa é android.intent.action.BYD_ACCESSIBILITY, restrita ao componente
+com.byd.carsettings/com.byd.systemsettings.accessibility.AccessibilityMainActivity.
+São conferidos componente habilitado/exportado e permissão exigida. Recusa de segurança
+ou desaparecimento da activity são tratados sem crash. Sem rota válida, há orientação
+para o menu original/suporte e a automação permanece bloqueada.
+Abrir configurações não habilita o serviço. A disponibilidade do menu de habilitação
+para terceiros ainda precisa de homologação presencial e consentimento específico.
