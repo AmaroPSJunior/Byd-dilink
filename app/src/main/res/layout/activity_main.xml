@@ -381,6 +381,22 @@
                     android:visibility="gone" />
             </LinearLayout>
 
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="16dp" android:background="#0f172a"
+                android:layout_marginBottom="14dp">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="Automação Persiana" android:textColor="#38bdf8" android:textSize="18sp" />
+                <TextView android:id="@+id/txtSunshadeAutomation" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:textColor="#ffffff"
+                    android:text="Acessibilidade opcional. Operação somente parado em P." />
+                <Button android:id="@+id/btnAutomationAccess" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:text="Configurar acessibilidade" />
+                <Button android:id="@+id/btnAutomationOpen" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:text="Abrir" />
+                <Button android:id="@+id/btnAutomationClose" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:text="Fechar" />
+            </LinearLayout>
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

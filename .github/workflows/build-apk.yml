@@ -38,9 +38,9 @@ jobs:
           BUILD_NUM=${{ github.run_number }}
           echo "Building APK version code $BUILD_NUM..."
           if [ -f "./gradlew" ]; then
-            ./gradlew assembleDebug -PbuildNumber=$BUILD_NUM --no-daemon
+            ./gradlew testDebugUnitTest assembleDebug -PbuildNumber=$BUILD_NUM --no-daemon
           else
-            gradle assembleDebug -PbuildNumber=$BUILD_NUM --no-daemon
+            gradle testDebugUnitTest assembleDebug -PbuildNumber=$BUILD_NUM --no-daemon
           fi
 
       - name: Prepare APK Artifact

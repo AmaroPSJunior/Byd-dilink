@@ -2,4 +2,5 @@
 <resources>
     <string name="app_name">BYD Car Control</string>
     <string name="climate_accessibility_description">Automatiza apenas o botão de energia identificado no painel oficial de climatização BYD, após um comando explícito nesta aplicação.</string>
+    <string name="sunshade_accessibility_description">Somente após seu pedido, localiza Abrir/Fechar na tela original BYD. Exige velocidade válida, P e estados OEM liberados. Não usa coordenadas e não confirma movimento físico.</string>
 </resources>

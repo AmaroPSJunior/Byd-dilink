@@ -18,3 +18,8 @@ Mudanças relevantes entregues no projeto, em ordem cronológica inversa.
 - O fluxo de leitura passiva inclui tipos ambientais e de luz/proximidade, mantendo amostragem limitada e sem executar comandos no veículo.
 - Corrigido o encerramento do coletor logcat para aguardar o processo antes de consultar seu código de saída.
 - Registradas referências públicas e limitações de permissões/FIDs em `docs/inspector-sensor-expansion.md`.
+
+## Automação Persiana experimental
+- Serviço de acessibilidade separado, habilitação explícita, clique único em nó OEM identificado.
+- Verificações de velocidade/P/permit/init por contexto normal; falhas bloqueiam sem fallback por coordenadas.
+- Retorno ao aplicativo, timeout e testes de política offline. Sem homologação física ou instalação automática.

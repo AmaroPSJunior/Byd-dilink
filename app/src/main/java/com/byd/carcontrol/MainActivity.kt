@@ -509,6 +509,33 @@ class MainActivity : AppCompatActivity() {
         editSeatbeltSpeed.setOnEditorActionListener { _, _, _ -> saveSeatbeltAlertSpeed(); false }
         btnInteriorLightOn.setOnClickListener { requestInteriorLightPower(true) }
         btnInteriorLightOff.setOnClickListener { requestInteriorLightPower(false) }
+        findViewById<android.widget.Button>(R.id.btnAutomationAccess).setOnClickListener {
+            startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        }
+        fun requestAutomation(action: SunshadeAutomationPolicy.Action) {
+            if (sunshadeMotion != null) {
+                findViewById<TextView>(R.id.txtSunshadeAutomation).text = "Aguarde a operação atual da persiana."
+                return
+            }
+            if (!SunshadeAccessibilityService.available()) {
+                findViewById<TextView>(R.id.txtSunshadeAutomation).text = "Habilite Automação Persiana nas configurações de acessibilidade. Nenhuma ação enviada."
+                return
+            }
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("${action.label} pela tela original BYD")
+                .setMessage("Confirme agora: veículo imóvel em P, freio de estacionamento acionado e área livre. As leituras OEM também precisam autorizar a operação.")
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Confirmar") { _, _ ->
+                    SunshadeAccessibilityService.request(this, action)
+                    findViewById<TextView>(R.id.txtSunshadeAutomation).text = SunshadeAccessibilityService.result
+                }.show()
+        }
+        findViewById<android.widget.Button>(R.id.btnAutomationOpen).setOnClickListener {
+            requestAutomation(SunshadeAutomationPolicy.Action.OPEN)
+        }
+        findViewById<android.widget.Button>(R.id.btnAutomationClose).setOnClickListener {
+            requestAutomation(SunshadeAutomationPolicy.Action.CLOSE)
+        }
         btnOpenSunshade.setOnClickListener {
             if (sunshadeMotion == SunshadeMotion.OPENING) requestSunshadeStop()
             else requestSunshadePosition(100, SunshadeMotion.OPENING)
@@ -857,6 +884,8 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         activityResumed = true
+        SunshadeAccessibilityService.cancelOnReturn()
+        findViewById<TextView>(R.id.txtSunshadeAutomation)?.text = SunshadeAccessibilityService.result
         seatbeltHandler.removeCallbacks(webServerUiPoll)
         seatbeltHandler.post(webServerUiPoll)
         if (::txtClimateCommandStatus.isInitialized) updateClimateCommandStatus()

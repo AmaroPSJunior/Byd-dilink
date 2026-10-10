@@ -44,7 +44,10 @@ object BydSunshadeControl {
     /** Uses the same dedicated stop sentinel as the OEM SunShadeFragment. */
     fun stop(context: Context): Result = sendCommand(context, STOP_COMMAND)
 
-    private fun sendCommand(context: Context, command: Int): Result {
+    private fun sendCommand(context: Context, command: Int): Result = synchronized(SunshadeAutomationPolicy.operationLock) {
+        if (SunshadeAccessibilityService.busy()) {
+            return blocked(command, null, null, "Automação OEM em andamento; comando concorrente recusado.")
+        }
         val isStop = command == STOP_COMMAND
         val requestedPercent = if (isStop) readPosition(context) ?: 0 else command
         val sdkContext = BydAutoReadContext(context.applicationContext)
