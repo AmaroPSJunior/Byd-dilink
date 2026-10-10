@@ -16,7 +16,10 @@ class SeatbeltVoiceAnnouncer(context: Context) {
     private var generation = 0
     private var speaking = false
     private var closed = false
-    private val tts = TextToSpeech(context.applicationContext) { status ->
+    private lateinit var tts: TextToSpeech
+
+    init {
+        tts = TextToSpeech(context.applicationContext) { status ->
         handler.post {
             if (!closed && status == TextToSpeech.SUCCESS) {
                 ready = true
@@ -26,7 +29,6 @@ class SeatbeltVoiceAnnouncer(context: Context) {
         }
     }
 
-    init {
         tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {}
             override fun onDone(utteranceId: String?) = finish(utteranceId)
