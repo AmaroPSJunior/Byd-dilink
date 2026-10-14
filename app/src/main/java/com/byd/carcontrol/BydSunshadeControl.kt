@@ -8,10 +8,8 @@ import kotlin.math.abs
 object BydSunshadeControl {
     private const val DEVICE_CLASS = "android.hardware.bydauto.bodywork.BYDAutoBodyworkDevice"
     private const val SPEED_DEVICE_CLASS = "android.hardware.bydauto.speed.BYDAutoSpeedDevice"
-    private const val GEARBOX_DEVICE_CLASS = "android.hardware.bydauto.gearbox.BYDAutoGearboxDevice"
     private const val SPEED_FEATURE_HEX = "94400008" // OEM SPEED_AUTO_SPEED
     private const val SUNSHADE_AREA = 6
-    private const val PARK_GEAR = 3 // Confirmed from CarSettings P-only checks.
     private const val OPEN_OPERATION_BLOCKED = 1
     private const val POSITION_TOLERANCE = 2
     private const val STOP_COMMAND = 254 // OEM ISunRoofModel.MOONROOF_STOP.
@@ -53,8 +51,8 @@ object BydSunshadeControl {
         // if (!speed.isFinite() || abs(speed) > 0.5) {
         //     return blocked(requestedPercent, speed, null, "Veículo em movimento ($speed km/h); comando recusado.")
         // }
-        // Marcha informativa, não é bloqueio. Velocidade válida e <= 0,5 km/h continua obrigatória.
-        val gear = readGear(sdkContext)
+        // A marcha não é consultada nem exigida para os comandos de persiana.
+        val gear: Int? = null
 
         val deviceClass = Class.forName(DEVICE_CLASS)
         val instance = deviceClass.getMethod("getInstance", Context::class.java)
@@ -100,13 +98,6 @@ object BydSunshadeControl {
 
     private fun matchesTarget(observed: Int?, target: Int): Boolean =
         observed != null && abs(observed - target) <= POSITION_TOLERANCE
-
-    private fun readGear(context: Context): Int? = runCatching {
-        val gearClass = Class.forName(GEARBOX_DEVICE_CLASS)
-        val instance = gearClass.getMethod("getInstance", Context::class.java).invoke(null, context)
-            ?: error("BYDAutoGearboxDevice.getInstance retornou null")
-        (gearClass.getMethod("getCurrentGear").invoke(instance) as Number).toInt()
-    }.getOrNull()
 
     private fun readSpeedKmh(context: Context): Double? = runCatching {
         val speedClass = Class.forName(SPEED_DEVICE_CLASS)
