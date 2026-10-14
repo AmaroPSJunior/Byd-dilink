@@ -39,10 +39,10 @@
       <h2>Persiana do teto</h2>
       <label>Posição: <span class="value" id="shadeLabel">0%</span></label><input id="shade" type="range" min="0" max="100" step="1" value="0" onpointerdown="markDirty('shade')" onfocus="markDirty('shade')" oninput="shadeLabel.textContent=this.value+'%'">
       <div class="row wrap"><button class="green" onclick="shadeCommand(100)">Abrir</button><button class="red" onclick="shadeCommand(0)">Fechar</button><button class="gray" onclick="command('/api/sunshade/stop',{})">Parar</button><button onclick="applyShade()">Aplicar posição</button></div>
-      <p class="muted">O controle OEM exige veículo parado em P.</p><p id="shadeStatus" class="status"></p>
+      <p class="muted">Os comandos seguem as restrições de segurança do veículo.</p><p id="shadeStatus" class="status"></p>
     </section>
     <section>
-      <h2>Vidros</h2><div id="windows" class="windows"></div><p class="muted">A barra seleciona fechado, meia abertura ou aberto. Toque Aplicar para enviar. O controle OEM exige veículo parado em P.</p><p id="windowStatus" class="status"></p>
+      <h2>Vidros</h2><div id="windows" class="windows"></div><p class="muted">A barra seleciona fechado, meia abertura ou aberto. Toque Aplicar para enviar. Os comandos seguem as restrições de segurança do veículo.</p><p id="windowStatus" class="status"></p>
     </section>
     <section>
       <h2>Luz interna do teto</h2><div class="row"><button class="green" onclick="command('/api/lights/interior',{on:true})">Ligar</button><button class="red" onclick="command('/api/lights/interior',{on:false})">Desligar</button></div>
