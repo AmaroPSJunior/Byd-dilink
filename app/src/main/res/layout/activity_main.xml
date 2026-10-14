@@ -402,7 +402,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:layout_marginBottom="10dp"
-                    android:text="API OEM de posição (0–100%). Toque de novo no mesmo sentido para parar; o botão oposto inverte o movimento. Requer velocidade zero e P."
+                    android:text="API OEM de posição (0–100%). Toque de novo no mesmo sentido para parar; o botão oposto inverte o movimento. As restrições de segurança do veículo continuam aplicáveis."
                     android:textColor="#cbd5e1"
                     android:textSize="12sp" />
 
@@ -481,7 +481,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:layout_marginBottom="8dp"
-                    android:text="Controles individuais. Selecione a posição na barra e toque APLICAR. O carro oferece presets OEM de fechado, meia abertura e aberto; alvos intermediários usam meia abertura. Requer velocidade zero e P."
+                    android:text="Controles individuais. Selecione a posição na barra e toque APLICAR. O carro oferece presets OEM de fechado, meia abertura e aberto; alvos intermediários usam meia abertura. As restrições de segurança do veículo continuam aplicáveis."
                     android:textColor="#cbd5e1"
                     android:textSize="12sp" />
 
