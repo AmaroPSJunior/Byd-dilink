@@ -18,7 +18,6 @@ object BydWindowControl {
     private const val DEVICE = "android.hardware.bydauto.bodywork.BYDAutoBodyworkDevice"
     private const val EVENT_VALUE = "android.hardware.bydauto.BYDAutoEventValue"
     private const val SPEED_DEVICE = "android.hardware.bydauto.speed.BYDAutoSpeedDevice"
-    private const val GEAR_DEVICE = "android.hardware.bydauto.gearbox.BYDAutoGearboxDevice"
     private const val SPEED_FID = "94400008"
 
     fun read(context: Context, window: Window): WindowState {
@@ -88,7 +87,7 @@ object BydWindowControl {
     private fun checkVehicleSafe(context: Context) {
         val speed = readSpeed(context) ?: error("Velocidade indisponível; comando recusado.")
         require(speed.isFinite() && abs(speed) <= 0.5) { "Veículo em movimento ($speed km/h); comando recusado." }
-        // Não exige marcha P: imobilidade continua obrigatória pela leitura de velocidade.
+        // Comandos dos vidros não exigem leitura ou validação da marcha P.
     }
 
     private fun readSpeed(context: Context): Double? = runCatching {
@@ -100,10 +99,5 @@ object BydWindowControl {
         (value.javaClass.getField("doubleValue").get(value) as Number).toDouble()
     }.getOrNull()
 
-    private fun readGear(context: Context): Int? = runCatching {
-        val sdkContext = BydAutoReadContext(context.applicationContext)
-        val clazz = Class.forName(GEAR_DEVICE)
-        val instance = clazz.getMethod("getInstance", Context::class.java).invoke(null, sdkContext)
-        (clazz.getMethod("getCurrentGear").invoke(instance) as Number).toInt()
-    }.getOrNull()
+
 }
