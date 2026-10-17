@@ -22,7 +22,7 @@ jobs:
         with:
           gradle-version: '8.5'
       - name: Build debug and validate sources
-        run: ./gradlew assembleDebug --no-daemon
+        run: bash ./gradlew assembleDebug --no-daemon
       - name: Upload debug build for testing
         uses: actions/upload-artifact@v4
         with:
@@ -51,7 +51,7 @@ jobs:
           VERSION_NAME="1.0.$GITHUB_RUN_NUMBER"
           printf '%s' "$BYD_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/byd-release.jks"
           export BYD_KEYSTORE_PATH="$RUNNER_TEMP/byd-release.jks"
-          ./gradlew assembleRelease "-PreleaseVersionCode=$VERSION_CODE" "-PreleaseVersionName=$VERSION_NAME" --no-daemon
+          bash ./gradlew assembleRelease "-PreleaseVersionCode=$VERSION_CODE" "-PreleaseVersionName=$VERSION_NAME" --no-daemon
           mkdir -p artifacts
           cp app/build/outputs/apk/release/app-release.apk artifacts/byd-car-control-release.apk
           cd artifacts
