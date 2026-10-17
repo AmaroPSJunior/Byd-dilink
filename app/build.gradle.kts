@@ -11,10 +11,22 @@ android {
         applicationId = "com.byd.carcontrol"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = (project.findProperty("releaseVersionCode")?.toString()?.toIntOrNull() ?: 1000000)
+        versionName = project.findProperty("releaseVersionName")?.toString() ?: "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("published") {
+            val path = System.getenv("BYD_KEYSTORE_PATH")
+            if (!path.isNullOrBlank()) {
+                storeFile = file(path)
+                storePassword = System.getenv("BYD_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("BYD_KEY_ALIAS")
+                keyPassword = System.getenv("BYD_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -24,6 +36,7 @@ android {
         }
         getByName("release") {
             isMinifyEnabled = false
+            if (!System.getenv("BYD_KEYSTORE_PATH").isNullOrBlank()) signingConfig = signingConfigs.getByName("published")
         }
     }
 
