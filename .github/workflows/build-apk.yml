@@ -33,10 +33,8 @@ jobs:
         env:
           KEYSTORE: ${{ secrets.BYD_KEYSTORE_BASE64 }}
           STOREPASS: ${{ secrets.BYD_KEYSTORE_PASSWORD }}
-          ALIAS: ${{ secrets.BYD_KEY_ALIAS }}
-          KEYPASS: ${{ secrets.BYD_KEY_PASSWORD }}
         run: |
-          test -n "$KEYSTORE" && test -n "$STOREPASS" && test -n "$ALIAS" && test -n "$KEYPASS" || {
+          test -n "$KEYSTORE" && test -n "$STOREPASS" || {
             echo "::error::Configure signing secrets before publishing installable releases"; exit 1;
           }
       - name: Build signed release
@@ -44,13 +42,13 @@ jobs:
         env:
           BYD_KEYSTORE_BASE64: ${{ secrets.BYD_KEYSTORE_BASE64 }}
           BYD_KEYSTORE_PASSWORD: ${{ secrets.BYD_KEYSTORE_PASSWORD }}
-          BYD_KEY_ALIAS: ${{ secrets.BYD_KEY_ALIAS }}
-          BYD_KEY_PASSWORD: ${{ secrets.BYD_KEY_PASSWORD }}
         run: |
           VERSION_CODE=$((1000000 + GITHUB_RUN_NUMBER))
           VERSION_NAME="1.0.$GITHUB_RUN_NUMBER"
           printf '%s' "$BYD_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/byd-release.jks"
           export BYD_KEYSTORE_PATH="$RUNNER_TEMP/byd-release.jks"
+          export BYD_KEY_ALIAS="byd-release"
+          export BYD_KEY_PASSWORD="$BYD_KEYSTORE_PASSWORD"
           bash ./gradlew assembleRelease "-PreleaseVersionCode=$VERSION_CODE" "-PreleaseVersionName=$VERSION_NAME" --no-daemon
           mkdir -p artifacts
           cp app/build/outputs/apk/release/app-release.apk artifacts/byd-car-control-release.apk
