@@ -56,7 +56,7 @@ object BydSunshadeControl {
 
         val deviceClass = Class.forName(DEVICE_CLASS)
         val instance = deviceClass.getMethod("getInstance", Context::class.java)
-            .invoke(null, sdkContext) ?: error("BYDAutoB// odyworkDevice.getInstance retornou null")
+            .invoke(null, sdkContext) ?: error("BYDAutoBodyworkDevice.getInstance retornou null")
 
         // OEM CarSettings disables its sunshade controls when this getter is 1.
         // val operationBlocked = (deviceClass.getMethod("getWindowPermitState").invoke(instance) as Number).toInt()
