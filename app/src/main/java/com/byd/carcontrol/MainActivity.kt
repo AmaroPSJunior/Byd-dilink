@@ -186,6 +186,11 @@ class MainActivity : AppCompatActivity() {
             controlManager = BYDControlManager(this, commManager.repository)
 
             initViews()
+            findViewById<Button>(R.id.btnAppUpdate).setOnClickListener {
+                AppUpdater.check(this) { status ->
+                    findViewById<TextView>(R.id.txtAppUpdateStatus).text = status
+                }
+            }
             setupTabs()
             setupDiagnosticListeners()
             setupControlsListeners()

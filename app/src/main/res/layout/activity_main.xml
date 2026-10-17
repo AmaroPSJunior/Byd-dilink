@@ -34,6 +34,21 @@
             android:textColor="#94a3b8"
             android:layout_marginBottom="12dp" />
 
+        <Button
+            android:id="@+id/btnAppUpdate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="VERIFICAR ATUALIZAÇÃO"
+            android:textColor="#ffffff"
+            android:backgroundTint="#0f766e" />
+        <TextView
+            android:id="@+id/txtAppUpdateStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Atualizações via GitHub Releases"
+            android:textSize="11sp"
+            android:textColor="#94a3b8" />
+
         <!-- NAVEGAÇÃO ENTRE ABAS -->
         <LinearLayout
             android:layout_width="match_parent"
