@@ -358,7 +358,7 @@ private class LocalCarHttpServer(private val context: Context) : AutoCloseable {
             clearClimateRequests(prefs)
             throw IllegalStateException("API direta recusada ($reason) e não foi possível abrir o painel OEM: ${t.message}")
         }
-        val deadline = System.currentTimeMillis() + 8_000
+        val deadline = System.currentTimeMillis() + 30_000
         while (System.currentTimeMillis() < deadline) {
             Thread.sleep(250)
             val pending = when (kind) {
@@ -376,7 +376,8 @@ private class LocalCarHttpServer(private val context: Context) : AutoCloseable {
                 return message
             }
         }
-        throw IllegalStateException("O painel HVAC não confirmou o comando dentro do tempo de espera.")
+        clearClimateRequests(prefs)
+        throw IllegalStateException("O painel HVAC não confirmou o comando dentro de 30 segundos. Verifique se o painel original abriu e se a acessibilidade está ativa.")
     }
 
     private fun clearClimateRequests(prefs: android.content.SharedPreferences) {
