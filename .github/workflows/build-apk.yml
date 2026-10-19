@@ -22,7 +22,9 @@ jobs:
         with:
           gradle-version: '8.5'
       - name: Build debug and validate sources
-        run: bash ./gradlew assembleDebug --no-daemon
+        run: |
+          node --test tests/hvac-web.test.cjs
+          bash ./gradlew testDebugUnitTest assembleDebug --no-daemon
       - name: Upload debug build for testing
         uses: actions/upload-artifact@v4
         with:

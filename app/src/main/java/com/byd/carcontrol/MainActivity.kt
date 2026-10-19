@@ -813,45 +813,37 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestHvacPower(turnOn: Boolean) {
-        // Use the already authorized OEM accessibility path rather than a direct
-        // firmware call known to fail with BYDACQUISITION_SEND_BUFFER.
-        val direct = if (isClimateAccessibilityEnabled())
-            Result.failure<String>(IllegalStateException("Controle direto indisponível; usando painel OEM"))
-        else runCatching { BydClimateAdjustment.setPower(this, turnOn) }
-        if (direct.isSuccess) {
-            hvacCommandStatus = direct.getOrThrow()
-            updateClimateCommandStatus()
-            seatbeltHandler.postDelayed({
-                val state = runCatching { BydClimateAdjustment.readPowerState(this) }
-                hvacCommandStatus += state.fold(
-                    { "; estado OEM após comando=$it." },
-                    { "; não foi possível confirmar o estado: ${it.cause?.message ?: it.message}" }
-                )
-                updateClimateCommandStatus()
-            }, 500)
-            return
-        }
-
-        val reason = direct.exceptionOrNull()?.let { it.cause?.message ?: it.message } ?: "sem detalhe"
-        val panelIntent = Intent("OPEN_AIR_CONDITIONING").setPackage("com.byd.airconditioning")
-        if (isClimateAccessibilityEnabled()) {
+        if (isClimateAccessibilityEnabled() && ClimateAccessibilityService.connected) {
             getSharedPreferences(ClimateAccessibilityService.PREFS_NAME, MODE_PRIVATE).edit()
                 .putInt(ClimateAccessibilityService.KEY_PENDING_POWER, if (turnOn) 1 else 0)
+                .putBoolean(ClimateAccessibilityService.KEY_POWER_CONFIRMED, false)
                 .putBoolean(ClimateAccessibilityService.KEY_RETURN_TO_APP, true)
                 .putLong(ClimateAccessibilityService.KEY_REQUEST_TIME, System.currentTimeMillis())
-                .putString(ClimateAccessibilityService.KEY_RESULT, "API direta recusada ($reason); aguardando confirmação da tela OEM…")
+                .putString(ClimateAccessibilityService.KEY_RESULT, "Aguardando confirmação da tela OEM; estado não confirmado.")
                 .apply()
-            hvacCommandStatus = "API direta sem permissão; usando o controle OEM já autorizado, sem abrir configurações."
-            openOemPanel(panelIntent, "Painel OEM aberto para concluir o comando HVAC com o serviço já ativo.")
+            hvacCommandStatus = "Solicitação pela interface OEM; estado ainda não confirmado."
+            openOemPanel(Intent("OPEN_AIR_CONDITIONING").setPackage("com.byd.airconditioning"),
+                "Painel OEM aberto; aguardando confirmação do comando HVAC.")
             seatbeltHandler.postDelayed({
-                val result = getSharedPreferences(ClimateAccessibilityService.PREFS_NAME, MODE_PRIVATE)
-                    .getString(ClimateAccessibilityService.KEY_RESULT, null)
-                if (!result.isNullOrBlank()) hvacCommandStatus = result
+                hvacCommandStatus = getSharedPreferences(ClimateAccessibilityService.PREFS_NAME, MODE_PRIVATE)
+                    .getString(ClimateAccessibilityService.KEY_RESULT, hvacCommandStatus) ?: hvacCommandStatus
                 updateClimateCommandStatus()
             }, 2_000)
         } else {
-            hvacCommandStatus = "API direta recusada ($reason). Abrindo painel oficial para controle manual; nenhuma tela de configurações será aberta."
-            openOemPanel(panelIntent, "Painel oficial HVAC aberto; a permissão do sistema impede o controle direto pelo app.")
+            val result = HvacPowerPolicy.execute(false, HvacPowerAccess.directPermissionGranted(this),
+                direct = { BydClimateAdjustment.setPower(this, turnOn) },
+                accessible = { error("Serviço indisponível") })
+            hvacCommandStatus = result.message
+            if (result.manualInteractionRequired) {
+                AlertDialog.Builder(this)
+                    .setTitle("Controle manual da climatização")
+                    .setMessage(result.message + " Abrir o painel não liga nem desliga o ar-condicionado.")
+                    .setNegativeButton("Cancelar", null)
+                    .setPositiveButton("Abrir painel original") { _, _ ->
+                        openOemPanel(Intent("OPEN_AIR_CONDITIONING").setPackage("com.byd.airconditioning"),
+                            "Painel aberto para interação manual; comando HVAC não confirmado.")
+                    }.show()
+            }
         }
         updateClimateCommandStatus()
     }

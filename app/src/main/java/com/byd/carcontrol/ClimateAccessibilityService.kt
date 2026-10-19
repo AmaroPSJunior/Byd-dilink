@@ -20,12 +20,15 @@ import android.util.Log
 class ClimateAccessibilityService : AccessibilityService() {
 
     companion object {
+        @Volatile var connected: Boolean = false
+            private set
         const val PREFS_NAME = "climate_accessibility"
         const val KEY_PENDING_POWER = "pending_power"
         const val KEY_PENDING_FAN = "pending_fan"
         const val KEY_PENDING_TEMPERATURE = "pending_temperature_c"
         const val KEY_REQUEST_TIME = "request_time"
         const val KEY_RESULT = "result"
+        const val KEY_POWER_CONFIRMED = "power_confirmed"
         const val KEY_RETURN_TO_APP = "return_to_app"
 
         private const val TAG = "BydClimateA11y"
@@ -54,6 +57,7 @@ class ClimateAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        connected = true
         serviceInfo = serviceInfo.apply {
             packageNames = arrayOf(HVAC_PACKAGE)
             eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
@@ -115,7 +119,7 @@ class ClimateAccessibilityService : AccessibilityService() {
         // On this DiLink build the OEM view is selected when HVAC is OFF.
         val actualOn = !powerNode.isSelected
         if (actualOn == (desired == 1)) {
-            finishCommand("Ar-condicionado ${if (actualOn) "ligado" else "desligado"}; estado confirmado pela tela OEM.")
+            finishCommand("Ar-condicionado ${if (actualOn) "ligado" else "desligado"}; estado confirmado pela tela OEM.", powerConfirmed = true)
             powerNode.recycle()
             root.recycle()
             return
@@ -290,7 +294,7 @@ class ClimateAccessibilityService : AccessibilityService() {
         root.recycle()
 
         if (actualOn == (desired == 1)) {
-            finishCommand("Ar-condicionado ${if (actualOn) "ligado" else "desligado"}; estado confirmado pela tela OEM.")
+            finishCommand("Ar-condicionado ${if (actualOn) "ligado" else "desligado"}; estado confirmado pela tela OEM.", powerConfirmed = true)
         } else {
             retryOrFail()
         }
@@ -305,7 +309,7 @@ class ClimateAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun finishCommand(message: String) {
+    private fun finishCommand(message: String, powerConfirmed: Boolean = false) {
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         val returnToApp = prefs.getBoolean(KEY_RETURN_TO_APP, false)
         prefs.edit()
@@ -314,6 +318,7 @@ class ClimateAccessibilityService : AccessibilityService() {
             .putInt(KEY_PENDING_FAN, -1)
             .putFloat(KEY_PENDING_TEMPERATURE, Float.NaN)
             .putString(KEY_RESULT, message)
+            .putBoolean(KEY_POWER_CONFIRMED, powerConfirmed)
             .apply()
         gestureInProgress = false
         uiCommandRunning = false
@@ -337,7 +342,13 @@ class ClimateAccessibilityService : AccessibilityService() {
         gestureInProgress = false
     }
 
+    override fun onUnbind(intent: Intent?): Boolean {
+        connected = false
+        return super.onUnbind(intent)
+    }
+
     override fun onDestroy() {
+        connected = false
         handler.removeCallbacks(pendingPoll)
         super.onDestroy()
     }

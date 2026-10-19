@@ -37,6 +37,9 @@ object BydClimateAdjustment {
 
     /** Uses the OEM manager API directly; no AccessibilityService or UI automation is involved. */
     fun setPower(context: Context, enabled: Boolean): String {
+        check(HvacPowerAccess.directPermissionGranted(context)) {
+            "Controle direto HVAC sem as permissões OEM exigidas."
+        }
         val manager = manager(context)
         manager.javaClass.getMethod("processAcPowerButtonClicked", Boolean::class.javaPrimitiveType)
             .invoke(manager, enabled)
