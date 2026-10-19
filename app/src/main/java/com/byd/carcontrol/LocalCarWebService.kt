@@ -351,10 +351,17 @@ private class LocalCarHttpServer(private val context: Context) : AutoCloseable {
                 "fan" -> prefs.getInt(ClimateAccessibilityService.KEY_PENDING_FAN, -1) != -1
                 else -> prefs.getFloat(ClimateAccessibilityService.KEY_PENDING_TEMPERATURE, Float.NaN).isFinite()
             }
-            if (!pending) return prefs.getString(ClimateAccessibilityService.KEY_RESULT, "Comando HVAC concluído.")
-                ?: "Comando HVAC concluído."
+            if (!pending) {
+                val message = prefs.getString(ClimateAccessibilityService.KEY_RESULT, null)
+                    ?: throw IllegalStateException("Controle HVAC terminou sem resultado confirmado.")
+                val confirmed = message.contains("confirmado", ignoreCase = true) &&
+                    !message.contains("não confirmado", ignoreCase = true) &&
+                    !message.contains("não confirmou", ignoreCase = true)
+                if (!confirmed) throw IllegalStateException(message)
+                return message
+            }
         }
-        return "Painel HVAC aberto; aguardando confirmação do controle OEM."
+        throw IllegalStateException("O painel HVAC não confirmou o comando dentro do tempo de espera.")
     }
 
     private fun clearClimateRequests(prefs: android.content.SharedPreferences) {
