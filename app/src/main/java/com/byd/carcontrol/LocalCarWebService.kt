@@ -274,6 +274,7 @@ private class LocalCarHttpServer(private val context: Context) : AutoCloseable {
 
     private fun readState(): JSONObject {
         val root = JSONObject().put("ok", true)
+        root.put("hvacAccessibilityEnabled", isClimateAccessibilityEnabled())
         runCatching {
             val hvac = BydClimateAdjustment.read(context)
             root.put("climate", JSONObject().put("powerState", runCatching { BydClimateAdjustment.readPowerState(context) }.getOrNull())
