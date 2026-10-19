@@ -299,6 +299,12 @@ private class LocalCarHttpServer(private val context: Context) : AutoCloseable {
     }
 
     private fun requestHvacPower(turnOn: Boolean): String {
+        // Prefer the OEM screen when its user-authorized AccessibilityService is active:
+        // direct API writes are denied on this DiLink firmware.
+        if (isClimateAccessibilityEnabled()) {
+            return runClimateAccessibilityCommand("power", if (turnOn) 1 else 0, null,
+                "Controle pela interface OEM")
+        }
         val direct = runCatching { BydClimateAdjustment.setPower(context, turnOn) }
         if (direct.isSuccess) return direct.getOrThrow()
         val reason = direct.exceptionOrNull()?.cause?.message ?: direct.exceptionOrNull()?.message ?: "API OEM recusou o comando"
@@ -313,6 +319,14 @@ private class LocalCarHttpServer(private val context: Context) : AutoCloseable {
             require(celsius != null && celsius.isFinite()) { "Temperatura inválida." }
             val maxCelsius = BydClimateAdjustment.read(context).maxTemperatureCelsius.toDouble()
             require(celsius in 17.0..maxCelsius) { "Temperatura permitida: 17–${maxCelsius.toInt()} °C." }
+        }
+        // Avoid direct fan setters when the OEM accessibility path can be used;
+        // on the tested firmware a fan request may change HVAC power unexpectedly.
+        if (isClimateAccessibilityEnabled()) {
+            return runClimateAccessibilityCommand(kind, level, celsius, "Controle pela interface OEM")
+        }
+        if (kind == "fan") {
+            throw IllegalStateException("Ajuste de ventilação indisponível por esta API. Ative o serviço de acessibilidade HVAC do BYD Controller na central para usar a tela original.")
         }
         val direct = runCatching {
             if (kind == "fan") BydClimateAdjustment.setWindLevel(context, requireNotNull(level))
