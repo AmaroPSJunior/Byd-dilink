@@ -344,6 +344,7 @@ private class LocalCarHttpServer(private val context: Context) : AutoCloseable {
         )
         val prefs = context.getSharedPreferences(ClimateAccessibilityService.PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit()
+            .putBoolean(ClimateAccessibilityService.KEY_RETURN_TO_APP, false)
             .putInt(ClimateAccessibilityService.KEY_PENDING_POWER, if (kind == "power") level ?: -1 else -1)
             .putInt(ClimateAccessibilityService.KEY_PENDING_FAN, if (kind == "fan") level ?: -1 else -1)
             .putFloat(ClimateAccessibilityService.KEY_PENDING_TEMPERATURE, if (kind == "temperature") celsius!!.toFloat() else Float.NaN)
