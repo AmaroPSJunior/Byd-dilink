@@ -64,7 +64,11 @@ paths:
     post:
       tags: [Climatização]
       summary: Solicita ligar ou desligar o ar-condicionado
-      description: Pode usar a interface OEM por acessibilidade se o manager direto for recusado.
+      description: >-
+        Usa somente caminho já autorizado. Sem permissões OEM nem serviço já
+        conectado, retorna 409/manualInteractionRequired sem abrir painel.
+        Aceite direto não confirma estado: 202/confirmed=false. Somente uma
+        comparação explícita do estado OEM produz confirmed=true.
       security: [{ PairingToken: [] }]
       parameters:
         - $ref: '#/components/parameters/PairingQuery'
@@ -79,9 +83,25 @@ paths:
                 on: { type: boolean }
             example: { on: true }
       responses:
-        '200': { $ref: '#/components/responses/CommandAccepted' }
+        '200':
+          description: Estado solicitado confirmado pela tela OEM.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HvacPowerResult' }
+        '202':
+          description: Chamada aceita, estado solicitado ainda não confirmado (ok=false).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HvacPowerResult' }
         '401': { $ref: '#/components/responses/Unauthorized' }
-        '409': { $ref: '#/components/responses/CommandRejected' }
+        '409':
+          description: Sem caminho autorizado ou comando recusado; nenhuma confirmação. Pode exigir interação manual.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/HvacPowerResult'
+                  - $ref: '#/components/schemas/ApiError'
   /api/climate/fan:
     post:
       tags: [Climatização]
@@ -272,6 +292,16 @@ components:
       description: Alternativa de pareamento usada no endereço/QR. Prefira Bearer para clientes próprios.
       schema: { type: string }
   schemas:
+    HvacPowerResult:
+      type: object
+      required: [ok, accepted, confirmed, method, message, manualInteractionRequired]
+      properties:
+        ok: { type: boolean, description: Igual a confirmed para power HVAC. }
+        accepted: { type: boolean }
+        confirmed: { type: boolean }
+        method: { type: string, enum: [manual, direct_oem, oem_accessibility] }
+        message: { type: string }
+        manualInteractionRequired: { type: boolean }
     CommandResult:
       type: object
       properties:
@@ -290,6 +320,10 @@ components:
       required: [ok, climate, speedKmh, sunshade, windows, belt, beltAlert]
       properties:
         ok: { const: true }
+        hvacAccessibilityEnabled: { type: boolean }
+        hvacAccessibilityConnected: { type: boolean }
+        hvacPowerDirectPermissionGranted: { type: boolean }
+        hvacPowerManualGuidance: { type: string }
         climate:
           type: object
           properties:

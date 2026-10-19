@@ -36,6 +36,14 @@ O serviço roda como foreground e é iniciado manualmente. A notificação fica 
 
 HTTP local não cifra o conteúdo. Use apenas uma rede confiável e não publique URL pareado/token.
 
+## Power HVAC em firmware restrito
+
+Sem permissões OEM concedidas ou serviço próprio já conectado, `/api/climate/power`
+responde 409 com `confirmed=false` e orientação de interação manual na central.
+Não habilita serviços nem abre o painel remoto. HTTP 202 representa aceite sem
+confirmação; HTTP 200 só representa comparação de estado confirmada pelo caminho
+OEM. Veja [investigação e limites](hvac-power-investigation.md).
+
 ## Respostas
 
 Sucesso normalmente retorna HTTP 200 e JSON com `ok: true` ou `message`. Falhas de validação/interlock geralmente retornam 409 com `{"ok":false,"error":"..."}`. Token ausente/inválido retorna 401. Leitura parcial pode incluir erro em um recurso sem invalidar o objeto geral.

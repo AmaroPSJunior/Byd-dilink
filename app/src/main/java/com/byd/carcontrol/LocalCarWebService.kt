@@ -234,7 +234,13 @@ private class LocalCarHttpServer(private val context: Context) : AutoCloseable {
         if (method != "POST") return 405 to jsonError("Método não permitido.")
         return try {
             val result = when {
-                path == "/api/climate/power" -> JSONObject().put("message", requestHvacPower(body.getBoolean("on")))
+                path == "/api/climate/power" -> {
+                    val power = requestHvacPower(body.getBoolean("on"))
+                    return json(power.httpStatus, JSONObject().put("ok", power.confirmed)
+                        .put("accepted", power.accepted).put("confirmed", power.confirmed)
+                        .put("method", power.method).put("manualInteractionRequired", power.manualInteractionRequired)
+                        .put("message", power.message))
+                }
                 path == "/api/climate/fan" -> JSONObject().put("message", requestClimateAdjustment("fan", body.getInt("level").also { require(it in 1..7) { "A ventilação deve ficar entre 1 e 7." } }, null))
                 path == "/api/climate/temperature" -> JSONObject().put("message", requestClimateAdjustment("temperature", null, body.getDouble("celsius")))
                 path == "/api/lights/interior" -> {
@@ -275,6 +281,9 @@ private class LocalCarHttpServer(private val context: Context) : AutoCloseable {
     private fun readState(): JSONObject {
         val root = JSONObject().put("ok", true)
         root.put("hvacAccessibilityEnabled", isClimateAccessibilityEnabled())
+        root.put("hvacAccessibilityConnected", ClimateAccessibilityService.connected)
+        root.put("hvacPowerDirectPermissionGranted", HvacPowerAccess.directPermissionGranted(context))
+        root.put("hvacPowerManualGuidance", HvacPowerPolicy.MANUAL_MESSAGE)
         runCatching {
             val hvac = BydClimateAdjustment.read(context)
             root.put("climate", JSONObject().put("powerState", runCatching { BydClimateAdjustment.readPowerState(context) }.getOrNull())
@@ -299,20 +308,16 @@ private class LocalCarHttpServer(private val context: Context) : AutoCloseable {
         return root
     }
 
-    private fun requestHvacPower(turnOn: Boolean): String {
-        // Prefer the OEM screen when its user-authorized AccessibilityService is active:
-        // direct API writes are denied on this DiLink firmware.
-        if (isClimateAccessibilityEnabled()) {
-            return runClimateAccessibilityCommand("power", if (turnOn) 1 else 0, null,
+    private fun requestHvacPower(turnOn: Boolean): HvacPowerPolicy.Result = HvacPowerPolicy.execute(
+        accessibilityReady = isClimateAccessibilityEnabled() && ClimateAccessibilityService.connected,
+        directPermissionGranted = HvacPowerAccess.directPermissionGranted(context),
+        direct = { BydClimateAdjustment.setPower(context, turnOn) },
+        accessible = {
+            val message = runClimateAccessibilityCommand("power", if (turnOn) 1 else 0, null,
                 "Controle pela interface OEM")
+            HvacPowerPolicy.Result(true, true, "oem_accessibility", message)
         }
-        val direct = runCatching { BydClimateAdjustment.setPower(context, turnOn) }
-        if (direct.isSuccess) return direct.getOrThrow()
-        val reason = direct.exceptionOrNull()?.cause?.message ?: direct.exceptionOrNull()?.message ?: "API OEM recusou o comando"
-        if (!isClimateAccessibilityEnabled()) throw SecurityException("$reason. O serviço de acessibilidade HVAC do app não está ativo.")
-
-        return runClimateAccessibilityCommand("power", if (turnOn) 1 else 0, null, reason)
-    }
+    )
 
     private fun requestClimateAdjustment(kind: String, level: Int?, celsius: Double?): String {
         if (kind == "fan") require(level != null && level in 1..7) { "A ventilação deve ficar entre 1 e 7." }
@@ -327,7 +332,7 @@ private class LocalCarHttpServer(private val context: Context) : AutoCloseable {
             return runClimateAccessibilityCommand(kind, level, celsius, "Controle pela interface OEM")
         }
         if (kind == "fan") {
-            throw IllegalStateException("Ajuste de ventilação indisponível por esta API. Ative o serviço de acessibilidade HVAC do BYD Controller na central para usar a tela original.")
+            throw IllegalStateException("Ajuste de ventilação indisponível por esta API. Com o veículo parado, use os controles do painel original da central.")
         }
         val direct = runCatching {
             if (kind == "fan") BydClimateAdjustment.setWindLevel(context, requireNotNull(level))
@@ -340,11 +345,12 @@ private class LocalCarHttpServer(private val context: Context) : AutoCloseable {
 
     private fun runClimateAccessibilityCommand(kind: String, level: Int?, celsius: Double?, reason: String): String {
         if (!isClimateAccessibilityEnabled()) throw SecurityException(
-            "$reason. Ative o serviço de acessibilidade HVAC do app para usar o painel OEM."
+            "$reason. Controle automático indisponível; use os controles do painel original da central."
         )
         val prefs = context.getSharedPreferences(ClimateAccessibilityService.PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit()
             .putBoolean(ClimateAccessibilityService.KEY_RETURN_TO_APP, false)
+            .putBoolean(ClimateAccessibilityService.KEY_POWER_CONFIRMED, false)
             .putInt(ClimateAccessibilityService.KEY_PENDING_POWER, if (kind == "power") level ?: -1 else -1)
             .putInt(ClimateAccessibilityService.KEY_PENDING_FAN, if (kind == "fan") level ?: -1 else -1)
             .putFloat(ClimateAccessibilityService.KEY_PENDING_TEMPERATURE, if (kind == "temperature") celsius!!.toFloat() else Float.NaN)
@@ -370,7 +376,8 @@ private class LocalCarHttpServer(private val context: Context) : AutoCloseable {
             if (!pending) {
                 val message = prefs.getString(ClimateAccessibilityService.KEY_RESULT, null)
                     ?: throw IllegalStateException("Controle HVAC terminou sem resultado confirmado.")
-                val confirmed = message.contains("confirmado", ignoreCase = true) &&
+                val confirmed = if (kind == "power") prefs.getBoolean(ClimateAccessibilityService.KEY_POWER_CONFIRMED, false)
+                else message.contains("confirmado", ignoreCase = true) &&
                     !message.contains("não confirmado", ignoreCase = true) &&
                     !message.contains("não confirmou", ignoreCase = true)
                 if (!confirmed) throw IllegalStateException(message)
@@ -426,7 +433,7 @@ private class LocalCarHttpServer(private val context: Context) : AutoCloseable {
     private fun jsonError(message: String, key: String = "error") = JSONObject().put("ok", false).put(key, message).toString().toByteArray(Charsets.UTF_8)
 
     private fun respond(out: BufferedOutputStream, status: Int, body: ByteArray, mime: String = "application/json; charset=utf-8") {
-        val reason = when (status) { 200 -> "OK"; 400 -> "Bad Request"; 401 -> "Unauthorized"; 404 -> "Not Found"; 405 -> "Method Not Allowed"; 409 -> "Conflict"; 413 -> "Payload Too Large"; 431 -> "Request Header Fields Too Large"; else -> "Error" }
+        val reason = when (status) { 200 -> "OK"; 202 -> "Accepted"; 400 -> "Bad Request"; 401 -> "Unauthorized"; 404 -> "Not Found"; 405 -> "Method Not Allowed"; 409 -> "Conflict"; 413 -> "Payload Too Large"; 431 -> "Request Header Fields Too Large"; else -> "Error" }
         val head = "HTTP/1.1 $status $reason\r\nContent-Type: $mime\r\nContent-Length: ${body.size}\r\nConnection: close\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\n\r\n"
         out.write(head.toByteArray(Charsets.US_ASCII)); out.write(body); out.flush()
     }
