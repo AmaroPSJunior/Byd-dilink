@@ -813,7 +813,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestHvacPower(turnOn: Boolean) {
-        val direct = runCatching { BydClimateAdjustment.setPower(this, turnOn) }
+        // Use the already authorized OEM accessibility path rather than a direct
+        // firmware call known to fail with BYDACQUISITION_SEND_BUFFER.
+        val direct = if (isClimateAccessibilityEnabled())
+            Result.failure<String>(IllegalStateException("Controle direto indisponível; usando painel OEM"))
+        else runCatching { BydClimateAdjustment.setPower(this, turnOn) }
         if (direct.isSuccess) {
             hvacCommandStatus = direct.getOrThrow()
             updateClimateCommandStatus()
