@@ -26,6 +26,7 @@ class ClimateAccessibilityService : AccessibilityService() {
         const val KEY_PENDING_TEMPERATURE = "pending_temperature_c"
         const val KEY_REQUEST_TIME = "request_time"
         const val KEY_RESULT = "result"
+        const val KEY_RETURN_TO_APP = "return_to_app"
 
         private const val TAG = "BydClimateA11y"
         private const val HVAC_PACKAGE = "com.byd.airconditioning"
@@ -281,7 +282,10 @@ class ClimateAccessibilityService : AccessibilityService() {
     }
 
     private fun finishCommand(message: String) {
-        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        val returnToApp = prefs.getBoolean(KEY_RETURN_TO_APP, false)
+        prefs.edit()
+            .putBoolean(KEY_RETURN_TO_APP, false)
             .putInt(KEY_PENDING_POWER, -1)
             .putInt(KEY_PENDING_FAN, -1)
             .putFloat(KEY_PENDING_TEMPERATURE, Float.NaN)
@@ -291,6 +295,18 @@ class ClimateAccessibilityService : AccessibilityService() {
         uiCommandRunning = false
         verificationAttempts = 0
         temperatureTaps = 0
+        // Return only for commands initiated in the head unit app; web requests must
+        // never pull the central screen away from its current owner.
+        if (returnToApp && message.contains("confirmad", ignoreCase = true) &&
+            !message.contains("não confirm", ignoreCase = true)
+        ) {
+            handler.postDelayed({
+                runCatching {
+                    startActivity(Intent(this, MainActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP))
+                }.onFailure { Log.w(TAG, "Não foi possível retornar ao aplicativo", it) }
+            }, 500)
+        }
     }
 
     override fun onInterrupt() {
