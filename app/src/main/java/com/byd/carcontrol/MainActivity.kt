@@ -837,6 +837,7 @@ class MainActivity : AppCompatActivity() {
         if (isClimateAccessibilityEnabled()) {
             getSharedPreferences(ClimateAccessibilityService.PREFS_NAME, MODE_PRIVATE).edit()
                 .putInt(ClimateAccessibilityService.KEY_PENDING_POWER, if (turnOn) 1 else 0)
+                .putBoolean(ClimateAccessibilityService.KEY_RETURN_TO_APP, true)
                 .putLong(ClimateAccessibilityService.KEY_REQUEST_TIME, System.currentTimeMillis())
                 .putString(ClimateAccessibilityService.KEY_RESULT, "API direta recusada ($reason); aguardando confirmação da tela OEM…")
                 .apply()
