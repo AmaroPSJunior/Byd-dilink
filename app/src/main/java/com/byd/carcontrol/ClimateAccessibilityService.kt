@@ -39,6 +39,18 @@ class ClimateAccessibilityService : AccessibilityService() {
     private var uiCommandRunning = false
     private var verificationAttempts = 0
     private var temperatureTaps = 0
+    // Poll commands because some DiLink builds omit accessibility window events.
+    private val pendingPoll = object : Runnable {
+        override fun run() {
+            val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            if (prefs.getInt(KEY_PENDING_POWER, -1) in 0..1 ||
+                prefs.getInt(KEY_PENDING_FAN, -1) in 1..7 ||
+                prefs.getFloat(KEY_PENDING_TEMPERATURE, Float.NaN).isFinite()) {
+                processPendingCommand()
+            }
+            handler.postDelayed(this, 350L)
+        }
+    }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -50,14 +62,19 @@ class ClimateAccessibilityService : AccessibilityService() {
             flags = flags or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
             notificationTimeout = 100
         }
+        handler.removeCallbacks(pendingPoll)
+        handler.post(pendingPoll)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event?.packageName?.toString() != HVAC_PACKAGE || gestureInProgress) return
+        if (event?.packageName?.toString() != HVAC_PACKAGE) return
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
-            event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
-        ) return
+            event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) return
+        processPendingCommand()
+    }
 
+    private fun processPendingCommand() {
+        if (gestureInProgress) return
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         val desired = prefs.getInt(KEY_PENDING_POWER, -1)
         val desiredFan = prefs.getInt(KEY_PENDING_FAN, -1)
@@ -86,7 +103,14 @@ class ClimateAccessibilityService : AccessibilityService() {
             adjustTemperature(desiredTemperature.toDouble())
             return
         }
-        val powerNode = findPowerNode(root) ?: return
+        val powerNode = findPowerNode(root)
+        if (powerNode == null) {
+            root.recycle()
+            if (System.currentTimeMillis() - requestedAt > 6_000L) {
+                finishCommand("Painel OEM aberto, mas botão de energia não encontrado pelo ID esperado.")
+            }
+            return
+        }
 
         // On this DiLink build the OEM view is selected when HVAC is OFF.
         val actualOn = !powerNode.isSelected
@@ -311,5 +335,10 @@ class ClimateAccessibilityService : AccessibilityService() {
 
     override fun onInterrupt() {
         gestureInProgress = false
+    }
+
+    override fun onDestroy() {
+        handler.removeCallbacks(pendingPoll)
+        super.onDestroy()
     }
 }
