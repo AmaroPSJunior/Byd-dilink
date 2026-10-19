@@ -38,7 +38,7 @@
     <section>
       <h2>Persiana do teto</h2>
       <label>Posição: <span class="value" id="shadeLabel">0%</span></label><input id="shade" type="range" min="0" max="100" step="1" value="0" onpointerdown="markDirty('shade')" onfocus="markDirty('shade')" oninput="shadeLabel.textContent=this.value+'%'">
-      <div class="row wrap"><button class="green" onclick="shadeCommand(100)">Abrir</button><button class="red" onclick="shadeCommand(0)">Fechar</button><button class="gray" onclick="command('/api/sunshade/stop',{})">Parar</button><button onclick="applyShade()">Aplicar posição</button></div>
+      <div class="row wrap"><button id="shadeOpenButton" class="green" onclick="shadeCommand(100)">Abrir</button><button id="shadeCloseButton" class="red" onclick="shadeCommand(0)">Fechar</button><button class="gray" onclick="shadeStop()">Parar</button><button onclick="applyShade()">Aplicar posição</button></div>
       <p class="muted">Os comandos seguem as restrições de segurança do veículo.</p><p id="shadeStatus" class="status"></p>
     </section>
     <section>
@@ -68,7 +68,29 @@
     async function applyWindow(key){const id='slider-'+key,n=+document.getElementById(id).value,preset=n<25?0:n<75?50:100;if(await command('/api/windows/'+key,{position:preset}))dirtyControls.delete(id)}
     async function windowCommand(key,position){dirtyControls.delete('slider-'+key);await command('/api/windows/'+key,{position})}
     async function applyShade(){if(await command('/api/sunshade',{position:+shade.value}))dirtyControls.delete('shade')}
-    async function shadeCommand(position){dirtyControls.delete('shade');await command('/api/sunshade',{position})}
+    // O estado é local a esta sessão web: não pressupõe confirmação física do movimento.
+    let shadeMotion=null;
+    let shadeBusy=false;
+    function renderShadeButtons(){
+      byId('shadeOpenButton').textContent=shadeMotion===100?'Parar abertura':'Abrir';
+      byId('shadeCloseButton').textContent=shadeMotion===0?'Parar fechamento':'Fechar';
+    }
+    async function shadeStop(){
+      if(shadeBusy)return;
+      shadeBusy=true;
+      try{
+        if(await command('/api/sunshade/stop',{}))shadeMotion=null;
+      }finally{shadeBusy=false;renderShadeButtons()}
+    }
+    async function shadeCommand(position){
+      if(shadeBusy)return;
+      if(shadeMotion===position)return shadeStop();
+      shadeBusy=true;
+      try{
+        dirtyControls.delete('shade');
+        if(await command('/api/sunshade',{position}))shadeMotion=position;
+      }finally{shadeBusy=false;renderShadeButtons()}
+    }
     async function applyFan(){if(await command('/api/climate/fan',{level:+fan.value}))dirtyControls.delete('fan')}
     async function applyTemperature(){if(await command('/api/climate/temperature',{celsius:+temp.value}))dirtyControls.delete('temp')}
     async function saveBeltPrefs(){const speed=+beltSpeed.value;try{const r=await api('/api/belt-alerts',{enabled:beltAudio.checked,speedKmh:speed});setStatus('beltStatus',r.message,true);dirtyControls.delete('beltSpeed')}catch(e){setStatus('beltStatus',e.message,false)}}
