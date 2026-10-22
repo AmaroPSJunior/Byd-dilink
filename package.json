@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "echo 'Lint ok'",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "codex:context": "sh scripts/codex-context.sh"
   },
   "dependencies": {
     "lucide-react": "^0.344.0",
